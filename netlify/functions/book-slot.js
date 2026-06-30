@@ -2,9 +2,10 @@ const { google } = require("googleapis");
 
 exports.handler = async (event) => {
   try {
-    const body = JSON.parse(event.body);
+    const { start, name, phone } = JSON.parse(event.body);
 
-    const { start, end, title } = body;
+    const startDate = new Date(start);
+    const endDate = new Date(startDate.getTime() + 3 * 60 * 60 * 1000);
 
     const auth = new google.auth.JWT(
       process.env.GOOGLE_CLIENT_EMAIL,
@@ -18,13 +19,13 @@ exports.handler = async (event) => {
     const result = await calendar.events.insert({
       calendarId: process.env.CALENDAR_ID,
       requestBody: {
-        summary: title || "Booking",
+        summary: `Vask - ${name} (${phone})`,
         start: {
-          dateTime: start,
+          dateTime: startDate.toISOString(),
           timeZone: "Europe/Oslo",
         },
         end: {
-          dateTime: end,
+          dateTime: endDate.toISOString(),
           timeZone: "Europe/Oslo",
         },
       },
