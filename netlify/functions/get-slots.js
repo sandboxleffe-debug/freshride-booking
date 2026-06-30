@@ -30,16 +30,9 @@ exports.handler = async (event) => {
 
     const events = res.data.items || [];
 
-    const slots = events.map(e => ({
-      id: e.id,
-      title: e.summary,
-      start: e.start.dateTime,
-      end: e.end.dateTime
-    }));
-
     return {
       statusCode: 200,
-      body: JSON.stringify({ slots }),
+      body: JSON.stringify({ events }),
     };
 
   } catch (err) {
