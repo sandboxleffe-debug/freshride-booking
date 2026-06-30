@@ -27,8 +27,7 @@ function generateSlots(date, startHour, endHour, slotMinutes, events) {
     if (!overlapping) {
       slots.push({
         start: slotStart.toISOString(),
-        end: slotEnd.toISOString(),
-        available: true
+        end: slotEnd.toISOString()
       });
     }
   }
@@ -66,13 +65,7 @@ exports.handler = async (event) => {
 
     const events = res.data.items || [];
 
-    const slots = generateSlots(
-      date,
-      9,
-      17,
-      60,
-      events
-    );
+    const slots = generateSlots(date, 9, 17, 60, events);
 
     return {
       statusCode: 200,
