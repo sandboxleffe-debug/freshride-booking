@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>FreshRide Booking</title>
+  <style>
+    body {
+      font-family: Arial;
+      max-width: 600px;
+      margin: 40px auto;
+    }
+
+    .slot {
+      display: block;
+      padding: 12px;
+      margin: 8px 0;
+      background: #2ecc71;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .slot:hover {
+      background: #27ae60;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Velg tidspunkt</h2>
+
+<div id="slots"></div>
+
+<script>
+const slots = [
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00"
+];
+
+const container = document.getElementById("slots");
+
+slots.forEach(time => {
+  const div = document.createElement("div");
+  div.className = "slot";
+  div.innerText = time;
+
+  div.onclick = () => {
+    alert("Du valgte " + time);
+  };
+
+  container.appendChild(div);
+});
+</script>
+
+</body>
+</html>
