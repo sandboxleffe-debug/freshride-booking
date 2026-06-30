@@ -2,10 +2,7 @@ const { google } = require("googleapis");
 
 exports.handler = async (event) => {
   try {
-    const { start, name, phone } = JSON.parse(event.body);
-
-    const startDate = new Date(start);
-    const endDate = new Date(startDate.getTime() + 3 * 60 * 60 * 1000);
+    const { eventId, name, phone } = JSON.parse(event.body);
 
     const auth = new google.auth.JWT(
       process.env.GOOGLE_CLIENT_EMAIL,
@@ -16,30 +13,33 @@ exports.handler = async (event) => {
 
     const calendar = google.calendar({ version: "v3", auth });
 
-    const result = await calendar.events.insert({
+    // Hent eksisterende event
+    const existing = await calendar.events.get({
       calendarId: process.env.CALENDAR_ID,
+      eventId
+    });
+
+    const ev = existing.data;
+
+    // Oppdater event (marker som booket)
+    const result = await calendar.events.patch({
+      calendarId: process.env.CALENDAR_ID,
+      eventId,
       requestBody: {
-        summary: `Vask - ${name} (${phone})`,
-        start: {
-          dateTime: startDate.toISOString(),
-          timeZone: "Europe/Oslo",
-        },
-        end: {
-          dateTime: endDate.toISOString(),
-          timeZone: "Europe/Oslo",
-        },
-      },
+        summary: `BOOKED - ${name} (${phone})`,
+        description: "Booked via FreshRide",
+      }
     });
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ ok: true, event: result.data }),
+      body: JSON.stringify({ ok: true, event: result.data })
     };
 
   } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: err.message })
     };
   }
 };
