@@ -5,89 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FreshRide Booking</title>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: auto;
-      padding: 40px 20px;
-    }
-
-    h1 { margin-bottom: 10px; }
-
-    .card {
-      background: #111827;
-      padding: 20px;
-      border-radius: 12px;
-      margin-top: 20px;
-      border: 1px solid #1f2937;
-    }
-
-    input, button {
-      padding: 12px;
-      border-radius: 8px;
-      border: none;
-      font-size: 14px;
-      margin-top: 10px;
-    }
-
-    input {
-      width: 100%;
-      background: #1f2937;
-      color: white;
-    }
-
-    button {
-      cursor: pointer;
-      background: #3b82f6;
-      color: white;
-      width: 100%;
-    }
-
-    #slots {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .slot {
-      padding: 14px;
-      background: #1f2937;
-      border-radius: 10px;
-      text-align: center;
-      cursor: pointer;
-    }
-
-    .slot:hover { background: #374151; }
-
-    .modal-bg {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      display: none;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal {
-      background: #111827;
-      padding: 20px;
-      border-radius: 12px;
-      width: 350px;
-    }
-
-    .cancel {
-      background: #ef4444;
-      margin-top: 10px;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -97,111 +15,82 @@
   <h1>FreshRide Booking</h1>
 
   <div class="card">
-    <input type="date" id="datePicker" />
-    <button onclick="update()">Hent tider</button>
+    <input type="date" id="date" />
+    <button onclick="load()">Hent tider</button>
   </div>
 
-  <div id="slots"></div>
+  <div id="list"></div>
 
-</div>
-
-<!-- MODAL -->
-<div class="modal-bg" id="modal">
-  <div class="modal">
-
-    <h3>Bekreft booking</h3>
-
-    <p id="timeText"></p>
+  <div class="card" id="form" style="display:none;">
+    <h3>Bekreft booking (3 timer)</h3>
 
     <input id="name" placeholder="Navn" />
-    <input id="phone" placeholder="Mobilnummer" />
+    <input id="phone" placeholder="Mobil" />
 
-    <button onclick="confirmBooking()">Bekreft booking</button>
-    <button class="cancel" onclick="closeModal()">Avbryt</button>
-
+    <button onclick="book()">Book</button>
   </div>
+
 </div>
 
 <script>
-  let selectedSlot = null;
+let selected = null;
+let events = [];
 
-  async function loadSlots(date) {
-    const res = await fetch(`/.netlify/functions/get-slots?date=${date}`);
-    const data = await res.json();
-    renderSlots(data.slots || []);
-  }
+async function load() {
+  const date = document.getElementById("date").value;
+  if (!date) return;
 
-  function update() {
-    const date = document.getElementById("datePicker").value;
-    if (!date) return;
-    loadSlots(date);
-  }
+  const res = await fetch(`/.netlify/functions/get-slots?date=${date}`);
+  const data = await res.json();
 
-  function renderSlots(slots) {
-    const el = document.getElementById("slots");
-    el.innerHTML = "";
+  events = data.events;
+  render();
+}
 
-    slots.forEach(slot => {
-      const div = document.createElement("div");
-      div.className = "slot";
+function render() {
+  const el = document.getElementById("list");
+  el.innerHTML = "";
 
-      const time = new Date(slot.start).toLocaleTimeString("no-NO", {
-        hour: "2-digit",
-        minute: "2-digit"
-      });
+  events.forEach(e => {
+    const div = document.createElement("div");
+    div.className = "event";
 
-      div.innerText = time;
-      div.onclick = () => openModal(slot);
+    const start = new Date(e.start.dateTime).toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit"});
+    const end = new Date(e.end.dateTime).toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit"});
 
-      el.appendChild(div);
-    });
-  }
+    div.innerHTML = `
+      <div class="time">${start} - ${end}</div>
+      <div class="title">${e.summary || "Ledig"}</div>
+    `;
 
-  function openModal(slot) {
-    selectedSlot = slot;
+    div.onclick = () => {
+      selected = e;
+      document.getElementById("form").style.display = "block";
+    };
 
-    const time = new Date(slot.start).toLocaleTimeString("no-NO", {
-      hour: "2-digit",
-      minute: "2-digit"
-    });
+    el.appendChild(div);
+  });
+}
 
-    document.getElementById("timeText").innerText =
-      `Du velger kl ${time} (3 timers booking)`;
+async function book() {
+  const name = document.getElementById("name").value;
+  const phone = document.getElementById("phone").value;
 
-    document.getElementById("modal").style.display = "flex";
-  }
+  if (!name || !phone) return alert("Fyll inn alt");
 
-  function closeModal() {
-    document.getElementById("modal").style.display = "none";
-    selectedSlot = null;
-  }
+  await fetch("/.netlify/functions/book-slot", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      start: selected.start.dateTime,
+      name,
+      phone
+    })
+  });
 
-  async function confirmBooking() {
-    const name = document.getElementById("name").value;
-    const phone = document.getElementById("phone").value;
-
-    if (!name || !phone) {
-      alert("Fyll inn navn og mobil");
-      return;
-    }
-
-    const start = new Date(selectedSlot.start);
-    const end = new Date(start.getTime() + 3 * 60 * 60 * 1000);
-
-    await fetch("/.netlify/functions/book-slot", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        start: start.toISOString(),
-        end: end.toISOString(),
-        title: `Vask - ${name} (${phone})`
-      })
-    });
-
-    closeModal();
-    update();
-    alert("Booking bekreftet");
-  }
+  alert("Booket!");
+  load();
+}
 </script>
 
 </body>
