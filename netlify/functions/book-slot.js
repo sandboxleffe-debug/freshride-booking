@@ -13,37 +13,19 @@ exports.handler = async (event) => {
 
     const calendar = google.calendar({ version: "v3", auth });
 
-    // 1. hent event (valgfritt men ok for logging)
-    await calendar.events.get({
+    await calendar.events.patch({
       calendarId: process.env.CALENDAR_ID,
-      eventId
-    });
-
-    // 2. slett slot (den blir ikke tilgjengelig igjen)
-    await calendar.events.delete({
-      calendarId: process.env.CALENDAR_ID,
-      eventId
-    });
-
-    // 3. lag faktisk booking event (ny event)
-    const booked = await calendar.events.insert({
-      calendarId: process.env.CALENDAR_ID,
+      eventId,
       requestBody: {
-        summary: `BOOKED - ${name} (${phone})`,
-        start: {
-          dateTime: event.start?.dateTime,
-          timeZone: "Europe/Oslo"
-        },
-        end: {
-          dateTime: event.end?.dateTime,
-          timeZone: "Europe/Oslo"
-        }
+        summary: `BOOKED - ${name}`,
+        description: phone,
+        colorId: "11" // grønn/rød visuell markering
       }
     });
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ ok: true, booked: booked.data })
+      body: JSON.stringify({ ok: true })
     };
 
   } catch (err) {
