@@ -15,14 +15,11 @@
 
     .container {
       max-width: 900px;
-      margin: 0 auto;
+      margin: auto;
       padding: 40px 20px;
     }
 
-    h1 {
-      font-size: 32px;
-      margin-bottom: 10px;
-    }
+    h1 { margin-bottom: 10px; }
 
     .card {
       background: #111827;
@@ -37,9 +34,11 @@
       border-radius: 8px;
       border: none;
       font-size: 14px;
+      margin-top: 10px;
     }
 
     input {
+      width: 100%;
       background: #1f2937;
       color: white;
     }
@@ -48,11 +47,7 @@
       cursor: pointer;
       background: #3b82f6;
       color: white;
-      margin-left: 10px;
-    }
-
-    button:hover {
-      background: #2563eb;
+      width: 100%;
     }
 
     #slots {
@@ -63,25 +58,19 @@
     }
 
     .slot {
-      padding: 12px;
+      padding: 14px;
       background: #1f2937;
-      border: 1px solid #374151;
       border-radius: 10px;
       text-align: center;
       cursor: pointer;
-      transition: 0.2s;
     }
 
-    .slot:hover {
-      background: #374151;
-      transform: scale(1.03);
-    }
+    .slot:hover { background: #374151; }
 
-    /* Modal */
     .modal-bg {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.6);
+      background: rgba(0,0,0,0.7);
       display: none;
       align-items: center;
       justify-content: center;
@@ -91,17 +80,12 @@
       background: #111827;
       padding: 20px;
       border-radius: 12px;
-      width: 320px;
-      border: 1px solid #1f2937;
-    }
-
-    .modal button {
-      width: 100%;
-      margin-top: 10px;
+      width: 350px;
     }
 
     .cancel {
       background: #ef4444;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -111,7 +95,6 @@
 <div class="container">
 
   <h1>FreshRide Booking</h1>
-  <p>Velg dato og tid for booking</p>
 
   <div class="card">
     <input type="date" id="datePicker" />
@@ -122,14 +105,20 @@
 
 </div>
 
-<!-- Modal -->
+<!-- MODAL -->
 <div class="modal-bg" id="modal">
   <div class="modal">
-    <h3>Bekreft booking</h3>
-    <p id="modalText"></p>
 
-    <button onclick="confirmBooking()">Ja, book denne tiden</button>
+    <h3>Bekreft booking</h3>
+
+    <p id="timeText"></p>
+
+    <input id="name" placeholder="Navn" />
+    <input id="phone" placeholder="Mobilnummer" />
+
+    <button onclick="confirmBooking()">Bekreft booking</button>
     <button class="cancel" onclick="closeModal()">Avbryt</button>
+
   </div>
 </div>
 
@@ -162,7 +151,6 @@
       });
 
       div.innerText = time;
-
       div.onclick = () => openModal(slot);
 
       el.appendChild(div);
@@ -177,8 +165,8 @@
       minute: "2-digit"
     });
 
-    document.getElementById("modalText").innerText =
-      `Vil du booke kl ${time}?`;
+    document.getElementById("timeText").innerText =
+      `Du velger kl ${time} (3 timers booking)`;
 
     document.getElementById("modal").style.display = "flex";
   }
@@ -189,17 +177,24 @@
   }
 
   async function confirmBooking() {
-    if (!selectedSlot) return;
+    const name = document.getElementById("name").value;
+    const phone = document.getElementById("phone").value;
+
+    if (!name || !phone) {
+      alert("Fyll inn navn og mobil");
+      return;
+    }
+
+    const start = new Date(selectedSlot.start);
+    const end = new Date(start.getTime() + 3 * 60 * 60 * 1000);
 
     await fetch("/.netlify/functions/book-slot", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        start: selectedSlot.start,
-        end: selectedSlot.end,
-        title: "Vask"
+        start: start.toISOString(),
+        end: end.toISOString(),
+        title: `Vask - ${name} (${phone})`
       })
     });
 
