@@ -1,60 +1,92 @@
 <!DOCTYPE html>
 <html lang="no">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FreshRide Booking</title>
+
   <style>
     body {
-      font-family: Arial;
-      max-width: 600px;
-      margin: 40px auto;
+      font-family: Arial, sans-serif;
+      padding: 20px;
     }
 
-    .slot {
-      display: block;
-      padding: 12px;
-      margin: 8px 0;
-      background: #2ecc71;
-      color: white;
-      border-radius: 6px;
+    #slots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    button {
+      padding: 10px 14px;
       cursor: pointer;
-      text-align: center;
+      border: 1px solid #ccc;
+      background: white;
     }
 
-    .slot:hover {
-      background: #27ae60;
+    button:hover {
+      background: #f0f0f0;
     }
   </style>
 </head>
+
 <body>
 
-<h2>Velg tidspunkt</h2>
+  <h1>FreshRide booking</h1>
 
-<div id="slots"></div>
+  <input type="date" id="datePicker" />
+  <button onclick="update()">Hent tider</button>
 
-<script>
-const slots = [
-  "09:00",
-  "10:00",
-  "11:00",
-  "12:00",
-  "13:00"
-];
+  <div id="slots"></div>
 
-const container = document.getElementById("slots");
+  <script>
+    async function loadSlots(date) {
+      const res = await fetch(`/.netlify/functions/get-slots?date=${date}`);
+      const data = await res.json();
+      renderSlots(data.slots || []);
+    }
 
-slots.forEach(time => {
-  const div = document.createElement("div");
-  div.className = "slot";
-  div.innerText = time;
+    function update() {
+      const date = document.getElementById("datePicker").value;
+      if (!date) return;
 
-  div.onclick = () => {
-    alert("Du valgte " + time);
-  };
+      loadSlots(date);
+    }
 
-  container.appendChild(div);
-});
-</script>
+    function renderSlots(slots) {
+      const el = document.getElementById("slots");
+      el.innerHTML = "";
+
+      slots.forEach(slot => {
+        const btn = document.createElement("button");
+
+        btn.innerText = new Date(slot.start).toLocaleTimeString("no-NO", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+
+        btn.onclick = async () => {
+          await fetch("/.netlify/functions/book-slot", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              start: slot.start,
+              end: slot.end,
+              title: "Vask"
+            })
+          });
+
+          alert("Booket!");
+          update();
+        };
+
+        el.appendChild(btn);
+      });
+    }
+  </script>
 
 </body>
 </html>
