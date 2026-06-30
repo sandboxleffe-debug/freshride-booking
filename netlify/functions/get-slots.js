@@ -1,6 +1,6 @@
 const { google } = require("googleapis");
 
-function generateSlots(startHour, endHour, slotMinutes, events, date) {
+function generateSlots(date, startHour, endHour, slotMinutes, events) {
   const slots = [];
 
   const dayStart = new Date(date);
@@ -36,8 +36,11 @@ function generateSlots(startHour, endHour, slotMinutes, events, date) {
   return slots;
 }
 
-exports.handler = async () => {
+exports.handler = async (event) => {
   try {
+    const dateParam = event.queryStringParameters?.date;
+    const date = dateParam ? new Date(dateParam) : new Date();
+
     const auth = new google.auth.JWT(
       process.env.GOOGLE_CLIENT_EMAIL,
       null,
@@ -47,14 +50,16 @@ exports.handler = async () => {
 
     const calendar = google.calendar({ version: "v3", auth });
 
-    const now = new Date();
-    const end = new Date();
-    end.setDate(end.getDate() + 1);
+    const timeMin = new Date(date);
+    timeMin.setHours(0, 0, 0, 0);
+
+    const timeMax = new Date(date);
+    timeMax.setHours(23, 59, 59, 999);
 
     const res = await calendar.events.list({
       calendarId: process.env.CALENDAR_ID,
-      timeMin: now.toISOString(),
-      timeMax: end.toISOString(),
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
       singleEvents: true,
       orderBy: "startTime",
     });
@@ -62,11 +67,11 @@ exports.handler = async () => {
     const events = res.data.items || [];
 
     const slots = generateSlots(
+      date,
       9,
       17,
       60,
-      events,
-      new Date()
+      events
     );
 
     return {
