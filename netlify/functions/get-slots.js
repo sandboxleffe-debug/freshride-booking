@@ -1,40 +1,5 @@
 const { google } = require("googleapis");
 
-function generateSlots(date, startHour, endHour, slotMinutes, events) {
-  const slots = [];
-
-  const dayStart = new Date(date);
-  dayStart.setHours(startHour, 0, 0, 0);
-
-  const dayEnd = new Date(date);
-  dayEnd.setHours(endHour, 0, 0, 0);
-
-  for (
-    let t = new Date(dayStart);
-    t < dayEnd;
-    t = new Date(t.getTime() + slotMinutes * 60000)
-  ) {
-    const slotStart = new Date(t);
-    const slotEnd = new Date(t.getTime() + slotMinutes * 60000);
-
-    const overlapping = events.some(e => {
-      const eStart = new Date(e.start.dateTime || e.start.date);
-      const eEnd = new Date(e.end.dateTime || e.end.date);
-
-      return slotStart < eEnd && slotEnd > eStart;
-    });
-
-    if (!overlapping) {
-      slots.push({
-        start: slotStart.toISOString(),
-        end: slotEnd.toISOString()
-      });
-    }
-  }
-
-  return slots;
-}
-
 exports.handler = async (event) => {
   try {
     const dateParam = event.queryStringParameters?.date;
@@ -65,7 +30,12 @@ exports.handler = async (event) => {
 
     const events = res.data.items || [];
 
-    const slots = generateSlots(date, 9, 17, 60, events);
+    const slots = events.map(e => ({
+      id: e.id,
+      title: e.summary,
+      start: e.start.dateTime,
+      end: e.end.dateTime
+    }));
 
     return {
       statusCode: 200,
