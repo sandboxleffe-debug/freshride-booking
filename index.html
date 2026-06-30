@@ -5,135 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FreshRide Booking</title>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background: linear-gradient(135deg, #0b1220, #0f172a);
-      color: #e5e7eb;
-    }
-
-    .container {
-      max-width: 1000px;
-      margin: auto;
-      padding: 50px 20px;
-    }
-
-    .hero {
-      margin-bottom: 30px;
-    }
-
-    h1 {
-      font-size: 38px;
-      margin: 0;
-      background: linear-gradient(90deg, #60a5fa, #34d399);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .subtitle {
-      opacity: 0.7;
-      margin-top: 8px;
-    }
-
-    .card {
-      background: rgba(17, 24, 39, 0.8);
-      border: 1px solid rgba(255,255,255,0.08);
-      backdrop-filter: blur(10px);
-      padding: 18px;
-      border-radius: 16px;
-      margin-bottom: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    }
-
-    input {
-      width: 100%;
-      padding: 14px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: #0b1220;
-      color: white;
-      margin-top: 10px;
-      outline: none;
-    }
-
-    input::placeholder {
-      color: rgba(255,255,255,0.4);
-    }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      margin-top: 12px;
-      border-radius: 12px;
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-      background: linear-gradient(90deg, #3b82f6, #22c55e);
-      color: white;
-      transition: 0.2s;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.05);
-    }
-
-    #list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 12px;
-      margin-top: 20px;
-    }
-
-    .event {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      padding: 14px;
-      border-radius: 14px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .event:hover {
-      transform: scale(1.03);
-      background: rgba(255,255,255,0.08);
-    }
-
-    .time {
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    .title {
-      font-size: 13px;
-      opacity: 0.7;
-      margin-top: 6px;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 4px 8px;
-      font-size: 11px;
-      border-radius: 999px;
-      background: rgba(59,130,246,0.2);
-      margin-top: 8px;
-    }
-
-    .success {
-      background: rgba(34,197,94,0.2);
-      border: 1px solid rgba(34,197,94,0.4);
-      padding: 14px;
-      border-radius: 12px;
-      margin-top: 15px;
-      display: none;
-    }
-
-    .success strong {
-      display: block;
-      margin-bottom: 6px;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -142,28 +14,28 @@
 
   <div class="hero">
     <h1>FreshRide Booking</h1>
-    <div class="subtitle">Velg en ledig tid og bekreft booking</div>
+    <p>Velg en ledig tid</p>
   </div>
 
   <div class="card">
     <input type="date" id="date" />
-    <button onclick="load()">Hent tilgjengelige tider</button>
+    <button onclick="load()">Hent tider</button>
   </div>
 
   <div id="list"></div>
 
-  <div class="card" id="form" style="display:none;">
-    <h3>Bekreft booking (3 timer)</h3>
+  <div class="card hidden" id="form">
+    <h3>Bekreft booking</h3>
 
-    <input id="name" placeholder="Navn (påkrevd)" />
-    <input id="phone" placeholder="Mobilnummer (kun tall)" inputmode="numeric"/>
+    <input id="name" placeholder="Navn" />
+    <input id="phone" placeholder="Mobilnummer" inputmode="numeric"/>
 
     <button onclick="book()">Bekreft booking</button>
 
-    <div class="success" id="successBox">
-      <strong>Din time er booket</strong>
-      Husk å levere bilen før oppgitt tidspunkt.  
-      Ved spørsmål ring Freshride 12345678
+    <div class="success hidden" id="success">
+      <b>Din time er booket</b>
+      <p>Husk å levere bilen før oppgitt tidspunkt.</p>
+      <p>Ved spørsmål ring Freshride 12345678</p>
     </div>
   </div>
 
@@ -192,19 +64,17 @@ function render() {
     const div = document.createElement("div");
     div.className = "event";
 
-    const start = new Date(e.start.dateTime).toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit"});
-    const end = new Date(e.end.dateTime).toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit"});
+    const start = new Date(e.start).toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit"});
+    const end = new Date(e.end).toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit"});
 
     div.innerHTML = `
       <div class="time">${start} - ${end}</div>
-      <div class="title">${e.summary || "Ledig"}</div>
-      <div class="badge">Klikk for å velge</div>
+      <div class="tag">Ledig</div>
     `;
 
     div.onclick = () => {
       selected = e;
-      document.getElementById("form").style.display = "block";
-      document.getElementById("successBox").style.display = "none";
+      document.getElementById("form").classList.remove("hidden");
     };
 
     el.appendChild(div);
@@ -215,23 +85,19 @@ async function book() {
   const name = document.getElementById("name").value.trim();
   const phone = document.getElementById("phone").value.replace(/\D/g,'');
 
-  if (!name || !phone) {
-    alert("Navn og mobil er påkrevd");
-    return;
-  }
+  if (!name || !phone) return alert("Fyll inn alt");
 
   await fetch("/.netlify/functions/book-slot", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({
-      start: selected.start.dateTime,
+      eventId: selected.id,
       name,
       phone
     })
   });
 
-  document.getElementById("successBox").style.display = "block";
-
+  document.getElementById("success").classList.remove("hidden");
   load();
 }
 </script>
