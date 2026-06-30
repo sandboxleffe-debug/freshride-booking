@@ -7,86 +7,207 @@
 
   <style>
     body {
+      margin: 0;
       font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .card {
+      background: #111827;
       padding: 20px;
+      border-radius: 12px;
+      margin-top: 20px;
+      border: 1px solid #1f2937;
+    }
+
+    input, button {
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+    }
+
+    input {
+      background: #1f2937;
+      color: white;
+    }
+
+    button {
+      cursor: pointer;
+      background: #3b82f6;
+      color: white;
+      margin-left: 10px;
+    }
+
+    button:hover {
+      background: #2563eb;
     }
 
     #slots {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
       gap: 10px;
       margin-top: 20px;
     }
 
-    button {
-      padding: 10px 14px;
+    .slot {
+      padding: 12px;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      text-align: center;
       cursor: pointer;
-      border: 1px solid #ccc;
-      background: white;
+      transition: 0.2s;
     }
 
-    button:hover {
-      background: #f0f0f0;
+    .slot:hover {
+      background: #374151;
+      transform: scale(1.03);
+    }
+
+    /* Modal */
+    .modal-bg {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal {
+      background: #111827;
+      padding: 20px;
+      border-radius: 12px;
+      width: 320px;
+      border: 1px solid #1f2937;
+    }
+
+    .modal button {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .cancel {
+      background: #ef4444;
     }
   </style>
 </head>
 
 <body>
 
-  <h1>FreshRide booking</h1>
+<div class="container">
 
-  <input type="date" id="datePicker" />
-  <button onclick="update()">Hent tider</button>
+  <h1>FreshRide Booking</h1>
+  <p>Velg dato og tid for booking</p>
+
+  <div class="card">
+    <input type="date" id="datePicker" />
+    <button onclick="update()">Hent tider</button>
+  </div>
 
   <div id="slots"></div>
 
-  <script>
-    async function loadSlots(date) {
-      const res = await fetch(`/.netlify/functions/get-slots?date=${date}`);
-      const data = await res.json();
-      renderSlots(data.slots || []);
-    }
+</div>
 
-    function update() {
-      const date = document.getElementById("datePicker").value;
-      if (!date) return;
+<!-- Modal -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3>Bekreft booking</h3>
+    <p id="modalText"></p>
 
-      loadSlots(date);
-    }
+    <button onclick="confirmBooking()">Ja, book denne tiden</button>
+    <button class="cancel" onclick="closeModal()">Avbryt</button>
+  </div>
+</div>
 
-    function renderSlots(slots) {
-      const el = document.getElementById("slots");
-      el.innerHTML = "";
+<script>
+  let selectedSlot = null;
 
-      slots.forEach(slot => {
-        const btn = document.createElement("button");
+  async function loadSlots(date) {
+    const res = await fetch(`/.netlify/functions/get-slots?date=${date}`);
+    const data = await res.json();
+    renderSlots(data.slots || []);
+  }
 
-        btn.innerText = new Date(slot.start).toLocaleTimeString("no-NO", {
-          hour: "2-digit",
-          minute: "2-digit"
-        });
+  function update() {
+    const date = document.getElementById("datePicker").value;
+    if (!date) return;
+    loadSlots(date);
+  }
 
-        btn.onclick = async () => {
-          await fetch("/.netlify/functions/book-slot", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              start: slot.start,
-              end: slot.end,
-              title: "Vask"
-            })
-          });
+  function renderSlots(slots) {
+    const el = document.getElementById("slots");
+    el.innerHTML = "";
 
-          alert("Booket!");
-          update();
-        };
+    slots.forEach(slot => {
+      const div = document.createElement("div");
+      div.className = "slot";
 
-        el.appendChild(btn);
+      const time = new Date(slot.start).toLocaleTimeString("no-NO", {
+        hour: "2-digit",
+        minute: "2-digit"
       });
-    }
-  </script>
+
+      div.innerText = time;
+
+      div.onclick = () => openModal(slot);
+
+      el.appendChild(div);
+    });
+  }
+
+  function openModal(slot) {
+    selectedSlot = slot;
+
+    const time = new Date(slot.start).toLocaleTimeString("no-NO", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+    document.getElementById("modalText").innerText =
+      `Vil du booke kl ${time}?`;
+
+    document.getElementById("modal").style.display = "flex";
+  }
+
+  function closeModal() {
+    document.getElementById("modal").style.display = "none";
+    selectedSlot = null;
+  }
+
+  async function confirmBooking() {
+    if (!selectedSlot) return;
+
+    await fetch("/.netlify/functions/book-slot", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        start: selectedSlot.start,
+        end: selectedSlot.end,
+        title: "Vask"
+      })
+    });
+
+    closeModal();
+    update();
+    alert("Booking bekreftet");
+  }
+</script>
 
 </body>
 </html>
