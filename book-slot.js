@@ -1,14 +1,11 @@
 // api/book-slot.js
-// Vercel serverless function — replaces netlify/functions/book-slot.js
+// POST /api/book-slot { eventId, name, phone } -> { ok: true }
 //
-// Contract (unchanged from the Netlify version):
-//   POST /api/book-slot
-//   body: { eventId, name, phone }
-//   -> 200 { ok: true }
-//
-// NOTE: Placeholder implementation — paste your real
-// netlify/functions/book-slot.js source (likely writing/patching a
-// Google Calendar event, or a DB row) and this can be ported 1:1.
+// Booker en "Ledig"-tid: endrer tittelen til "VASK <mobilnummer>" slik at
+// den forsvinner fra get-slots (som kun viser summary === "Ledig"), og
+// legger navn + mobil i beskrivelsen så dere ser hvem som har booket.
+
+import { getCalendarClient, CALENDAR_ID } from "./_lib/google-calendar.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -20,11 +17,21 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing eventId, name, or phone" });
   }
 
-  // --- Replace with real booking logic --------------------------------
-  // e.g. patch the Google Calendar event's summary/description with the
-  // customer's name and phone number, or insert a row into your DB.
-  console.log("Booking received:", { eventId, name, phone });
-  // ----------------------------------------------------------------------
+  try {
+    const calendar = getCalendarClient();
 
-  return res.status(200).json({ ok: true });
+    await calendar.events.patch({
+      calendarId: CALENDAR_ID,
+      eventId,
+      requestBody: {
+        summary: `VASK ${phone}`,
+        description: `Navn: ${name}\nMobil: ${phone}`,
+      },
+    });
+
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("book-slot error:", err);
+    return res.status(500).json({ error: "Klarte ikke å bekrefte booking" });
+  }
 }
