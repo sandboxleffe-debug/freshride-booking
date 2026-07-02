@@ -42,7 +42,13 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ events });
   } catch (err) {
+    // TEMPORARY: exposing err.message to the response so we can see the
+    // real cause in the browser instead of digging through Vercel logs.
+    // Remove the "debug" field again once this is working.
     console.error("get-slots error:", err);
-    return res.status(500).json({ error: "Klarte ikke å hente tider" });
+    return res.status(500).json({
+      error: "Klarte ikke å hente tider",
+      debug: err.message || String(err),
+    });
   }
 }
