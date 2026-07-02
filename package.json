@@ -5,5 +5,8 @@
   "description": "FreshRide booking — static frontend + Vercel serverless functions",
   "scripts": {
     "dev": "vercel dev"
+  },
+  "dependencies": {
+    "googleapis": "^140.0.1"
   }
 }
