@@ -1,7 +1,9 @@
 {
-  "name": "projectfreshride",
+  "name": "freshride-booking",
   "version": "1.0.0",
-  "dependencies": {
-    "googleapis": "^140.0.0"
+  "private": true,
+  "description": "FreshRide booking — static frontend + Vercel serverless functions",
+  "scripts": {
+    "dev": "vercel dev"
   }
 }

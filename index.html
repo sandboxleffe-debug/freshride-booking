@@ -1,106 +1,261 @@
 <!DOCTYPE html>
 <html lang="no">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FreshRide Booking</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FreshRide — Book en tid</title>
+<meta name="description" content="Velg en ledig tid og book innlevering av bilen din hos FreshRide." />
 
-  <link rel="stylesheet" href="style.css">
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<div class="container">
-
-  <div class="hero">
-    <h1>FreshRide Booking</h1>
-    <p>Velg en ledig tid</p>
+<!-- Navbar -->
+<nav class="navbar navbar-expand fr-navbar">
+  <div class="container">
+    <a class="navbar-brand fr-brand" href="#">
+      <span class="fr-brand-mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C12 2 5.5 9.5 5.5 14.5C5.5 18.09 8.41 21 12 21C15.59 21 18.5 18.09 18.5 14.5C18.5 9.5 12 2 12 2Z" fill="currentColor"/>
+        </svg>
+      </span>
+      FreshRide
+    </a>
+    <span class="ms-auto fr-navbar-sub d-none d-sm-inline">Innlevering &amp; booking</span>
   </div>
+</nav>
 
-  <div class="card">
-    <input type="date" id="date" />
-    <button onclick="load()">Hent tider</button>
-  </div>
-
-  <div id="list"></div>
-
-  <div class="card hidden" id="form">
-    <h3>Bekreft booking</h3>
-
-    <input id="name" placeholder="Navn" />
-    <input id="phone" placeholder="Mobilnummer" inputmode="numeric"/>
-
-    <button onclick="book()">Bekreft booking</button>
-
-    <div class="success hidden" id="success">
-      <b>Din time er booket</b>
-      <p>Husk å levere bilen før oppgitt tidspunkt.</p>
-      <p>Ved spørsmål ring Freshride 12345678</p>
+<!-- Hero -->
+<header class="fr-hero">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-7">
+        <p class="fr-eyebrow">FRESHRIDE BOOKING</p>
+        <h1 class="fr-hero-title">Sett av <span class="fr-highlight">to minutter</span>,<br>så ordner vi resten.</h1>
+        <p class="fr-hero-text">Velg en dag, plukk en ledig tid, og lever bilen når det passer deg. Ingen kø, ingen ventetid — bare en bekreftet time.</p>
+      </div>
+      <div class="col-lg-5 d-none d-lg-block">
+        <div class="fr-hero-card">
+          <div class="fr-hero-card-row"><span>01</span> Velg dato</div>
+          <div class="fr-hero-card-row"><span>02</span> Velg ledig tid</div>
+          <div class="fr-hero-card-row"><span>03</span> Bekreft med navn &amp; mobil</div>
+        </div>
+      </div>
     </div>
   </div>
+</header>
 
+<main class="container fr-main">
+
+  <!-- Step 1: date -->
+  <section class="fr-panel" id="step-date">
+    <div class="fr-panel-head">
+      <span class="fr-step-badge">1</span>
+      <h2>Velg dato</h2>
+    </div>
+    <div class="row g-3 align-items-end">
+      <div class="col-sm-6 col-md-4">
+        <label for="date" class="form-label fr-label">Dato</label>
+        <input type="date" id="date" class="form-control form-control-lg fr-input" />
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <button class="btn btn-lg fr-btn-primary w-100" onclick="load()" id="loadBtn">
+          Hent ledige tider
+        </button>
+      </div>
+    </div>
+    <div id="dateHint" class="fr-hint mt-2"></div>
+  </section>
+
+  <!-- Step 2: slots -->
+  <section class="fr-panel" id="step-slots">
+    <div class="fr-panel-head">
+      <span class="fr-step-badge">2</span>
+      <h2>Ledige tider</h2>
+    </div>
+    <div id="list" class="fr-slot-grid"></div>
+    <div id="emptyState" class="fr-empty d-none">
+      <p>Ingen tider hentet ennå. Velg en dato over for å komme i gang.</p>
+    </div>
+    <div id="noSlots" class="fr-empty d-none">
+      <p>Ingen ledige tider denne dagen. Prøv en annen dato.</p>
+    </div>
+    <div id="loadingState" class="fr-empty d-none">
+      <div class="spinner-border fr-spinner" role="status"></div>
+      <p class="mt-3">Henter ledige tider …</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- Booking modal -->
+<div class="modal fade" id="bookingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content fr-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">Bekreft booking</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
+      </div>
+      <div class="modal-body">
+        <p class="fr-modal-slot" id="modalSlotLabel"></p>
+        <div class="mb-3">
+          <label for="name" class="form-label fr-label">Navn</label>
+          <input id="name" class="form-control fr-input" placeholder="Ola Nordmann" />
+        </div>
+        <div class="mb-2">
+          <label for="phone" class="form-label fr-label">Mobilnummer</label>
+          <input id="phone" class="form-control fr-input" placeholder="912 34 567" inputmode="numeric" />
+        </div>
+        <div id="formError" class="fr-form-error d-none">Fyll inn navn og mobilnummer for å fortsette.</div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn fr-btn-primary w-100" onclick="book()" id="bookBtn">Bekreft booking</button>
+      </div>
+    </div>
+  </div>
 </div>
 
+<!-- Success toast -->
+<div class="fr-toast-wrap">
+  <div id="successToast" class="fr-toast">
+    <div class="fr-toast-icon">✓</div>
+    <div>
+      <b>Din time er booket</b>
+      <p class="mb-1">Husk å levere bilen før oppgitt tidspunkt.</p>
+      <p class="mb-0">Ved spørsmål, ring FreshRide på <a href="tel:12345678">12 34 56 78</a>.</p>
+    </div>
+  </div>
+</div>
+
+<footer class="fr-footer">
+  <div class="container">
+    <span>© <span id="year"></span> FreshRide</span>
+    <span class="fr-footer-dot">·</span>
+    <a href="tel:12345678">12 34 56 78</a>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+document.getElementById("year").textContent = new Date().getFullYear();
+
 let selected = null;
 let events = [];
+const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+
+function setState(state) {
+  // state: 'idle' | 'loading' | 'empty' | 'results'
+  document.getElementById('emptyState').classList.toggle('d-none', state !== 'idle');
+  document.getElementById('loadingState').classList.toggle('d-none', state !== 'loading');
+  document.getElementById('noSlots').classList.toggle('d-none', state !== 'empty');
+  document.getElementById('list').classList.toggle('d-none', state !== 'results');
+}
+setState('idle');
 
 async function load() {
   const date = document.getElementById("date").value;
-  if (!date) return;
+  const hint = document.getElementById("dateHint");
+  if (!date) {
+    hint.textContent = "Velg en dato først.";
+    hint.classList.add('fr-hint-error');
+    return;
+  }
+  hint.textContent = "";
+  hint.classList.remove('fr-hint-error');
+  setState('loading');
 
-  const res = await fetch(`/.netlify/functions/get-slots?date=${date}`);
-  const data = await res.json();
-
-  events = data.events;
-  render();
+  try {
+    // NB: swap this for /api/get-slots if you rename the Vercel function file.
+    const res = await fetch(`/api/get-slots?date=${encodeURIComponent(date)}`);
+    if (!res.ok) throw new Error("Nettverksfeil");
+    const data = await res.json();
+    events = data.events || [];
+    render();
+  } catch (err) {
+    setState('idle');
+    hint.textContent = "Klarte ikke å hente tider. Prøv igjen.";
+    hint.classList.add('fr-hint-error');
+  }
 }
 
 function render() {
   const el = document.getElementById("list");
   el.innerHTML = "";
 
+  if (!events.length) {
+    setState('empty');
+    return;
+  }
+  setState('results');
+
   events.forEach(e => {
-    const div = document.createElement("div");
-    div.className = "event";
+    const start = new Date(e.start).toLocaleTimeString("no-NO", {hour: "2-digit", minute: "2-digit"});
+    const end = new Date(e.end).toLocaleTimeString("no-NO", {hour: "2-digit", minute: "2-digit"});
 
-    const start = new Date(e.start).toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit"});
-    const end = new Date(e.end).toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit"});
-
-    div.innerHTML = `
-      <div class="time">${start} - ${end}</div>
-      <div class="tag">Ledig</div>
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "fr-slot";
+    btn.innerHTML = `
+      <span class="fr-slot-time">${start} – ${end}</span>
+      <span class="fr-slot-tag">Ledig</span>
     `;
-
-    div.onclick = () => {
+    btn.onclick = () => {
       selected = e;
-      document.getElementById("form").classList.remove("hidden");
+      document.getElementById("modalSlotLabel").textContent = `${start} – ${end}`;
+      document.getElementById("formError").classList.add('d-none');
+      bookingModal.show();
     };
-
-    el.appendChild(div);
+    el.appendChild(btn);
   });
 }
 
 async function book() {
   const name = document.getElementById("name").value.trim();
-  const phone = document.getElementById("phone").value.replace(/\D/g,'');
+  const phone = document.getElementById("phone").value.replace(/\D/g, '');
+  const errorEl = document.getElementById("formError");
+  const bookBtn = document.getElementById("bookBtn");
 
-  if (!name || !phone) return alert("Fyll inn alt");
+  if (!name || !phone) {
+    errorEl.classList.remove('d-none');
+    return;
+  }
+  errorEl.classList.add('d-none');
+  bookBtn.disabled = true;
+  bookBtn.textContent = "Booker …";
 
-  await fetch("/.netlify/functions/book-slot", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({
-      eventId: selected.id,
-      name,
-      phone
-    })
-  });
+  try {
+    // NB: swap this for /api/book-slot if you rename the Vercel function file.
+    await fetch("/api/book-slot", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        eventId: selected.id,
+        name,
+        phone
+      })
+    });
 
-  document.getElementById("success").classList.remove("hidden");
-  load();
+    bookingModal.hide();
+    const toast = document.getElementById("successToast");
+    toast.classList.add('fr-toast-show');
+    setTimeout(() => toast.classList.remove('fr-toast-show'), 6000);
+
+    document.getElementById("name").value = "";
+    document.getElementById("phone").value = "";
+    load();
+  } catch (err) {
+    errorEl.textContent = "Noe gikk galt. Prøv igjen.";
+    errorEl.classList.remove('d-none');
+  } finally {
+    bookBtn.disabled = false;
+    bookBtn.textContent = "Bekreft booking";
+  }
 }
 </script>
-
 </body>
 </html>
