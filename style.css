@@ -666,7 +666,59 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-job-compact-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .fr-job-compact-date { font-size: 0.72rem; color: var(--fr-panel-text-faint); }
 .fr-job-compact-name { font-weight: 600; font-size: 0.9rem; color: var(--fr-panel-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fr-job-compact-meta { font-size: 0.76rem; color: var(--fr-panel-text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fr-job-compact-services { font-size: 0.76rem; color: var(--fr-panel-text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fr-job-compact-right { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 .fr-job-photo-flag { font-size: 0.75rem; color: var(--fr-panel-text-faint); }
 .fr-job-compact-price { font-weight: 700; color: var(--fr-gold-deep); font-size: 0.88rem; white-space: nowrap; }
+
+/* "Vis flere" button — needs to read clearly on the light panel background */
+.fr-show-more-btn {
+  background: var(--fr-panel-bg-2);
+  border: 1.5px solid var(--fr-gold);
+  color: var(--fr-gold-deep);
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.fr-show-more-btn:hover { background: var(--fr-gold-soft); }
+
+/* Job-size range slider — graded green-to-red track */
+input.fr-range-gradient {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  outline: none;
+}
+input.fr-range-gradient::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #3EA246, var(--fr-gold), #C0392B);
+}
+input.fr-range-gradient::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #3EA246, var(--fr-gold), #C0392B);
+}
+input.fr-range-gradient::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  margin-top: -6px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--fr-panel-text);
+  cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+input.fr-range-gradient::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--fr-panel-text);
+  cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+/* Customer registry table */
+.fr-customer-table { color: var(--fr-panel-text); font-size: 0.88rem; vertical-align: middle; }
+.fr-customer-table th { color: var(--fr-panel-text-soft); font-weight: 700; font-size: 0.78rem; border-bottom-color: var(--fr-panel-border); }
+.fr-customer-table td { border-bottom-color: var(--fr-panel-border); }
+.fr-customer-table input.fr-input { padding: 0.35rem 0.6rem; font-size: 0.85rem; min-width: 70px; }

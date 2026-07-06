@@ -91,7 +91,8 @@
       <button class="fr-tab-btn" data-tab="services" onclick="showTab('services')">🧼 Tjenester</button>
       <button class="fr-tab-btn" data-tab="reviews" onclick="showTab('reviews')">⭐ Anmeldelser</button>
       <button class="fr-tab-btn" data-tab="promo" onclick="showTab('promo')">🎉 Kampanje</button>
-      <button class="fr-tab-btn" data-tab="accounting" onclick="showTab('accounting')">💰 Regnskap</button>
+      <button class="fr-tab-btn" data-tab="accounting" onclick="showTab('accounting')">🔧 Drift</button>
+      <button class="fr-tab-btn" data-tab="customers" onclick="showTab('customers')">🙋 Kunderegister</button>
       <button class="fr-tab-btn" data-tab="about" onclick="showTab('about')">ℹ️ Om oss</button>
     </div>
 
@@ -196,7 +197,7 @@
     <!-- Tab: Regnskap -->
     <div id="tab-accounting" class="fr-tab-panel d-none">
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>💰 Oversikt</h2></div>
+        <div class="fr-panel-head"><h2>💰 Omsetning</h2></div>
         <div class="fr-accounting-summary">
           <div><span class="fr-acc-label">Inntekt</span><span class="fr-acc-value fr-acc-income" id="accIncome">kr 0</span></div>
           <div><span class="fr-acc-label">Utgifter</span><span class="fr-acc-value fr-acc-expense" id="accExpenses">kr 0</span></div>
@@ -234,8 +235,8 @@
           <p class="fr-hint">Fylles automatisk ut fra valgte tjenester — kan overstyres (f.eks. ved tips).</p>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">📏 Jobbstørrelse (1–10)</label>
-          <input type="range" id="jobSize" class="form-range" min="1" max="10" value="5" oninput="document.getElementById('jobSizeVal').textContent = this.value">
+          <label class="fr-label">📏 Hvor omfattende var jobben? Velg på skala fra 1–10</label>
+          <input type="range" id="jobSize" class="form-range fr-range-gradient" min="1" max="10" value="5" oninput="document.getElementById('jobSizeVal').textContent = this.value">
           <span id="jobSizeVal" class="fr-hint">5</span>
         </div>
         <div class="fr-form-row">
@@ -255,7 +256,7 @@
         </div>
         <div class="fr-form-row">
           <label class="fr-label">📷 Bilder (kan velge flere)</label>
-          <input type="file" id="jobPhotos" class="form-control fr-input" accept="image/*" capture="environment" multiple />
+          <input type="file" id="jobPhotos" class="form-control fr-input" accept="image/*" multiple />
         </div>
         <button class="btn fr-btn-primary w-100" onclick="createJob()">💾 Lagre jobb</button>
         <div id="jobMsg" class="fr-save-msg"></div>
@@ -289,6 +290,28 @@
       <div class="fr-panel">
         <div class="fr-panel-head"><h2>Utgiftslogg</h2></div>
         <div id="expensesList"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Kunderegister -->
+    <div id="tab-customers" class="fr-tab-panel d-none">
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>🙋 Kunderegister</h2></div>
+        <p class="fr-hint">Rediger kundenavn eller -nummer om noe er feilskrevet. Lagring oppdaterer alle jobber knyttet til kunden.</p>
+        <div class="table-responsive">
+          <table class="table fr-customer-table">
+            <thead>
+              <tr>
+                <th>🙋 Kundenr.</th>
+                <th>Navn</th>
+                <th class="text-center">🚗 Jobber</th>
+                <th class="text-end">Totalt brukt</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="customersTableBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -390,8 +413,8 @@
           <input type="number" id="editJobPrice" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">📏 Jobbstørrelse (1–10)</label>
-          <input type="range" id="editJobSize" class="form-range" min="1" max="10" oninput="document.getElementById('editJobSizeVal').textContent = this.value">
+          <label class="fr-label">📏 Hvor omfattende var jobben? Velg på skala fra 1–10</label>
+          <input type="range" id="editJobSize" class="form-range fr-range-gradient" min="1" max="10" oninput="document.getElementById('editJobSizeVal').textContent = this.value">
           <span id="editJobSizeVal" class="fr-hint"></span>
         </div>
         <div class="fr-form-row">
@@ -412,7 +435,7 @@
         <div class="fr-form-row">
           <label class="fr-label">📷 Bilder</label>
           <div id="editJobPhotos" class="fr-job-photos"></div>
-          <input type="file" id="editJobNewPhotos" class="form-control fr-input mt-2" accept="image/*" capture="environment" multiple />
+          <input type="file" id="editJobNewPhotos" class="form-control fr-input mt-2" accept="image/*" multiple />
         </div>
         <div id="editJobMsg" class="fr-save-msg"></div>
       </div>
@@ -998,7 +1021,7 @@ async function loadAccountingSummary() {
     const data = await res.json();
     document.getElementById('accIncome').textContent = `kr ${data.income.toLocaleString('no-NO')}`;
     document.getElementById('accExpenses').textContent = `kr ${data.expenses.toLocaleString('no-NO')}`;
-    document.getElementById('accNet').textContent = `kr ${data.net.toLocaleString('no-NO')}`;
+    document.getElementById('accNet').textContent = `${data.net > 0 ? '👍 🪙 ' : ''}kr ${data.net.toLocaleString('no-NO')}`;
   } catch (e) { /* silent */ }
 }
 
@@ -1165,6 +1188,64 @@ function getUniqueCustomers() {
     .sort((a, b) => (Number(a[0]) || 0) - (Number(b[0]) || 0));
 }
 
+/* ---------------- Kunderegister ---------------- */
+function getCustomerStats() {
+  const jobs = window._frJobs || [];
+  const map = new Map();
+  jobs.forEach(j => {
+    if (!j.customer_number) return;
+    if (!map.has(j.customer_number)) {
+      map.set(j.customer_number, { number: j.customer_number, name: j.customer_name, jobCount: 0, totalSpent: 0 });
+    }
+    const c = map.get(j.customer_number);
+    c.jobCount += 1;
+    c.totalSpent += Number(j.price_paid || 0);
+  });
+  return Array.from(map.values()).sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
+}
+
+function renderCustomersAdmin() {
+  const body = document.getElementById('customersTableBody');
+  if (!body) return;
+  const customers = getCustomerStats();
+  if (!customers.length) {
+    body.innerHTML = '<tr><td colspan="5" class="fr-empty-day">Ingen kunder registrert ennå.</td></tr>';
+    return;
+  }
+  body.innerHTML = customers.map(c => `
+    <tr data-number="${c.number}">
+      <td><input class="form-control fr-input fr-customer-number-input" value="${c.number}" /></td>
+      <td><input class="form-control fr-input fr-customer-name-input" value="${(c.name || '').replace(/"/g, '&quot;')}" /></td>
+      <td class="text-center">${c.jobCount}</td>
+      <td class="text-end">kr ${c.totalSpent.toLocaleString('no-NO')}</td>
+      <td><button class="btn fr-btn-primary btn-sm" onclick="saveCustomerEdit('${c.number}', this)">💾 Lagre</button></td>
+    </tr>
+  `).join('');
+}
+
+async function saveCustomerEdit(originalNumber, btnEl) {
+  const row = btnEl.closest('tr');
+  const newNumber = row.querySelector('.fr-customer-number-input').value.trim();
+  const newName = row.querySelector('.fr-customer-name-input').value.trim();
+  if (!newNumber || !newName) return;
+
+  const jobsToUpdate = (window._frJobs || []).filter(j => j.customer_number === originalNumber);
+  btnEl.disabled = true;
+  btnEl.textContent = 'Lagrer …';
+  try {
+    await Promise.all(jobsToUpdate.map(j => fetch('/api/admin-data?resource=jobs', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: j.id, customer_name: newName, customer_number: newNumber })
+    })));
+    await loadJobsAdmin();
+  } catch (e) {
+    alert('Klarte ikke å lagre kundeendringer.');
+    btnEl.disabled = false;
+    btnEl.textContent = '💾 Lagre';
+  }
+}
+
 function nextCustomerNumber() {
   const nums = getUniqueCustomers().map(([num]) => Number(num)).filter(n => !isNaN(n));
   return nums.length ? Math.max(...nums) + 1 : 1;
@@ -1210,7 +1291,9 @@ function renderJobsList() {
     row.innerHTML = `
       <div class="fr-job-compact-main">
         <span class="fr-job-compact-date">${formatDateNO(j.job_date)}</span>
-        <span class="fr-job-compact-name">${j.customer_name}${j.car_type ? ' · ' + j.car_type : ''}</span>
+        <span class="fr-job-compact-name">${j.customer_name}</span>
+        ${j.customer_number ? `<span class="fr-job-compact-meta">🙋 #${j.customer_number}</span>` : ''}
+        ${j.car_type ? `<span class="fr-job-compact-meta">🚗 ${j.car_type}</span>` : ''}
         <span class="fr-job-compact-services">${j.services || ''}</span>
       </div>
       <div class="fr-job-compact-right">
@@ -1223,8 +1306,8 @@ function renderJobsList() {
 
   if (jobs.length > JOBS_PAGE_SIZE) {
     const btn = document.createElement('button');
-    btn.className = 'fr-tab-btn w-100 mt-2';
-    btn.textContent = jobsShowAll ? 'Vis færre' : `Vis alle (${jobs.length})`;
+    btn.className = 'fr-show-more-btn w-100 mt-2';
+    btn.textContent = jobsShowAll ? '▲ Vis færre' : `▼ Vis flere oppføringer (${jobs.length - JOBS_PAGE_SIZE} til)`;
     btn.onclick = (e) => { e.stopPropagation(); jobsShowAll = !jobsShowAll; renderJobsList(); };
     list.appendChild(btn);
   }
@@ -1239,6 +1322,7 @@ async function loadJobsAdmin() {
     window._frJobs = data.jobs || [];
     populateCustomerDropdown();
     renderJobsList();
+    renderCustomersAdmin();
   } catch (e) {
     list.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente jobblogg.</p>';
   }
