@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gi tilbakemelding — FreshRide</title>
+<meta name="description" content="Del din opplevelse med FreshRide." />
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .fr-star-picker { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .fr-star-btn { background: none; border: none; font-size: 2.2rem; line-height: 1; cursor: pointer; color: var(--fr-panel-border); padding: 0; transition: color 0.15s ease, transform 0.1s ease; }
+  .fr-star-btn.filled { color: var(--fr-gold); }
+  .fr-star-btn:hover { transform: scale(1.12); }
+  .fr-feedback-success { text-align: center; padding: 2rem 1rem; }
+  .fr-feedback-success .emoji { font-size: 3rem; margin-bottom: 0.75rem; }
+</style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand fr-navbar">
+  <div class="container">
+    <a class="navbar-brand fr-brand" href="index.html">
+      <span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span>
+    </a>
+    <button class="fr-hamburger ms-auto" type="button" data-bs-toggle="offcanvas" data-bs-target="#navMenu" aria-controls="navMenu" aria-label="Meny">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="offcanvas offcanvas-end fr-offcanvas" tabindex="-1" id="navMenu">
+  <div class="offcanvas-header">
+    <span class="fr-offcanvas-brand"><span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span></span>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Lukk"></button>
+  </div>
+  <div class="offcanvas-body">
+    <a href="index.html" class="fr-nav-link">🏠 Forside</a>
+    <a href="about.html" class="fr-nav-link">ℹ️ Om oss</a>
+    <a href="feedback.html" class="fr-nav-link">⭐ Gi tilbakemelding</a>
+    <a href="https://willydeals.myspreadshop.no/" target="_blank" rel="noopener" class="fr-nav-link">🛍️ Merchandise</a>
+    <a href="admin.html" class="fr-nav-link fr-nav-link-admin">🔒 Admin</a>
+  </div>
+</div>
+
+<header class="fr-hero-copy">
+  <div class="container">
+    <p class="fr-eyebrow">⭐ DIN OPPLEVELSE</p>
+    <h1 class="fr-hero-title">Hvordan gikk det? <span class="fr-highlight">Fortell oss</span></h1>
+    <p class="fr-hero-text">Vi setter stor pris på tilbakemeldinger — det hjelper oss å bli enda bedre.</p>
+  </div>
+</header>
+
+<main class="container fr-main">
+  <section class="fr-panel" style="max-width: 480px; margin: 0 auto;">
+    <div id="formView">
+      <label class="fr-label mb-2">Din vurdering</label>
+      <div class="fr-star-picker" id="starPicker">
+        <button type="button" class="fr-star-btn" data-value="1">★</button>
+        <button type="button" class="fr-star-btn" data-value="2">★</button>
+        <button type="button" class="fr-star-btn" data-value="3">★</button>
+        <button type="button" class="fr-star-btn" data-value="4">★</button>
+        <button type="button" class="fr-star-btn" data-value="5">★</button>
+      </div>
+
+      <label for="fbName" class="form-label fr-label">🙋 Navn (valgfritt)</label>
+      <input id="fbName" class="form-control fr-input mb-3" placeholder="Ola Nordmann" />
+
+      <label for="fbComment" class="form-label fr-label">💬 Kommentar</label>
+      <textarea id="fbComment" class="form-control fr-input mb-3" rows="4" placeholder="Fortell om opplevelsen din …"></textarea>
+
+      <div id="fbError" class="fr-form-error mb-2 d-none"></div>
+      <button class="btn fr-btn-primary w-100" onclick="submitFeedback()" id="fbSubmitBtn">✅ Send tilbakemelding</button>
+    </div>
+
+    <div id="successView" class="fr-feedback-success d-none">
+      <div class="emoji">🎉</div>
+      <h2 style="font-family:var(--font-display); font-weight:700;">Takk for tilbakemeldingen!</h2>
+      <p class="fr-hint">Den blir gjennomgått og kan dukke opp på forsiden vår.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="fr-footer">
+  <div class="container">
+    <span>© <span id="year"></span> FreshRide</span>
+    <span class="fr-footer-dot">·</span>
+    <span>Oftebroveien 29, Lyngdal</span>
+    <span class="fr-footer-dot">·</span>
+    <a href="tel:92133900">921 33 900</a>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.getElementById("year").textContent = new Date().getFullYear();
+
+let selectedRating = 0;
+document.querySelectorAll('.fr-star-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectedRating = Number(btn.dataset.value);
+    document.querySelectorAll('.fr-star-btn').forEach(b => {
+      b.classList.toggle('filled', Number(b.dataset.value) <= selectedRating);
+    });
+  });
+});
+
+async function submitFeedback() {
+  const name = document.getElementById('fbName').value.trim();
+  const comment = document.getElementById('fbComment').value.trim();
+  const errEl = document.getElementById('fbError');
+  const btn = document.getElementById('fbSubmitBtn');
+  errEl.classList.add('d-none');
+
+  if (!selectedRating) {
+    errEl.textContent = 'Velg antall stjerner.';
+    errEl.classList.remove('d-none');
+    return;
+  }
+  if (!comment) {
+    errEl.textContent = 'Skriv gjerne litt om opplevelsen din.';
+    errEl.classList.remove('d-none');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Sender …';
+  try {
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, rating: selectedRating, comment })
+    });
+    if (!res.ok) throw new Error('failed');
+    document.getElementById('formView').classList.add('d-none');
+    document.getElementById('successView').classList.remove('d-none');
+  } catch (e) {
+    errEl.textContent = 'Noe gikk galt. Prøv igjen.';
+    errEl.classList.remove('d-none');
+    btn.disabled = false;
+    btn.textContent = '✅ Send tilbakemelding';
+  }
+}
+</script>
+</body>
+</html>

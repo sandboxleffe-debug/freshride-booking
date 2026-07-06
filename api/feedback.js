@@ -1,0 +1,54 @@
+// api/feedback.js — public
+// GET  -> { reviews: [{ id, name, rating, comment, created_at }, ...] }  (approved only)
+// POST { name?, rating, comment } -> { ok: true }  (goes in as unapproved, pending admin review)
+
+import { getSupabaseAdmin } from "./_lib/supabase.js";
+
+export default async function handler(req, res) {
+  const supabase = getSupabaseAdmin();
+
+  if (req.method === "GET") {
+    try {
+      const { data, error } = await supabase
+        .from("freshride_reviews")
+        .select("id, name, rating, comment, created_at")
+        .eq("approved", true)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return res.status(200).json({ reviews: data });
+    } catch (err) {
+      console.error("feedback GET error:", err);
+      return res.status(500).json({ error: "Klarte ikke å hente tilbakemeldinger" });
+    }
+  }
+
+  if (req.method === "POST") {
+    const { name, rating, comment } = req.body || {};
+    const ratingNum = Number(rating);
+    if (!ratingNum || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).json({ error: "Ugyldig vurdering" });
+    }
+    if (!comment || !comment.trim()) {
+      return res.status(400).json({ error: "Skriv gjerne litt om opplevelsen din" });
+    }
+    if (comment.length > 1000) {
+      return res.status(400).json({ error: "Kommentaren er for lang" });
+    }
+    try {
+      const { error } = await supabase.from("freshride_reviews").insert({
+        name: (name || "").trim().slice(0, 80) || null,
+        rating: ratingNum,
+        comment: comment.trim().slice(0, 1000),
+        approved: false,
+      });
+      if (error) throw error;
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error("feedback POST error:", err);
+      return res.status(500).json({ error: "Klarte ikke å sende tilbakemelding" });
+    }
+  }
+
+  return res.status(405).json({ error: "Method not allowed" });
+}

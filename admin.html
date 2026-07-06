@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FreshRide — Admin</title>
+<meta name="robots" content="noindex, nofollow" />
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .fr-admin-wrap { max-width: 640px; margin: 0 auto; padding: 1.5rem 1rem 3rem; position: relative; z-index: 1; }
+  .fr-admin-login { max-width: 360px; margin: 3.5rem auto; }
+  .fr-admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .fr-admin-title { font-family: var(--font-display); font-weight: 700; font-size: 1.4rem; color: var(--fr-text-dark-zone); margin: 0; }
+  .fr-admin-range { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
+  .fr-range-btn {
+    flex: 1; background: rgba(246,242,231,0.08); border: 1px solid var(--fr-line-dark-zone);
+    color: var(--fr-text-dark-zone-soft); border-radius: 10px; padding: 0.5rem; font-size: 0.85rem; cursor: pointer;
+  }
+  .fr-range-btn.active { background: var(--fr-gold); color: var(--fr-black); border-color: var(--fr-gold); font-weight: 700; }
+
+  /* Compact flat list — no heavy day separation */
+  .fr-list-row {
+    display: flex; align-items: center; gap: 0.7rem;
+    background: var(--fr-panel-bg-2); border: 1px solid var(--fr-panel-border); border-radius: 10px;
+    padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.15s ease;
+  }
+  .fr-list-row:hover { border-color: var(--fr-gold); }
+  .fr-list-row-when { font-family: var(--font-display); font-weight: 600; font-size: 0.85rem; min-width: 5.4rem; color: var(--fr-panel-text); }
+  .fr-list-row-body { flex: 1; min-width: 0; }
+  .fr-list-row-name { font-weight: 600; font-size: 0.9rem; }
+  .fr-list-row-meta { font-size: 0.78rem; color: var(--fr-panel-text-faint); }
+  .fr-list-row-code { font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; color: var(--fr-gold-deep); background: var(--fr-gold-soft); padding: 0.1rem 0.4rem; border-radius: 6px; }
+  .fr-list-row-open { color: #2E7D32; font-weight: 600; font-size: 0.82rem; }
+  .fr-list-section-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fr-text-dark-zone-faint); margin: 1.2rem 0 0.5rem; }
+
+  .fr-login-input { width: 100%; margin-bottom: 0.9rem; }
+  .fr-login-error { color: #FF8A7A; font-size: 0.85rem; margin-top: 0.6rem; min-height: 1.1rem; }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand fr-navbar">
+  <div class="container">
+    <a class="navbar-brand fr-brand" href="index.html">
+      <span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span>
+    </a>
+    <button class="fr-hamburger ms-auto" type="button" data-bs-toggle="offcanvas" data-bs-target="#navMenu" aria-controls="navMenu" aria-label="Meny">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="offcanvas offcanvas-end fr-offcanvas" tabindex="-1" id="navMenu">
+  <div class="offcanvas-header">
+    <span class="fr-offcanvas-brand"><span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span></span>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Lukk"></button>
+  </div>
+  <div class="offcanvas-body">
+    <a href="index.html" class="fr-nav-link">🏠 Forside</a>
+    <a href="about.html" class="fr-nav-link">ℹ️ Om oss</a>
+    <a href="feedback.html" class="fr-nav-link">⭐ Gi tilbakemelding</a>
+    <a href="https://willydeals.myspreadshop.no/" target="_blank" rel="noopener" class="fr-nav-link">🛍️ Merchandise</a>
+    <a href="admin.html" class="fr-nav-link fr-nav-link-admin">🔒 Admin</a>
+  </div>
+</div>
+
+<div class="fr-admin-wrap">
+
+  <!-- Login -->
+  <div id="loginView" class="fr-panel fr-admin-login">
+    <p class="fr-label mb-2">🔑 PASSORD</p>
+    <input type="password" id="pw" class="form-control fr-input fr-login-input" placeholder="Skriv inn passord" />
+    <button class="btn fr-btn-primary w-100" onclick="login()">Logg inn</button>
+    <div id="loginError" class="fr-login-error"></div>
+  </div>
+
+  <!-- Admin area -->
+  <div id="adminView" class="d-none">
+    <div class="fr-admin-header">
+      <h1 class="fr-admin-title">⚙️ Admin</h1>
+    </div>
+
+    <div class="fr-admin-tabs">
+      <button class="fr-tab-btn active" data-tab="overview" onclick="showTab('overview')">📅 Oversikt</button>
+      <button class="fr-tab-btn" data-tab="create" onclick="showTab('create')">➕ Opprett tid</button>
+      <button class="fr-tab-btn" data-tab="services" onclick="showTab('services')">🧼 Tjenester</button>
+      <button class="fr-tab-btn" data-tab="reviews" onclick="showTab('reviews')">⭐ Anmeldelser</button>
+      <button class="fr-tab-btn" data-tab="promo" onclick="showTab('promo')">🎉 Kampanje</button>
+      <button class="fr-tab-btn" data-tab="accounting" onclick="showTab('accounting')">💰 Regnskap</button>
+      <button class="fr-tab-btn" data-tab="about" onclick="showTab('about')">ℹ️ Om oss</button>
+    </div>
+
+    <!-- Tab: Oversikt -->
+    <div id="tab-overview" class="fr-tab-panel">
+      <div class="fr-panel">
+        <div class="fr-calendar">
+          <div class="fr-calendar-head" id="calendarMonthLabel"></div>
+          <div class="fr-calendar-grid" id="calendarGrid"></div>
+        </div>
+      </div>
+
+      <div class="fr-admin-range">
+        <button class="fr-range-btn" data-days="7" onclick="setRange(7)">7 dager</button>
+        <button class="fr-range-btn active" data-days="14" onclick="setRange(14)">14 dager</button>
+        <button class="fr-range-btn" data-days="30" onclick="setRange(30)">30 dager</button>
+      </div>
+      <div id="list"></div>
+    </div>
+
+    <!-- Tab: Opprett tid -->
+    <div id="tab-create" class="fr-tab-panel d-none">
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>➕ Opprett ny ledig tid</h2></div>
+        <div class="fr-form-row">
+          <label class="fr-label">📅 Dato</label>
+          <input type="date" id="createDate" class="form-control fr-input" />
+        </div>
+        <div class="fr-inline-fields fr-form-row">
+          <div>
+            <label class="fr-label">🕒 Starttid</label>
+            <input type="time" id="createTime" class="form-control fr-input" value="15:00" />
+          </div>
+          <div>
+            <label class="fr-label">⏱️ Varighet (min)</label>
+            <input type="number" id="createDuration" class="form-control fr-input" value="180" step="15" min="15" />
+          </div>
+        </div>
+        <button class="btn fr-btn-primary w-100" onclick="createSlot()">✅ Opprett ledig tid</button>
+        <div id="createMsg" class="fr-save-msg"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Tjenester -->
+    <div id="tab-services" class="fr-tab-panel d-none">
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>🧼 Tjenester</h2></div>
+        <div id="servicesList"></div>
+        <hr class="my-3" style="border-color: var(--fr-panel-border);">
+        <label class="fr-label">➕ Legg til ny tjeneste</label>
+        <input id="newServiceLabel" class="form-control fr-input mb-2" placeholder="Navn (f.eks. Motorvask)" />
+        <input id="newServiceDesc" class="form-control fr-input mb-2" placeholder="Beskrivelse (valgfritt)" />
+        <input id="newServicePrice" type="number" class="form-control fr-input mb-2" placeholder="Pris i kr (valgfritt)" />
+        <button class="btn fr-btn-primary w-100" onclick="addService()">Legg til tjeneste</button>
+        <div id="servicesMsg" class="fr-save-msg"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Anmeldelser -->
+    <div id="tab-reviews" class="fr-tab-panel d-none">
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>⭐ Anmeldelser</h2></div>
+        <div id="reviewsList"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Kampanje -->
+    <div id="tab-promo" class="fr-tab-panel d-none">
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>🎉 Ny kampanje</h2></div>
+        <div class="fr-form-row">
+          <label class="fr-label">Tittel</label>
+          <input id="promoTitle" class="form-control fr-input" placeholder="Sommersalg" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Rabattmerke (vises i banneret)</label>
+          <input id="promoDiscountLabel" class="form-control fr-input" placeholder="10%" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Beskrivelse</label>
+          <input id="promoDescription" class="form-control fr-input" placeholder="10% på alle bookinger i juli" />
+        </div>
+        <div class="fr-inline-fields fr-form-row">
+          <div>
+            <label class="fr-label">Fra dato</label>
+            <input type="date" id="promoStart" class="form-control fr-input" />
+          </div>
+          <div>
+            <label class="fr-label">Til dato</label>
+            <input type="date" id="promoEnd" class="form-control fr-input" />
+          </div>
+        </div>
+        <button class="btn fr-btn-primary w-100" onclick="createPromo()">➕ Opprett kampanje</button>
+        <div id="promoMsg" class="fr-save-msg"></div>
+      </div>
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>Alle kampanjer</h2></div>
+        <div id="promoList"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Regnskap -->
+    <div id="tab-accounting" class="fr-tab-panel d-none">
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>💰 Oversikt</h2></div>
+        <div class="fr-accounting-summary">
+          <div><span class="fr-acc-label">Inntekt</span><span class="fr-acc-value fr-acc-income" id="accIncome">kr 0</span></div>
+          <div><span class="fr-acc-label">Utgifter</span><span class="fr-acc-value fr-acc-expense" id="accExpenses">kr 0</span></div>
+          <div><span class="fr-acc-label">Netto</span><span class="fr-acc-value" id="accNet">kr 0</span></div>
+        </div>
+      </div>
+
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>📓 Logg ny jobb</h2></div>
+        <div class="fr-form-row">
+          <label class="fr-label">📅 Dato</label>
+          <input type="date" id="jobDate" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">🙋 Kunde</label>
+          <select id="jobCustomerSelect" class="form-control fr-input mb-2" onchange="onCustomerSelectChange()">
+            <option value="__new__">➕ Ny kunde …</option>
+          </select>
+          <div id="newCustomerFields">
+            <input id="jobCustomer" class="form-control fr-input mb-2" placeholder="Navn på ny kunde" />
+            <p class="fr-hint" id="newCustomerNumberHint"></p>
+          </div>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">🚗 Biltype</label>
+          <input id="jobCarType" class="form-control fr-input" placeholder="VW Golf" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">🧼 Tjeneste(r)</label>
+          <div id="jobServicesGrid" class="fr-service-grid"></div>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">💵 Pris betalt (kr) <span id="jobCampaignBadge" class="fr-campaign-badge d-none">🎉 Kampanjepris</span></label>
+          <input type="number" id="jobPrice" class="form-control fr-input" placeholder="450" />
+          <p class="fr-hint">Fylles automatisk ut fra valgte tjenester — kan overstyres (f.eks. ved tips).</p>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">📏 Jobbstørrelse (1–10)</label>
+          <input type="range" id="jobSize" class="form-range" min="1" max="10" value="5" oninput="document.getElementById('jobSizeVal').textContent = this.value">
+          <span id="jobSizeVal" class="fr-hint">5</span>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">⏱️ Tid brukt</label>
+          <div class="fr-time-wheels">
+            <select id="jobTimeHours" class="form-control fr-input"></select>
+            <span class="fr-time-sep">t</span>
+            <select id="jobTimeMinutes" class="form-control fr-input"></select>
+            <span class="fr-time-sep">min</span>
+          </div>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">📝 Notater</label>
+          <textarea id="jobNotes" class="form-control fr-input" rows="2" placeholder="Valgfritt"></textarea>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">📷 Bilder (kan velge flere)</label>
+          <input type="file" id="jobPhotos" class="form-control fr-input" accept="image/*" capture="environment" multiple />
+        </div>
+        <button class="btn fr-btn-primary w-100" onclick="createJob()">💾 Lagre jobb</button>
+        <div id="jobMsg" class="fr-save-msg"></div>
+      </div>
+
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>Jobblogg</h2></div>
+        <div id="jobsList"></div>
+      </div>
+
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>➖ Ny utgift</h2></div>
+        <div class="fr-inline-fields fr-form-row">
+          <div>
+            <label class="fr-label">Dato</label>
+            <input type="date" id="expDate" class="form-control fr-input" />
+          </div>
+          <div>
+            <label class="fr-label">Beløp (kr)</label>
+            <input type="number" id="expAmount" class="form-control fr-input" placeholder="500" />
+          </div>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Beskrivelse</label>
+          <input id="expDescription" class="form-control fr-input" placeholder="Bilvaskemiddel" />
+        </div>
+        <button class="btn fr-btn-primary w-100" onclick="createExpense()">Legg til utgift</button>
+        <div id="expMsg" class="fr-save-msg"></div>
+      </div>
+
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>Utgiftslogg</h2></div>
+        <div id="expensesList"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Om oss -->
+    <div id="tab-about" class="fr-tab-panel d-none">
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>ℹ️ Om oss-innhold</h2></div>
+        <label class="fr-label">Overskrift</label>
+        <input id="aboutHeadingInput" class="form-control fr-input mb-3" />
+        <label class="fr-label">Tekst</label>
+        <textarea id="aboutBodyInput" class="form-control fr-input mb-3" rows="8"></textarea>
+        <button class="btn fr-btn-primary w-100" onclick="saveAbout()">💾 Lagre</button>
+        <div id="aboutMsg" class="fr-save-msg"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Edit booking modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content fr-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">✏️ Rediger booking <span id="editCodeLabel" class="fr-list-row-code"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
+      </div>
+      <div class="modal-body">
+        <div class="fr-form-row">
+          <label class="fr-label">Navn</label>
+          <input id="editName" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">📞 Mobilnummer</label>
+          <input id="editPhone" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">🧼 Tjeneste(r)</label>
+          <textarea id="editServices" class="form-control fr-input" rows="2"></textarea>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">📅 Dato</label>
+          <input type="date" id="editDate" class="form-control fr-input" />
+        </div>
+        <div class="fr-inline-fields fr-form-row">
+          <div>
+            <label class="fr-label">🕒 Starttid</label>
+            <input type="time" id="editTime" class="form-control fr-input" />
+          </div>
+          <div>
+            <label class="fr-label">⏱️ Varighet (min)</label>
+            <input type="number" id="editDuration" class="form-control fr-input" step="15" min="15" />
+          </div>
+        </div>
+        <div id="editMsg" class="fr-save-msg"></div>
+      </div>
+      <div class="modal-footer border-0 flex-column gap-2">
+        <button class="btn fr-btn-primary w-100" onclick="saveEdit()">💾 Lagre endringer</button>
+        <div class="d-flex gap-2 w-100">
+          <button class="btn w-50" style="background:var(--fr-panel-bg-2); border:1px solid var(--fr-panel-border); color:var(--fr-panel-text);" onclick="reopenBooking()">🔓 Sett ledig igjen</button>
+          <button class="btn w-50" style="background:#F4D8D3; border:1px solid #E0AFA6; color:#8A2E20;" onclick="deleteBooking()">🗑️ Slett permanent</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit job modal -->
+<div class="modal fade" id="jobEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content fr-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">✏️ Rediger jobb</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
+      </div>
+      <div class="modal-body">
+        <div class="fr-form-row">
+          <label class="fr-label">📅 Dato</label>
+          <input type="date" id="editJobDate" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">🙋 Kundenavn</label>
+          <input id="editJobCustomer" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label"># Kundenummer</label>
+          <input id="editJobCustomerNumber" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">🚗 Biltype</label>
+          <input id="editJobCarType" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">🧼 Tjeneste(r)</label>
+          <input id="editJobServices" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">💵 Pris betalt (kr)</label>
+          <input type="number" id="editJobPrice" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">📏 Jobbstørrelse (1–10)</label>
+          <input type="range" id="editJobSize" class="form-range" min="1" max="10" oninput="document.getElementById('editJobSizeVal').textContent = this.value">
+          <span id="editJobSizeVal" class="fr-hint"></span>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">⏱️ Tid brukt (minutter)</label>
+          <label class="fr-label">⏱️ Tid brukt</label>
+          <div class="fr-time-wheels">
+            <select id="editJobTimeHours" class="form-control fr-input"></select>
+            <span class="fr-time-sep">t</span>
+            <select id="editJobTimeMinutes" class="form-control fr-input"></select>
+            <span class="fr-time-sep">min</span>
+          </div>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">📝 Notater</label>
+          <textarea id="editJobNotes" class="form-control fr-input" rows="2"></textarea>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">📷 Bilder</label>
+          <div id="editJobPhotos" class="fr-job-photos"></div>
+          <input type="file" id="editJobNewPhotos" class="form-control fr-input mt-2" accept="image/*" capture="environment" multiple />
+        </div>
+        <div id="editJobMsg" class="fr-save-msg"></div>
+      </div>
+      <div class="modal-footer border-0 flex-column gap-2">
+        <button class="btn fr-btn-primary w-100" onclick="saveJobEdit()">💾 Lagre endringer</button>
+        <button class="btn w-100" style="background:#F4D8D3; border:1px solid #E0AFA6; color:#8A2E20;" onclick="deleteJobFromEdit()">🗑️ Slett jobb</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Photo lightbox -->
+<div class="modal fade" id="lightboxModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background:transparent; border:none;">
+      <button type="button" class="btn-close btn-close-white ms-auto me-2 mt-2" data-bs-dismiss="modal" aria-label="Lukk"></button>
+      <img id="lightboxImg" src="" style="width:100%; border-radius:12px;">
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let currentDays = 14;
+let editingEventId = null;
+const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+
+function getPw() { return sessionStorage.getItem('fr_admin_pw') || ''; }
+function authHeaders() { return { 'x-admin-password': getPw() }; }
+
+async function login() {
+  const pw = document.getElementById('pw').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  try {
+    const res = await fetch(`/api/admin-overview?days=${currentDays}`, { headers: { 'x-admin-password': pw } });
+    if (res.status === 401) { errEl.textContent = 'Feil passord.'; return; }
+    if (!res.ok) throw new Error('network');
+    sessionStorage.setItem('fr_admin_pw', pw);
+    enterAdmin();
+  } catch (e) {
+    errEl.textContent = 'Noe gikk galt. Prøv igjen.';
+  }
+}
+
+function enterAdmin() {
+  document.getElementById('loginView').classList.add('d-none');
+  document.getElementById('adminView').classList.remove('d-none');
+  loadMonthCalendar();
+  fetchOverview();
+  loadServicesAdmin();
+  loadReviewsAdmin();
+  loadPromoAdmin();
+  populateTimeWheels('jobTimeHours', 'jobTimeMinutes');
+  populateTimeWheels('editJobTimeHours', 'editJobTimeMinutes');
+  loadJobServiceOptions();
+  loadJobsAdmin();
+  loadExpensesAdmin();
+  loadAccountingSummary();
+  loadAboutAdmin();
+  document.getElementById('createDate').valueAsDate = new Date();
+  document.getElementById('jobDate').valueAsDate = new Date();
+  document.getElementById('expDate').valueAsDate = new Date();
+}
+
+function showTab(name) {
+  document.querySelectorAll('.fr-tab-panel').forEach(p => p.classList.add('d-none'));
+  document.getElementById(`tab-${name}`).classList.remove('d-none');
+  document.querySelectorAll('.fr-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+}
+
+function handleAuthExpired() {
+  sessionStorage.removeItem('fr_admin_pw');
+  document.getElementById('adminView').classList.add('d-none');
+  document.getElementById('loginView').classList.remove('d-none');
+}
+
+/* ---------------- Mini month calendar (status colors) ---------------- */
+const MONTH_LABELS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
+const DOW_LABELS = ["Man","Tir","Ons","Tor","Fre","Lør","Søn"];
+
+function toDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function loadMonthCalendar() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  document.getElementById("calendarMonthLabel").textContent = `${MONTH_LABELS[now.getMonth()]} ${year}`;
+
+  const grid = document.getElementById("calendarGrid");
+  grid.innerHTML = "";
+  DOW_LABELS.forEach(d => {
+    const el = document.createElement("div");
+    el.className = "fr-calendar-dow";
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstOfMonth = new Date(year, month - 1, 1);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let startWeekday = firstOfMonth.getDay();
+  startWeekday = startWeekday === 0 ? 6 : startWeekday - 1;
+
+  for (let i = 0; i < startWeekday; i++) {
+    const el = document.createElement("div");
+    el.className = "fr-calendar-day fr-day-empty";
+    grid.appendChild(el);
+  }
+
+  const todayKey = toDateKey(now);
+  let dayStatuses = {};
+  try {
+    const res = await fetch(`/api/public-calendar?view=month&year=${year}&month=${month}`);
+    if (res.ok) { const data = await res.json(); dayStatuses = data.days || {}; }
+  } catch (e) {}
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cellDate = new Date(year, month - 1, d);
+    const key = toDateKey(cellDate);
+    const cell = document.createElement("div");
+    cell.className = "fr-calendar-day";
+    if (key === todayKey) cell.classList.add("fr-day-today");
+    const status = dayStatuses[key];
+    if (status) cell.classList.add(`fr-status-${status}`);
+    const num = document.createElement("span");
+    num.textContent = d;
+    cell.appendChild(num);
+    if (status) {
+      const dot = document.createElement("span");
+      dot.className = "fr-day-dot";
+      cell.appendChild(dot);
+    }
+    grid.appendChild(cell);
+  }
+}
+
+/* ---------------- Flat booking list ---------------- */
+async function setRange(days) {
+  currentDays = days;
+  document.querySelectorAll('.fr-range-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.days) === days));
+  await fetchOverview();
+}
+
+async function fetchOverview() {
+  try {
+    const res = await fetch(`/api/admin-overview?days=${currentDays}`, { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    renderList(data.days || []);
+  } catch (e) {}
+}
+
+function fmtTime(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
+}
+function fmtDateShort(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('no-NO', { day: '2-digit', month: '2-digit' });
+}
+
+function renderList(days) {
+  const el = document.getElementById('list');
+  el.innerHTML = '';
+
+  const allBooked = [];
+  const allOpen = [];
+  days.forEach(day => {
+    day.booked.forEach(b => allBooked.push(b));
+    day.available.forEach(s => allOpen.push(s));
+  });
+
+  if (!allBooked.length && !allOpen.length) {
+    el.innerHTML = '<p class="fr-empty-day">Ingen hendelser i valgt periode.</p>';
+    return;
+  }
+
+  if (allBooked.length) {
+    const label = document.createElement('div');
+    label.className = 'fr-list-section-label';
+    label.textContent = `🔒 Bookinger (${allBooked.length})`;
+    el.appendChild(label);
+    allBooked.forEach(b => {
+      const row = document.createElement('div');
+      row.className = 'fr-list-row';
+      row.onclick = () => openEdit(b);
+      row.innerHTML = `
+        <div class="fr-list-row-when">${fmtDateShort(b.start)} · ${fmtTime(b.start)}</div>
+        <div class="fr-list-row-body">
+          <div class="fr-list-row-name">${b.name} ${b.code ? `<span class="fr-list-row-code">${b.code}</span>` : ''}</div>
+          <div class="fr-list-row-meta">${b.phone}${b.services ? ' · ' + b.services : ''}</div>
+        </div>
+      `;
+      el.appendChild(row);
+    });
+  }
+
+  if (allOpen.length) {
+    const label = document.createElement('div');
+    label.className = 'fr-list-section-label';
+    label.textContent = `✅ Ledige tider (${allOpen.length})`;
+    el.appendChild(label);
+    allOpen.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'fr-list-row';
+      row.style.cursor = 'default';
+      row.innerHTML = `
+        <div class="fr-list-row-when">${fmtDateShort(s.start)} · ${fmtTime(s.start)}</div>
+        <div class="fr-list-row-body"><span class="fr-list-row-open">Ledig</span></div>
+      `;
+      el.appendChild(row);
+    });
+  }
+}
+
+/* ---------------- Edit booking modal ---------------- */
+function openEdit(b) {
+  editingEventId = b.id;
+  document.getElementById('editCodeLabel').textContent = b.code || '';
+  document.getElementById('editName').value = b.name || '';
+  document.getElementById('editPhone').value = b.phone || '';
+  document.getElementById('editServices').value = b.services || '';
+  const start = new Date(b.start);
+  const end = new Date(b.end);
+  document.getElementById('editDate').value = toDateKey(start);
+  document.getElementById('editTime').value = String(start.getHours()).padStart(2,'0') + ':' + String(start.getMinutes()).padStart(2,'0');
+  document.getElementById('editDuration').value = Math.round((end - start) / 60000);
+  document.getElementById('editMsg').textContent = '';
+  editModal.show();
+}
+
+async function saveEdit() {
+  const msg = document.getElementById('editMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  try {
+    const res = await fetch('/api/admin-bookings', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        eventId: editingEventId,
+        name: document.getElementById('editName').value.trim(),
+        phone: document.getElementById('editPhone').value.trim(),
+        services: document.getElementById('editServices').value.trim(),
+        date: document.getElementById('editDate').value,
+        startTime: document.getElementById('editTime').value,
+        durationMinutes: Number(document.getElementById('editDuration').value),
+      })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    if (!res.ok) throw new Error('failed');
+    msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
+    fetchOverview();
+    loadMonthCalendar();
+    setTimeout(() => editModal.hide(), 600);
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+  }
+}
+
+async function reopenBooking() {
+  if (!confirm('Sette denne tiden ledig igjen? Bookingen fjernes.')) return;
+  try {
+    const res = await fetch('/api/admin-bookings', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId: editingEventId, action: 'reopen' })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    editModal.hide();
+    fetchOverview();
+    loadMonthCalendar();
+  } catch (e) {
+    alert('Klarte ikke å gjøre tiden ledig.');
+  }
+}
+
+async function deleteBooking() {
+  if (!confirm('Slette denne bookingen permanent? Dette kan ikke angres.')) return;
+  try {
+    const res = await fetch('/api/admin-bookings', {
+      method: 'DELETE',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId: editingEventId })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    editModal.hide();
+    fetchOverview();
+    loadMonthCalendar();
+  } catch (e) {
+    alert('Klarte ikke å slette.');
+  }
+}
+
+/* ---------------- Opprett tid ---------------- */
+async function createSlot() {
+  const date = document.getElementById('createDate').value;
+  const startTime = document.getElementById('createTime').value;
+  const durationMinutes = Number(document.getElementById('createDuration').value);
+  const msg = document.getElementById('createMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+
+  if (!date || !startTime || !durationMinutes) {
+    msg.textContent = 'Fyll ut dato, starttid og varighet.'; msg.classList.add('err'); return;
+  }
+  try {
+    const res = await fetch('/api/admin-bookings', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create', date, startTime, durationMinutes })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    if (!res.ok) throw new Error('failed');
+    msg.textContent = 'Ledig tid opprettet ✓'; msg.classList.add('ok');
+    fetchOverview();
+    loadMonthCalendar();
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å opprette tiden.'; msg.classList.add('err');
+  }
+}
+
+/* ---------------- Tjenester ---------------- */
+async function loadServicesAdmin() {
+  const list = document.getElementById('servicesList');
+  try {
+    const res = await fetch('/api/admin-data?resource=services', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    list.innerHTML = '';
+    (data.services || []).forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'fr-service-row';
+      row.innerHTML = `
+        <div class="flex-grow-1">
+          <div class="fr-service-row-label">${s.label}${s.active ? '' : ' <span class="fr-service-row-desc">(skjult)</span>'}</div>
+          ${s.description ? `<div class="fr-service-row-desc">${s.description}</div>` : ''}
+          <div class="fr-service-price-edit">
+            <span class="fr-service-row-desc">kr</span>
+            <input type="number" class="form-control form-control-sm fr-input fr-price-input" value="${s.price_nok ?? ''}" placeholder="—" onchange="updateServicePrice('${s.id}', this.value)">
+          </div>
+        </div>
+        <div class="fr-service-row-actions">
+          <button class="fr-icon-btn" title="${s.active ? 'Skjul' : 'Vis'}" onclick="toggleService('${s.id}', ${!s.active})">${s.active ? '👁' : '🚫'}</button>
+          <button class="fr-icon-btn" title="Slett" onclick="deleteService('${s.id}')">✕</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  } catch (e) {
+    list.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente tjenester.</p>';
+  }
+}
+
+async function updateServicePrice(id, value) {
+  const price_nok = value === '' ? null : Number(value);
+  await fetch('/api/admin-data?resource=services', {
+    method: 'PATCH',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, price_nok })
+  });
+}
+
+async function toggleService(id, active) {
+  await fetch('/api/admin-data?resource=services', {
+    method: 'PATCH',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, active })
+  });
+  loadServicesAdmin();
+}
+
+async function deleteService(id) {
+  if (!confirm('Slette denne tjenesten?')) return;
+  await fetch('/api/admin-data?resource=services', {
+    method: 'DELETE',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  loadServicesAdmin();
+}
+
+async function addService() {
+  const label = document.getElementById('newServiceLabel').value.trim();
+  const description = document.getElementById('newServiceDesc').value.trim();
+  const priceVal = document.getElementById('newServicePrice').value;
+  const msg = document.getElementById('servicesMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  if (!label) { msg.textContent = 'Skriv inn et navn.'; msg.classList.add('err'); return; }
+  try {
+    const res = await fetch('/api/admin-data?resource=services', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label, description })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    if (priceVal && data.service?.id) {
+      await fetch('/api/admin-data?resource=services', {
+        method: 'PATCH',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: data.service.id, price_nok: Number(priceVal) })
+      });
+    }
+    document.getElementById('newServiceLabel').value = '';
+    document.getElementById('newServiceDesc').value = '';
+    document.getElementById('newServicePrice').value = '';
+    msg.textContent = 'Lagt til ✓'; msg.classList.add('ok');
+    loadServicesAdmin();
+  } catch (e) {
+    msg.textContent = 'Noe gikk galt.'; msg.classList.add('err');
+  }
+}
+
+/* ---------------- Anmeldelser ---------------- */
+async function loadReviewsAdmin() {
+  const list = document.getElementById('reviewsList');
+  try {
+    const res = await fetch('/api/admin-data?resource=reviews', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    list.innerHTML = '';
+    const reviews = data.reviews || [];
+    if (!reviews.length) {
+      list.innerHTML = '<p class="fr-empty-day">Ingen tilbakemeldinger ennå.</p>';
+      return;
+    }
+    reviews.forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'fr-service-row';
+      const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+      row.innerHTML = `
+        <div>
+          <div class="fr-service-row-label">${stars} ${r.approved ? '' : '<span class="fr-service-row-desc">(venter godkjenning)</span>'}</div>
+          <div class="fr-service-row-desc">${r.comment}</div>
+          <div class="fr-service-row-desc">— ${r.name || 'Anonym'}</div>
+        </div>
+        <div class="fr-service-row-actions">
+          <button class="fr-icon-btn" title="${r.approved ? 'Skjul' : 'Godkjenn'}" onclick="toggleReview('${r.id}', ${!r.approved})">${r.approved ? '👁' : '✅'}</button>
+          <button class="fr-icon-btn" title="Slett" onclick="deleteReview('${r.id}')">✕</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  } catch (e) {
+    list.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente tilbakemeldinger.</p>';
+  }
+}
+
+async function toggleReview(id, approved) {
+  await fetch('/api/admin-data?resource=reviews', {
+    method: 'PATCH',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, approved })
+  });
+  loadReviewsAdmin();
+}
+
+async function deleteReview(id) {
+  if (!confirm('Slette denne tilbakemeldingen?')) return;
+  await fetch('/api/admin-data?resource=reviews', {
+    method: 'DELETE',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  loadReviewsAdmin();
+}
+
+/* ---------------- Kampanjer ---------------- */
+async function loadPromoAdmin() {
+  const list = document.getElementById('promoList');
+  try {
+    const res = await fetch('/api/admin-data?resource=promotions', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    list.innerHTML = '';
+    const promos = data.promotions || [];
+    if (!promos.length) { list.innerHTML = '<p class="fr-empty-day">Ingen kampanjer opprettet ennå.</p>'; return; }
+    promos.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'fr-service-row';
+      const statusLabel = { auto: '🕒 Automatisk (dato)', forced_on: '✅ Alltid på', forced_off: '⛔ Alltid av' }[p.status];
+      row.innerHTML = `
+        <div>
+          <div class="fr-service-row-label">${p.title} — ${p.discount_label}</div>
+          <div class="fr-service-row-desc">${p.description || ''}</div>
+          <div class="fr-service-row-desc">${formatDateNO(p.start_date)} → ${formatDateNO(p.end_date)} · ${statusLabel}</div>
+          <div class="fr-promo-status-btns">
+            <button class="fr-tab-btn ${p.status === 'auto' ? 'active' : ''}" onclick="setPromoStatus('${p.id}','auto')">Auto</button>
+            <button class="fr-tab-btn ${p.status === 'forced_on' ? 'active' : ''}" onclick="setPromoStatus('${p.id}','forced_on')">På</button>
+            <button class="fr-tab-btn ${p.status === 'forced_off' ? 'active' : ''}" onclick="setPromoStatus('${p.id}','forced_off')">Av</button>
+          </div>
+        </div>
+        <div class="fr-service-row-actions">
+          <button class="fr-icon-btn" title="Slett" onclick="deletePromo('${p.id}')">✕</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  } catch (e) {
+    list.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente kampanjer.</p>';
+  }
+}
+
+async function createPromo() {
+  const title = document.getElementById('promoTitle').value.trim();
+  const discount_label = document.getElementById('promoDiscountLabel').value.trim();
+  const description = document.getElementById('promoDescription').value.trim();
+  const start_date = document.getElementById('promoStart').value;
+  const end_date = document.getElementById('promoEnd').value;
+  const msg = document.getElementById('promoMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  if (!title || !discount_label || !start_date || !end_date) {
+    msg.textContent = 'Fyll ut tittel, rabattmerke og datoer.'; msg.classList.add('err'); return;
+  }
+  try {
+    const res = await fetch('/api/admin-data?resource=promotions', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, discount_label, description, start_date, end_date })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    msg.textContent = 'Kampanje opprettet ✓'; msg.classList.add('ok');
+    document.getElementById('promoTitle').value = '';
+    document.getElementById('promoDiscountLabel').value = '';
+    document.getElementById('promoDescription').value = '';
+    document.getElementById('promoStart').value = '';
+    document.getElementById('promoEnd').value = '';
+    loadPromoAdmin();
+  } catch (e) {
+    msg.textContent = 'Noe gikk galt.'; msg.classList.add('err');
+  }
+}
+
+async function setPromoStatus(id, status) {
+  await fetch('/api/admin-data?resource=promotions', {
+    method: 'PATCH',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, status })
+  });
+  loadPromoAdmin();
+}
+
+async function deletePromo(id) {
+  if (!confirm('Slette denne kampanjen?')) return;
+  await fetch('/api/admin-data?resource=promotions', {
+    method: 'DELETE',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  loadPromoAdmin();
+}
+
+/* ---------------- Regnskap: bilder (komprimering i nettleseren før opplasting) ---------------- */
+function compressImageFile(file, maxDim = 1000, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        const ratio = Math.min(1, maxDim / Math.max(width, height));
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------------- Regnskap: sammendrag ---------------- */
+async function loadAccountingSummary() {
+  try {
+    const res = await fetch('/api/admin-data?resource=accounting', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    document.getElementById('accIncome').textContent = `kr ${data.income.toLocaleString('no-NO')}`;
+    document.getElementById('accExpenses').textContent = `kr ${data.expenses.toLocaleString('no-NO')}`;
+    document.getElementById('accNet').textContent = `kr ${data.net.toLocaleString('no-NO')}`;
+  } catch (e) { /* silent */ }
+}
+
+/* ---------------- Regnskap: jobber ---------------- */
+let jobServicesCache = [];
+let activePromoDiscountPct = null; // null if no active/parseable campaign
+let jobsShowAll = false;
+const JOBS_PAGE_SIZE = 8;
+const jobEditModal = new bootstrap.Modal(document.getElementById('jobEditModal'));
+const lightboxModal = new bootstrap.Modal(document.getElementById('lightboxModal'));
+
+const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
+function formatDateNO(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr + "T00:00:00");
+  return `${d.getDate()} ${NO_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function populateTimeWheels(hourSelectId, minuteSelectId) {
+  const hourSel = document.getElementById(hourSelectId);
+  const minSel = document.getElementById(minuteSelectId);
+  hourSel.innerHTML = Array.from({ length: 9 }, (_, h) => `<option value="${h}">${h}</option>`).join('');
+  minSel.innerHTML = [0, 15, 30, 45].map(m => `<option value="${m}">${String(m).padStart(2, '0')}</option>`).join('');
+}
+
+async function loadActivePromoDiscount() {
+  activePromoDiscountPct = null;
+  try {
+    const res = await fetch('/api/content?type=promotion');
+    const data = await res.json();
+    if (data.active && data.discount_label) {
+      const m = data.discount_label.match(/(\d+)\s*%/);
+      if (m) activePromoDiscountPct = Number(m[1]);
+    }
+  } catch (e) { /* silent */ }
+}
+
+async function loadJobServiceOptions() {
+  try {
+    const res = await fetch('/api/admin-data?resource=services', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    jobServicesCache = (data.services || []).filter(s => s.active);
+    await loadActivePromoDiscount();
+    const grid = document.getElementById('jobServicesGrid');
+    grid.innerHTML = jobServicesCache.map(s => `
+      <label class="fr-service-option">
+        <input type="checkbox" class="fr-job-service-checkbox" value="${s.label}" data-price="${s.price_nok || 0}">
+        <span>${s.label}${s.price_nok ? ` <small class="fr-service-sub">kr ${Number(s.price_nok).toLocaleString('no-NO')}</small>` : ''}</span>
+      </label>
+    `).join('');
+    grid.querySelectorAll('.fr-job-service-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => {
+        cb.closest('.fr-service-option').classList.toggle('fr-service-checked', cb.checked);
+        updateJobPriceFromServices();
+      });
+    });
+  } catch (e) { /* silent */ }
+}
+
+function updateJobPriceFromServices() {
+  const checked = document.querySelectorAll('#jobServicesGrid .fr-job-service-checkbox:checked');
+  if (!checked.length) return;
+  let sum = 0;
+  checked.forEach(cb => sum += Number(cb.dataset.price || 0));
+  const badge = document.getElementById('jobCampaignBadge');
+  if (activePromoDiscountPct) {
+    sum = Math.round(sum * (1 - activePromoDiscountPct / 100));
+    badge.classList.remove('d-none');
+  } else {
+    badge.classList.add('d-none');
+  }
+  document.getElementById('jobPrice').value = sum;
+}
+
+/* ---------------- Kundevalg (eksisterende eller ny) ---------------- */
+function getUniqueCustomers() {
+  const jobs = window._frJobs || [];
+  const map = new Map();
+  jobs.forEach(j => {
+    if (j.customer_number && !map.has(j.customer_number)) {
+      map.set(j.customer_number, j.customer_name);
+    }
+  });
+  return Array.from(map.entries())
+    .sort((a, b) => (Number(a[0]) || 0) - (Number(b[0]) || 0));
+}
+
+function nextCustomerNumber() {
+  const nums = getUniqueCustomers().map(([num]) => Number(num)).filter(n => !isNaN(n));
+  return nums.length ? Math.max(...nums) + 1 : 1;
+}
+
+function populateCustomerDropdown() {
+  const select = document.getElementById('jobCustomerSelect');
+  const customers = getUniqueCustomers();
+  select.innerHTML = '<option value="__new__">➕ Ny kunde …</option>' +
+    customers.map(([num, name]) => `<option value="${num}">#${num} — ${name}</option>`).join('');
+  onCustomerSelectChange();
+}
+
+function onCustomerSelectChange() {
+  const select = document.getElementById('jobCustomerSelect');
+  const isNew = select.value === '__new__';
+  document.getElementById('newCustomerFields').classList.toggle('d-none', !isNew);
+  if (isNew) {
+    document.getElementById('jobCustomer').value = '';
+    document.getElementById('newCustomerNumberHint').textContent = `Får kundenummer #${nextCustomerNumber()}`;
+  }
+}
+
+function openLightbox(url) {
+  document.getElementById('lightboxImg').src = url;
+  lightboxModal.show();
+}
+
+function renderJobsList() {
+  const list = document.getElementById('jobsList');
+  const jobs = window._frJobs || [];
+  list.innerHTML = '';
+  if (!jobs.length) { list.innerHTML = '<p class="fr-empty-day">Ingen jobber logget ennå.</p>'; return; }
+
+  const visible = jobsShowAll ? jobs : jobs.slice(0, JOBS_PAGE_SIZE);
+
+  visible.forEach(j => {
+    const row = document.createElement('div');
+    row.className = 'fr-job-compact-row';
+    row.onclick = () => openJobEdit(j.id);
+    const photoIcon = (j.photos && j.photos.length) ? `<span class="fr-job-photo-flag">📷 ${j.photos.length}</span>` : '';
+    const campaignFlag = j.campaign_price ? '<span class="fr-campaign-badge">🎉</span>' : '';
+    row.innerHTML = `
+      <div class="fr-job-compact-main">
+        <span class="fr-job-compact-date">${formatDateNO(j.job_date)}</span>
+        <span class="fr-job-compact-name">${j.customer_name}${j.car_type ? ' · ' + j.car_type : ''}</span>
+        <span class="fr-job-compact-services">${j.services || ''}</span>
+      </div>
+      <div class="fr-job-compact-right">
+        ${campaignFlag}${photoIcon}
+        <span class="fr-job-compact-price">kr ${Number(j.price_paid).toLocaleString('no-NO')}</span>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+
+  if (jobs.length > JOBS_PAGE_SIZE) {
+    const btn = document.createElement('button');
+    btn.className = 'fr-tab-btn w-100 mt-2';
+    btn.textContent = jobsShowAll ? 'Vis færre' : `Vis alle (${jobs.length})`;
+    btn.onclick = (e) => { e.stopPropagation(); jobsShowAll = !jobsShowAll; renderJobsList(); };
+    list.appendChild(btn);
+  }
+}
+
+async function loadJobsAdmin() {
+  const list = document.getElementById('jobsList');
+  try {
+    const res = await fetch('/api/admin-data?resource=jobs', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    window._frJobs = data.jobs || [];
+    populateCustomerDropdown();
+    renderJobsList();
+  } catch (e) {
+    list.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente jobblogg.</p>';
+  }
+}
+
+function getCheckedJobServices(prefix) {
+  return Array.from(document.querySelectorAll(`${prefix} .fr-job-service-checkbox:checked`)).map(cb => cb.value);
+}
+
+async function createJob() {
+  const job_date = document.getElementById('jobDate').value;
+  const select = document.getElementById('jobCustomerSelect');
+  const isNewCustomer = select.value === '__new__';
+  const customer_name = isNewCustomer
+    ? document.getElementById('jobCustomer').value.trim()
+    : select.options[select.selectedIndex].textContent.split('—')[1].trim();
+  const customer_number = isNewCustomer ? String(nextCustomerNumber()) : select.value;
+
+  const car_type = document.getElementById('jobCarType').value.trim();
+  const services = getCheckedJobServices('#jobServicesGrid').join(', ');
+  const price_paid = Number(document.getElementById('jobPrice').value);
+  const job_size = Number(document.getElementById('jobSize').value);
+  const hours = Number(document.getElementById('jobTimeHours').value) || 0;
+  const minutes = Number(document.getElementById('jobTimeMinutes').value) || 0;
+  const time_spent_minutes = (hours * 60 + minutes) || null;
+  const notes = document.getElementById('jobNotes').value.trim();
+  const campaign_price = !document.getElementById('jobCampaignBadge').classList.contains('d-none');
+  const photoFiles = document.getElementById('jobPhotos').files;
+  const msg = document.getElementById('jobMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+
+  if (!customer_name || !price_paid) { msg.textContent = 'Fyll ut kundenavn og pris.'; msg.classList.add('err'); return; }
+
+  try {
+    const res = await fetch('/api/admin-data?resource=jobs', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_date, customer_name, customer_number, car_type, services, price_paid, job_size, time_spent_minutes, notes, campaign_price })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    const jobId = data.job.id;
+
+    if (photoFiles.length) {
+      msg.textContent = `Laster opp ${photoFiles.length} bilde(r) …`;
+      for (const file of photoFiles) {
+        const base64 = await compressImageFile(file);
+        await fetch('/api/admin-data?resource=jobs', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'upload-photo', jobId, imageBase64: base64, mimeType: 'image/jpeg' })
+        });
+      }
+    }
+
+    msg.textContent = 'Jobb lagret ✓'; msg.classList.add('ok');
+    document.getElementById('jobCustomer').value = '';
+    document.getElementById('jobCarType').value = '';
+    document.querySelectorAll('#jobServicesGrid .fr-job-service-checkbox').forEach(cb => { cb.checked = false; cb.closest('.fr-service-option').classList.remove('fr-service-checked'); });
+    document.getElementById('jobPrice').value = '';
+    document.getElementById('jobCampaignBadge').classList.add('d-none');
+    document.getElementById('jobSize').value = 5;
+    document.getElementById('jobSizeVal').textContent = '5';
+    document.getElementById('jobTimeHours').value = 0;
+    document.getElementById('jobTimeMinutes').value = 0;
+    document.getElementById('jobNotes').value = '';
+    document.getElementById('jobPhotos').value = '';
+    loadJobsAdmin();
+    loadAccountingSummary();
+  } catch (e) {
+    msg.textContent = 'Noe gikk galt.'; msg.classList.add('err');
+  }
+}
+
+async function deleteJob(id) {
+  if (!confirm('Slette denne jobben (inkl. bilder)?')) return;
+  await fetch('/api/admin-data?resource=jobs', {
+    method: 'DELETE',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  loadJobsAdmin();
+  loadAccountingSummary();
+}
+
+/* ---------------- Rediger jobb ---------------- */
+let editingJobId = null;
+
+function openJobEdit(id) {
+  const job = (window._frJobs || []).find(j => j.id === id);
+  if (!job) return;
+  editingJobId = id;
+  document.getElementById('editJobDate').value = job.job_date || '';
+  document.getElementById('editJobCustomer').value = job.customer_name || '';
+  document.getElementById('editJobCustomerNumber').value = job.customer_number || '';
+  document.getElementById('editJobCarType').value = job.car_type || '';
+  document.getElementById('editJobServices').value = job.services || '';
+  document.getElementById('editJobPrice').value = job.price_paid ?? '';
+  document.getElementById('editJobSize').value = job.job_size || 5;
+  document.getElementById('editJobSizeVal').textContent = job.job_size || 5;
+  const totalMin = job.time_spent_minutes || 0;
+  document.getElementById('editJobTimeHours').value = Math.floor(totalMin / 60);
+  document.getElementById('editJobTimeMinutes').value = totalMin % 60;
+  document.getElementById('editJobNotes').value = job.notes || '';
+  document.getElementById('editJobMsg').textContent = '';
+
+  const photosEl = document.getElementById('editJobPhotos');
+  photosEl.innerHTML = (job.photos || []).map(p => `
+    <span style="position:relative; display:inline-block;">
+      <img src="${p.url}" class="fr-job-thumb" onclick="openLightbox('${p.url}')">
+      <button onclick="deleteJobPhoto('${job.id}', '${p.path}')" style="position:absolute; top:-6px; right:-6px; background:#C0392B; color:#fff; border:none; border-radius:50%; width:1.1rem; height:1.1rem; font-size:0.65rem; line-height:1;">✕</button>
+    </span>
+  `).join('');
+
+  jobEditModal.show();
+}
+
+async function deleteJobPhoto(jobId, path) {
+  if (!confirm('Slette dette bildet?')) return;
+  await fetch('/api/admin-data?resource=jobs', {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete-photo', jobId, path })
+  });
+  loadJobsAdmin();
+  jobEditModal.hide();
+}
+
+async function saveJobEdit() {
+  const msg = document.getElementById('editJobMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  const newPhotoFiles = document.getElementById('editJobNewPhotos').files;
+  const hours = Number(document.getElementById('editJobTimeHours').value) || 0;
+  const minutes = Number(document.getElementById('editJobTimeMinutes').value) || 0;
+
+  try {
+    const res = await fetch('/api/admin-data?resource=jobs', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: editingJobId,
+        job_date: document.getElementById('editJobDate').value,
+        customer_name: document.getElementById('editJobCustomer').value.trim(),
+        customer_number: document.getElementById('editJobCustomerNumber').value.trim(),
+        car_type: document.getElementById('editJobCarType').value.trim(),
+        services: document.getElementById('editJobServices').value.trim(),
+        price_paid: Number(document.getElementById('editJobPrice').value),
+        job_size: Number(document.getElementById('editJobSize').value),
+        time_spent_minutes: (hours * 60 + minutes) || null,
+        notes: document.getElementById('editJobNotes').value.trim(),
+      })
+    });
+    if (res.status === 401) return handleAuthExpired();
+
+    if (newPhotoFiles.length) {
+      for (const file of newPhotoFiles) {
+        const base64 = await compressImageFile(file);
+        await fetch('/api/admin-data?resource=jobs', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'upload-photo', jobId: editingJobId, imageBase64: base64, mimeType: 'image/jpeg' })
+        });
+      }
+    }
+
+    msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
+    loadJobsAdmin();
+    loadAccountingSummary();
+    setTimeout(() => jobEditModal.hide(), 600);
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+  }
+}
+
+function deleteJobFromEdit() {
+  jobEditModal.hide();
+  deleteJob(editingJobId);
+}
+
+/* ---------------- Regnskap: utgifter ---------------- */
+async function loadExpensesAdmin() {
+  const list = document.getElementById('expensesList');
+  try {
+    const res = await fetch('/api/admin-data?resource=expenses', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    list.innerHTML = '';
+    const expenses = data.expenses || [];
+    if (!expenses.length) { list.innerHTML = '<p class="fr-empty-day">Ingen utgifter registrert ennå.</p>'; return; }
+    expenses.forEach(e => {
+      const row = document.createElement('div');
+      row.className = 'fr-service-row';
+      row.innerHTML = `
+        <div>
+          <div class="fr-service-row-label">${formatDateNO(e.expense_date)} · ${e.description}</div>
+          <div class="fr-service-row-desc">kr ${Number(e.amount).toLocaleString('no-NO')}</div>
+        </div>
+        <div class="fr-service-row-actions">
+          <button class="fr-icon-btn" title="Slett" onclick="deleteExpense('${e.id}')">✕</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  } catch (e) {
+    list.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente utgifter.</p>';
+  }
+}
+
+async function createExpense() {
+  const expense_date = document.getElementById('expDate').value;
+  const description = document.getElementById('expDescription').value.trim();
+  const amount = Number(document.getElementById('expAmount').value);
+  const msg = document.getElementById('expMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  if (!description || !amount) { msg.textContent = 'Fyll ut beskrivelse og beløp.'; msg.classList.add('err'); return; }
+  try {
+    const res = await fetch('/api/admin-data?resource=expenses', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expense_date, description, amount })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    msg.textContent = 'Lagt til ✓'; msg.classList.add('ok');
+    document.getElementById('expDescription').value = '';
+    document.getElementById('expAmount').value = '';
+    loadExpensesAdmin();
+    loadAccountingSummary();
+  } catch (e) {
+    msg.textContent = 'Noe gikk galt.'; msg.classList.add('err');
+  }
+}
+
+async function deleteExpense(id) {
+  if (!confirm('Slette denne utgiften?')) return;
+  await fetch('/api/admin-data?resource=expenses', {
+    method: 'DELETE',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  loadExpensesAdmin();
+  loadAccountingSummary();
+}
+
+/* ---------------- Om oss ---------------- */
+async function loadAboutAdmin() {
+  try {
+    const res = await fetch('/api/admin-data?resource=about', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    document.getElementById('aboutHeadingInput').value = data.heading || '';
+    document.getElementById('aboutBodyInput').value = data.body || '';
+  } catch (e) {}
+}
+
+async function saveAbout() {
+  const heading = document.getElementById('aboutHeadingInput').value.trim();
+  const body = document.getElementById('aboutBodyInput').value.trim();
+  const msg = document.getElementById('aboutMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  if (!heading || !body) { msg.textContent = 'Fyll ut begge feltene.'; msg.classList.add('err'); return; }
+  try {
+    const res = await fetch('/api/admin-data?resource=about', {
+      method: 'PUT',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ heading, body })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
+  } catch (e) {
+    msg.textContent = 'Noe gikk galt.'; msg.classList.add('err');
+  }
+}
+
+if (getPw()) { enterAdmin(); }
+</script>
+</body>
+</html>

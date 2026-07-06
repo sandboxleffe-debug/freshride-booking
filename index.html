@@ -4,90 +4,133 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FreshRide — Book en tid</title>
-<meta name="description" content="Velg en ledig tid og book innlevering av bilen din hos FreshRide." />
+<meta name="description" content="Velg en dag, plukk en ledig tid, og book innlevering av bilen din hos FreshRide." />
 
-<!-- Bootstrap 5 -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<!-- Promo banner (shown only if a campaign is currently active) -->
+<div id="promoBanner" class="fr-promo-banner d-none">
+  <div class="container fr-promo-inner">
+    <span class="fr-promo-badge" id="promoDiscount"></span>
+    <span class="fr-promo-text" id="promoText"></span>
+    <button class="fr-promo-close" onclick="dismissPromo()" aria-label="Lukk">✕</button>
+  </div>
+</div>
+
 <!-- Navbar -->
 <nav class="navbar navbar-expand fr-navbar">
   <div class="container">
-    <a class="navbar-brand fr-brand" href="#">
-      <span class="fr-brand-mark" aria-hidden="true">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2C12 2 5.5 9.5 5.5 14.5C5.5 18.09 8.41 21 12 21C15.59 21 18.5 18.09 18.5 14.5C18.5 9.5 12 2 12 2Z" fill="currentColor"/>
-        </svg>
-      </span>
-      FreshRide
+    <a class="navbar-brand fr-brand" href="index.html">
+      <span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span>
     </a>
-    <span class="ms-auto fr-navbar-sub d-none d-sm-inline">Innlevering &amp; booking</span>
+    <button class="fr-hamburger ms-auto" type="button" data-bs-toggle="offcanvas" data-bs-target="#navMenu" aria-controls="navMenu" aria-label="Meny">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </nav>
 
-<!-- Hero -->
-<header class="fr-hero">
+<div class="offcanvas offcanvas-end fr-offcanvas" tabindex="-1" id="navMenu">
+  <div class="offcanvas-header">
+    <span class="fr-offcanvas-brand"><span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span></span>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Lukk"></button>
+  </div>
+  <div class="offcanvas-body">
+    <a href="index.html" class="fr-nav-link">🏠 Forside</a>
+    <a href="about.html" class="fr-nav-link">ℹ️ Om oss</a>
+    <a href="feedback.html" class="fr-nav-link">⭐ Gi tilbakemelding</a>
+    <a href="https://willydeals.myspreadshop.no/" target="_blank" rel="noopener" class="fr-nav-link">🛍️ Merchandise</a>
+    <a href="admin.html" class="fr-nav-link fr-nav-link-admin">🔒 Admin</a>
+  </div>
+</div>
+
+<!-- Hero image -->
+<div class="fr-hero-image-wrap">
+  <img src="assets/hero-banner.jpg" alt="FreshRide — Next-Gen Car Care" class="fr-hero-image" />
+</div>
+
+<!-- Hero copy -->
+<header class="fr-hero-copy">
   <div class="container">
-    <div class="row align-items-center">
-      <div class="col-lg-7">
-        <p class="fr-eyebrow">FRESHRIDE BOOKING</p>
-        <h1 class="fr-hero-title">Sett av <span class="fr-highlight">to minutter</span>,<br>så ordner vi resten.</h1>
-        <p class="fr-hero-text">Velg en dag, plukk en ledig tid, og lever bilen når det passer deg. Ingen kø, ingen ventetid — bare en bekreftet time.</p>
-      </div>
-      <div class="col-lg-5 d-none d-lg-block">
-        <div class="fr-hero-card">
-          <div class="fr-hero-card-row"><span>01</span> Velg dato</div>
-          <div class="fr-hero-card-row"><span>02</span> Velg ledig tid</div>
-          <div class="fr-hero-card-row"><span>03</span> Bekreft med navn &amp; mobil</div>
-        </div>
-      </div>
-    </div>
+    <p class="fr-eyebrow">FRESHRIDE — DETALJENE SOM UTGJØR FORSKJELLEN</p>
+    <h1 class="fr-hero-title">La proffene <span class="fr-highlight">gjøre jobben</span></h1>
+    <p class="fr-hero-text">Slik booker du:</p>
+    <ol class="fr-hero-steps">
+      <li><span class="fr-hero-step-num">1</span> Velg en dato</li>
+      <li><span class="fr-hero-step-num">2</span> Plukk en ledig tid</li>
+      <li><span class="fr-hero-step-num">3</span> Lever bilen på adressen: Oftebroveien 29</li>
+    </ol>
+    <p class="fr-hero-contact">📞 William · tlf <a href="tel:92133900">921 33 900</a></p>
   </div>
 </header>
 
 <main class="container fr-main">
 
-  <!-- Step 1: date -->
+  <!-- Gallery: real work in action -->
+  <section class="fr-gallery-section">
+    <p class="fr-eyebrow">📸 SE OSS I AKSJON</p>
+    <div class="fr-gallery-track-wrap">
+      <div class="fr-gallery-track">
+        <img src="assets/gallery/gallery-1.jpg" alt="Forvask med skum" class="fr-gallery-img" loading="lazy">
+        <img src="assets/gallery/gallery-2.jpg" alt="Skumvask av bil" class="fr-gallery-img" loading="lazy">
+        <img src="assets/gallery/gallery-3.jpg" alt="Håndvask av lakk" class="fr-gallery-img" loading="lazy">
+        <img src="assets/gallery/gallery-4.jpg" alt="Innvendig rens" class="fr-gallery-img" loading="lazy">
+        <img src="assets/gallery/gallery-5.jpg" alt="Grundig interiørvask" class="fr-gallery-img" loading="lazy">
+        <img src="assets/gallery/gallery-1.jpg" alt="Forvask med skum" class="fr-gallery-img" loading="lazy">
+        <img src="assets/gallery/gallery-2.jpg" alt="Skumvask av bil" class="fr-gallery-img" loading="lazy">
+        <img src="assets/gallery/gallery-3.jpg" alt="Håndvask av lakk" class="fr-gallery-img" loading="lazy">
+        <img src="assets/gallery/gallery-4.jpg" alt="Innvendig rens" class="fr-gallery-img" loading="lazy">
+        <img src="assets/gallery/gallery-5.jpg" alt="Grundig interiørvask" class="fr-gallery-img" loading="lazy">
+      </div>
+    </div>
+  </section>
+
+  <!-- Reviews ticker -->
+  <section class="fr-reviews-section" id="reviewsSection" style="display:none;">
+    <p class="fr-eyebrow">⭐ HVA KUNDENE SIER</p>
+    <div class="fr-reviews-track-wrap">
+      <div class="fr-reviews-track" id="reviewsTrack"></div>
+    </div>
+  </section>
+
+  <!-- Step 1: date + Step 2: slots, in one flow -->
   <section class="fr-panel" id="step-date">
     <div class="fr-panel-head">
       <span class="fr-step-badge">1</span>
-      <h2>Velg dato</h2>
+      <h2>📅 Velg dato</h2>
     </div>
-    <div class="row g-3 align-items-end">
-      <div class="col-sm-6 col-md-4">
-        <label for="date" class="form-label fr-label">Dato</label>
-        <input type="date" id="date" class="form-control form-control-lg fr-input" />
-      </div>
-      <div class="col-sm-6 col-md-3">
-        <button class="btn btn-lg fr-btn-primary w-100" onclick="load()" id="loadBtn">
-          Hent ledige tider
-        </button>
-      </div>
-    </div>
-    <div id="dateHint" class="fr-hint mt-2"></div>
-  </section>
 
-  <!-- Step 2: slots -->
-  <section class="fr-panel" id="step-slots">
-    <div class="fr-panel-head">
-      <span class="fr-step-badge">2</span>
-      <h2>Ledige tider</h2>
+    <div class="fr-calendar-legend">
+      <span class="fr-legend-item"><i class="fr-dot fr-dot-green"></i> Ledige tider</span>
+      <span class="fr-legend-item"><i class="fr-dot fr-dot-orange"></i> Delvis booket</span>
+      <span class="fr-legend-item"><i class="fr-dot fr-dot-red"></i> Fullbooket</span>
     </div>
-    <div id="list" class="fr-slot-grid"></div>
-    <div id="emptyState" class="fr-empty d-none">
-      <p>Ingen tider hentet ennå. Velg en dato over for å komme i gang.</p>
+
+    <div class="fr-calendar">
+      <div class="fr-calendar-head" id="calendarMonthLabel"></div>
+      <div class="fr-calendar-grid" id="calendarGrid"></div>
     </div>
-    <div id="noSlots" class="fr-empty d-none">
-      <p>Ingen ledige tider denne dagen. Prøv en annen dato.</p>
-    </div>
-    <div id="loadingState" class="fr-empty d-none">
-      <div class="spinner-border fr-spinner" role="status"></div>
-      <p class="mt-3">Henter ledige tider …</p>
+
+    <div id="dateHint" class="fr-hint mt-2"></div>
+
+    <!-- Step 2 lives right here, directly under the calendar -->
+    <div id="slotsBlock" class="fr-slots-block d-none">
+      <div class="fr-panel-head fr-slots-head">
+        <span class="fr-step-badge">2</span>
+        <h2>🕒 Ledige tider <span id="slotsDateLabel" class="fr-slots-date"></span></h2>
+      </div>
+      <div id="list" class="fr-slot-grid"></div>
+      <div id="noSlots" class="fr-empty d-none">
+        <p>Ingen ledige tider denne dagen. Prøv en annen dato.</p>
+      </div>
+      <div id="loadingState" class="fr-empty d-none">
+        <div class="spinner-border fr-spinner" role="status"></div>
+        <p class="mt-3">Henter ledige tider …</p>
+      </div>
     </div>
   </section>
 
@@ -98,23 +141,30 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content fr-modal">
       <div class="modal-header border-0">
-        <h5 class="modal-title">Bekreft booking</h5>
+        <h5 class="modal-title">✅ Bekreft booking</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
       </div>
       <div class="modal-body">
         <p class="fr-modal-slot" id="modalSlotLabel"></p>
-        <div class="mb-3">
-          <label for="name" class="form-label fr-label">Navn</label>
-          <input id="name" class="form-control fr-input" placeholder="Ola Nordmann" />
+
+        <label class="form-label fr-label">✅ Velg tjeneste(r)</label>
+        <div class="fr-service-grid" id="serviceGrid">
+          <p class="fr-hint">Henter tjenester …</p>
+        </div>
+        <div id="serviceError" class="fr-form-error d-none mt-2">Velg minst én tjeneste.</div>
+
+        <div class="mb-3 mt-3">
+          <label for="name" class="form-label fr-label">🙋 Navn</label>
+          <input id="name" class="form-control fr-input" placeholder="" />
         </div>
         <div class="mb-2">
-          <label for="phone" class="form-label fr-label">Mobilnummer</label>
-          <input id="phone" class="form-control fr-input" placeholder="912 34 567" inputmode="numeric" />
+          <label for="phone" class="form-label fr-label">📞 Mobilnummer</label>
+          <input id="phone" class="form-control fr-input" placeholder="" inputmode="numeric" />
         </div>
         <div id="formError" class="fr-form-error d-none">Fyll inn navn og mobilnummer for å fortsette.</div>
       </div>
       <div class="modal-footer border-0">
-        <button class="btn fr-btn-primary w-100" onclick="book()" id="bookBtn">Bekreft booking</button>
+        <button class="btn fr-btn-primary w-100" onclick="book()" id="bookBtn">✅ Bekreft booking</button>
       </div>
     </div>
   </div>
@@ -125,9 +175,10 @@
   <div id="successToast" class="fr-toast">
     <div class="fr-toast-icon">✓</div>
     <div>
-      <b>Din time er booket</b>
+      <b>🎉 Din time er booket</b>
+      <p class="mb-1" id="toastCode"></p>
       <p class="mb-1">Husk å levere bilen før oppgitt tidspunkt.</p>
-      <p class="mb-0">Ved spørsmål, ring FreshRide på <a href="tel:12345678">12 34 56 78</a>.</p>
+      <p class="mb-0">Ved spørsmål, ring William på <a href="tel:92133900">921 33 900</a>.</p>
     </div>
   </div>
 </div>
@@ -136,7 +187,9 @@
   <div class="container">
     <span>© <span id="year"></span> FreshRide</span>
     <span class="fr-footer-dot">·</span>
-    <a href="tel:12345678">12 34 56 78</a>
+    <span>Oftebroveien 29, Lyngdal</span>
+    <span class="fr-footer-dot">·</span>
+    <span class="fr-footer-phone">William: <a href="tel:92133900">921 33 900</a></span>
   </div>
 </footer>
 
@@ -144,34 +197,187 @@
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
 
+/* ---------------- Promo banner ---------------- */
+async function loadPromo() {
+  if (sessionStorage.getItem('fr_promo_dismissed')) return;
+  try {
+    const res = await fetch('/api/content?type=promotion');
+    const data = await res.json();
+    if (!data.active) return;
+    document.getElementById('promoDiscount').textContent = data.discount_label;
+    document.getElementById('promoText').textContent = data.description || data.title;
+    document.getElementById('promoBanner').classList.remove('d-none');
+  } catch (e) { /* silent */ }
+}
+function dismissPromo() {
+  document.getElementById('promoBanner').classList.add('d-none');
+  sessionStorage.setItem('fr_promo_dismissed', '1');
+}
+loadPromo();
+
+/* ---------------- Reviews ticker ---------------- */
+async function loadReviews() {
+  try {
+    const res = await fetch('/api/feedback');
+    const data = await res.json();
+    const reviews = data.reviews || [];
+    if (!reviews.length) return;
+
+    const track = document.getElementById('reviewsTrack');
+
+    function starsHtml(rating) {
+      const filled = '★'.repeat(rating);
+      const empty = '☆'.repeat(5 - rating);
+      return `<span class="fr-stars-filled">${filled}</span><span class="fr-stars-empty">${empty}</span>`;
+    }
+
+    function splitPreview(text) {
+      const t = (text || '').trim();
+      const m = t.match(/[.!?]/);
+      if (!m) return { preview: t, hasMore: false };
+      const cut = m.index + 1;
+      const rest = t.slice(cut).trim();
+      if (!rest) return { preview: t, hasMore: false };
+      return { preview: t.slice(0, cut), hasMore: true };
+    }
+
+    const cardHtml = r => {
+      const { preview, hasMore } = splitPreview(r.comment);
+      return `
+        <div class="fr-review-card" onclick="this.classList.toggle('fr-review-open')">
+          <div class="fr-review-stars">${starsHtml(r.rating)}</div>
+          <p class="fr-review-name">${r.name || 'Anonym kunde'}</p>
+          ${r.comment ? `
+            <p class="fr-review-preview">${preview}${hasMore ? ' …' : ''}</p>
+            ${hasMore ? `<p class="fr-review-full">${r.comment}</p>` : ''}
+          ` : ''}
+        </div>
+      `;
+    };
+    // Duplicate the list so the CSS animation can loop seamlessly
+    const html = reviews.map(cardHtml).join('') + reviews.map(cardHtml).join('');
+    track.innerHTML = html;
+    document.getElementById('reviewsSection').style.display = '';
+  } catch (e) {
+    // silently skip — no reviews section shown
+  }
+}
+loadReviews();
+
 let selected = null;
 let events = [];
 const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
 
 function setState(state) {
-  // state: 'idle' | 'loading' | 'empty' | 'results'
-  document.getElementById('emptyState').classList.toggle('d-none', state !== 'idle');
   document.getElementById('loadingState').classList.toggle('d-none', state !== 'loading');
   document.getElementById('noSlots').classList.toggle('d-none', state !== 'empty');
   document.getElementById('list').classList.toggle('d-none', state !== 'results');
 }
-setState('idle');
 
-async function load() {
-  const date = document.getElementById("date").value;
-  const hint = document.getElementById("dateHint");
-  if (!date) {
-    hint.textContent = "Velg en dato først.";
-    hint.classList.add('fr-hint-error');
-    return;
+/* ---------------- Month calendar ---------------- */
+const DOW_LABELS = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
+const MONTH_LABELS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
+
+function toDateKey(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
+const NO_WEEKDAYS = ["søndag","mandag","tirsdag","onsdag","torsdag","fredag","lørdag"];
+function formatDateLabel(key) {
+  const d = new Date(`${key}T00:00:00`);
+  return `${NO_WEEKDAYS[d.getDay()]} ${d.getDate()} ${NO_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+async function loadMonthCalendar() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1; // 1-12
+  document.getElementById("calendarMonthLabel").textContent = `${MONTH_LABELS[now.getMonth()]} ${year}`;
+
+  const grid = document.getElementById("calendarGrid");
+  grid.innerHTML = "";
+  DOW_LABELS.forEach(d => {
+    const el = document.createElement("div");
+    el.className = "fr-calendar-dow";
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstOfMonth = new Date(year, month - 1, 1);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let startWeekday = firstOfMonth.getDay(); // 0=Sun..6=Sat
+  startWeekday = startWeekday === 0 ? 6 : startWeekday - 1; // Monday-first offset
+
+  for (let i = 0; i < startWeekday; i++) {
+    const el = document.createElement("div");
+    el.className = "fr-calendar-day fr-day-empty";
+    grid.appendChild(el);
   }
+
+  const todayKey = toDateKey(now);
+  let dayStatuses = {};
+  try {
+    const res = await fetch(`/api/public-calendar?view=month&year=${year}&month=${month}`);
+    if (res.ok) {
+      const data = await res.json();
+      dayStatuses = data.days || {};
+    }
+  } catch (e) {
+    // fail silently — calendar still renders, just without color coding
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cellDate = new Date(year, month - 1, d);
+    const key = toDateKey(cellDate);
+    const isPast = key < todayKey;
+
+    const cell = document.createElement("div");
+    cell.className = "fr-calendar-day";
+    if (isPast) cell.classList.add("fr-day-past");
+    if (key === todayKey) cell.classList.add("fr-day-today");
+    const status = dayStatuses[key];
+    if (status) cell.classList.add(`fr-status-${status}`);
+
+    const num = document.createElement("span");
+    num.textContent = d;
+    cell.appendChild(num);
+
+    if (status) {
+      const dot = document.createElement("span");
+      dot.className = "fr-day-dot";
+      cell.appendChild(dot);
+    }
+
+    if (!isPast) {
+      cell.onclick = () => {
+        document.querySelectorAll(".fr-calendar-day.fr-day-selected").forEach(el => el.classList.remove("fr-day-selected"));
+        cell.classList.add("fr-day-selected");
+        loadSlotsForDate(key);
+      };
+    }
+    grid.appendChild(cell);
+  }
+}
+loadMonthCalendar();
+
+/* ---------------- Slot loading ---------------- */
+async function loadSlotsForDate(date) {
+  const hint = document.getElementById("dateHint");
+  const slotsBlock = document.getElementById("slotsBlock");
+
   hint.textContent = "";
   hint.classList.remove('fr-hint-error');
+  slotsBlock.classList.remove('d-none');
+  document.getElementById("slotsDateLabel").textContent = `— ${formatDateLabel(date)}`;
   setState('loading');
+  slotsBlock.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   try {
-    // NB: swap this for /api/get-slots if you rename the Vercel function file.
-    const res = await fetch(`/api/get-slots?date=${encodeURIComponent(date)}`);
+    const res = await fetch(`/api/public-calendar?view=day&date=${encodeURIComponent(date)}`);
     if (!res.ok) throw new Error("Nettverksfeil");
     const data = await res.json();
     events = data.events || [];
@@ -202,52 +408,120 @@ function render() {
     btn.className = "fr-slot";
     btn.innerHTML = `
       <span class="fr-slot-time">${start} – ${end}</span>
-      <span class="fr-slot-tag">Ledig</span>
+      <span class="fr-slot-tag">✅ Ledig</span>
     `;
     btn.onclick = () => {
       selected = e;
       document.getElementById("modalSlotLabel").textContent = `${start} – ${end}`;
       document.getElementById("formError").classList.add('d-none');
+      document.getElementById("serviceError").classList.add('d-none');
+      document.querySelectorAll(".fr-service-checkbox").forEach(cb => {
+        cb.checked = false;
+        cb.closest(".fr-service-option").classList.remove("fr-service-checked");
+      });
       bookingModal.show();
     };
     el.appendChild(btn);
   });
 }
 
+/* ---------------- Services (from Supabase) ---------------- */
+async function loadServices() {
+  const grid = document.getElementById("serviceGrid");
+  try {
+    const res = await fetch("/api/content?type=services");
+    const data = await res.json();
+    const services = data.services || [];
+
+    grid.innerHTML = "";
+    services.forEach(s => {
+      const label = document.createElement("label");
+      label.className = "fr-service-option";
+      const priceHtml = s.price_nok ? `<span class="fr-service-price">kr ${Number(s.price_nok).toLocaleString('no-NO')}</span>` : "";
+      label.innerHTML = `
+        <input type="checkbox" class="fr-service-checkbox" value="${s.label}">
+        <span class="fr-service-option-body">
+          <span class="fr-service-option-top">
+            <span>${s.label}</span>
+            ${priceHtml}
+          </span>
+          ${s.description ? `<small class="d-block fr-service-sub">${s.description}</small>` : ""}
+        </span>
+      `;
+      grid.appendChild(label);
+    });
+
+    grid.querySelectorAll(".fr-service-checkbox").forEach(cb => {
+      cb.addEventListener("change", () => {
+        cb.closest(".fr-service-option").classList.toggle("fr-service-checked", cb.checked);
+      });
+    });
+  } catch (e) {
+    grid.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente tjenester.</p>';
+  }
+}
+loadServices();
+
+function getSelectedServices() {
+  const services = [];
+  document.querySelectorAll(".fr-service-checkbox:checked").forEach(cb => {
+    services.push(cb.value);
+  });
+  return services;
+}
+
+/* ---------------- Booking ---------------- */
 async function book() {
   const name = document.getElementById("name").value.trim();
   const phone = document.getElementById("phone").value.replace(/\D/g, '');
   const errorEl = document.getElementById("formError");
+  const serviceErrorEl = document.getElementById("serviceError");
   const bookBtn = document.getElementById("bookBtn");
+  const services = getSelectedServices();
 
+  let hasError = false;
+  if (!services.length) {
+    serviceErrorEl.classList.remove('d-none');
+    hasError = true;
+  } else {
+    serviceErrorEl.classList.add('d-none');
+  }
   if (!name || !phone) {
     errorEl.classList.remove('d-none');
-    return;
+    hasError = true;
+  } else {
+    errorEl.classList.add('d-none');
   }
-  errorEl.classList.add('d-none');
+  if (hasError) return;
+
   bookBtn.disabled = true;
   bookBtn.textContent = "Booker …";
 
   try {
-    // NB: swap this for /api/book-slot if you rename the Vercel function file.
-    await fetch("/api/book-slot", {
+    const res = await fetch("/api/book-slot", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         eventId: selected.id,
         name,
-        phone
+        phone,
+        services,
+        start: selected.start,
+        end: selected.end
       })
     });
+    const result = await res.json();
 
     bookingModal.hide();
     const toast = document.getElementById("successToast");
+    document.getElementById("toastCode").textContent = result.code ? `Din bookingkode: ${result.code}` : '';
     toast.classList.add('fr-toast-show');
-    setTimeout(() => toast.classList.remove('fr-toast-show'), 6000);
+    setTimeout(() => toast.classList.remove('fr-toast-show'), 8000);
 
     document.getElementById("name").value = "";
     document.getElementById("phone").value = "";
-    load();
+    loadSlotsForDate(selected.start.slice(0, 10));
+    loadMonthCalendar();
   } catch (err) {
     errorEl.textContent = "Noe gikk galt. Prøv igjen.";
     errorEl.classList.remove('d-none');

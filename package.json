@@ -2,11 +2,13 @@
   "name": "freshride-booking",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "FreshRide booking — static frontend + Vercel serverless functions",
   "scripts": {
     "dev": "vercel dev"
   },
   "dependencies": {
-    "googleapis": "^140.0.1"
+    "googleapis": "^140.0.1",
+    "@supabase/supabase-js": "^2.45.0"
   }
 }

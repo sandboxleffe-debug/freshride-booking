@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Om FreshRide</title>
+<meta name="description" content="Om FreshRide — bilpleie av høyeste kvalitet." />
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand fr-navbar">
+  <div class="container">
+    <a class="navbar-brand fr-brand" href="index.html">
+      <span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span>
+    </a>
+    <button class="fr-hamburger ms-auto" type="button" data-bs-toggle="offcanvas" data-bs-target="#navMenu" aria-controls="navMenu" aria-label="Meny">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="offcanvas offcanvas-end fr-offcanvas" tabindex="-1" id="navMenu">
+  <div class="offcanvas-header">
+    <span class="fr-offcanvas-brand"><span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span></span>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Lukk"></button>
+  </div>
+  <div class="offcanvas-body">
+    <a href="index.html" class="fr-nav-link">🏠 Forside</a>
+    <a href="about.html" class="fr-nav-link">ℹ️ Om oss</a>
+    <a href="feedback.html" class="fr-nav-link">⭐ Gi tilbakemelding</a>
+    <a href="https://willydeals.myspreadshop.no/" target="_blank" rel="noopener" class="fr-nav-link">🛍️ Merchandise</a>
+    <a href="admin.html" class="fr-nav-link fr-nav-link-admin">🔒 Admin</a>
+  </div>
+</div>
+
+<header class="fr-hero-copy">
+  <div class="container">
+    <p class="fr-eyebrow">FRESHRIDE</p>
+    <h1 class="fr-hero-title" id="aboutHeading">Om FreshRide</h1>
+  </div>
+</header>
+
+<main class="container fr-main">
+  <section class="fr-panel">
+    <div id="aboutBody" class="fr-prose">
+      <div class="spinner-border fr-spinner" role="status"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="fr-footer">
+  <div class="container">
+    <span>© <span id="year"></span> FreshRide</span>
+    <span class="fr-footer-dot">·</span>
+    <span>Oftebroveien 29, Lyngdal</span>
+    <span class="fr-footer-dot">·</span>
+    <a href="tel:92133900">921 33 900</a>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.getElementById("year").textContent = new Date().getFullYear();
+
+async function loadAbout() {
+  try {
+    const res = await fetch("/api/content?type=about");
+    const data = await res.json();
+    document.getElementById("aboutHeading").textContent = data.heading || "Om FreshRide";
+    document.getElementById("aboutBody").textContent = data.body || "";
+  } catch (e) {
+    document.getElementById("aboutBody").textContent = "Klarte ikke å hente innhold akkurat nå.";
+  }
+}
+loadAbout();
+</script>
+</body>
+</html>
