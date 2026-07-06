@@ -599,10 +599,61 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 999px; margin-left: 0.4rem;
 }
 
-/* Time wheels (hour/minute native selects — render as spin wheels on mobile) */
-.fr-time-wheels { display: flex; align-items: center; gap: 0.5rem; }
-.fr-time-wheels select { max-width: 80px; text-align: center; }
+/* Time wheels — iOS-style inertial spin picker for hour/minute selection */
+.fr-time-wheels { display: flex; align-items: center; gap: 0.6rem; }
 .fr-time-sep { font-size: 0.85rem; color: var(--fr-panel-text-faint); }
+
+.fr-wheel {
+  position: relative;
+  width: 76px;
+  height: 180px; /* 5 rows x 36px */
+  overflow: hidden;
+  perspective: 600px;
+  border-radius: 12px;
+  background: var(--fr-panel-bg-2);
+  border: 1.5px solid var(--fr-panel-border);
+}
+.fr-wheel-scroll {
+  height: 100%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  transform-style: preserve-3d;
+  mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.2) 20%, #000 42%, #000 58%, rgba(0,0,0,0.2) 80%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.2) 20%, #000 42%, #000 58%, rgba(0,0,0,0.2) 80%, transparent 100%);
+}
+.fr-wheel-scroll::-webkit-scrollbar { display: none; }
+.fr-wheel-item {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--fr-panel-text-faint);
+  user-select: none;
+  cursor: pointer;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+.fr-wheel-item.fr-wheel-item-active { color: var(--fr-panel-text); font-weight: 700; }
+.fr-wheel-highlight {
+  position: absolute;
+  left: 4px; right: 4px;
+  top: 50%;
+  height: 36px;
+  transform: translateY(-50%);
+  border-top: 1.5px solid var(--fr-gold);
+  border-bottom: 1.5px solid var(--fr-gold);
+  background: var(--fr-gold-soft);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 1;
+}
 
 /* Compact job list rows — far less vertical space than full cards */
 .fr-job-compact-row {

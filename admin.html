@@ -241,11 +241,13 @@
         <div class="fr-form-row">
           <label class="fr-label">⏱️ Tid brukt</label>
           <div class="fr-time-wheels">
-            <select id="jobTimeHours" class="form-control fr-input"></select>
+            <div class="fr-wheel" data-for="jobTimeHours"></div>
             <span class="fr-time-sep">t</span>
-            <select id="jobTimeMinutes" class="form-control fr-input"></select>
+            <div class="fr-wheel" data-for="jobTimeMinutes"></div>
             <span class="fr-time-sep">min</span>
           </div>
+          <select id="jobTimeHours" class="d-none"></select>
+          <select id="jobTimeMinutes" class="d-none"></select>
         </div>
         <div class="fr-form-row">
           <label class="fr-label">📝 Notater</label>
@@ -393,14 +395,15 @@
           <span id="editJobSizeVal" class="fr-hint"></span>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">⏱️ Tid brukt (minutter)</label>
           <label class="fr-label">⏱️ Tid brukt</label>
           <div class="fr-time-wheels">
-            <select id="editJobTimeHours" class="form-control fr-input"></select>
+            <div class="fr-wheel" data-for="editJobTimeHours"></div>
             <span class="fr-time-sep">t</span>
-            <select id="editJobTimeMinutes" class="form-control fr-input"></select>
+            <div class="fr-wheel" data-for="editJobTimeMinutes"></div>
             <span class="fr-time-sep">min</span>
           </div>
+          <select id="editJobTimeHours" class="d-none"></select>
+          <select id="editJobTimeMinutes" class="d-none"></select>
         </div>
         <div class="fr-form-row">
           <label class="fr-label">📝 Notater</label>
@@ -1014,11 +1017,89 @@ function formatDateNO(dateStr) {
   return `${d.getDate()} ${NO_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/* ---------------- iOS-style wheel picker (time spent) ---------------- */
+const FR_WHEEL_ITEM_H = 36;   // px height per row — must match style.css .fr-wheel-item
+const FR_WHEEL_PAD_ROWS = 2;  // rows of empty padding above/below so first/last item can center
+const FR_WHEEL_TILT_DEG = 14; // subtle per-row 3D tilt, echoes the iOS cylinder look
+const frWheelInstances = {};
+
+function frCreateWheel(containerEl, values, formatter, hiddenSelect) {
+  const H = FR_WHEEL_ITEM_H;
+  const padH = FR_WHEEL_PAD_ROWS * H;
+  containerEl.innerHTML = `
+    <div class="fr-wheel-highlight"></div>
+    <div class="fr-wheel-scroll">
+      <div class="fr-wheel-pad" style="height:${padH}px"></div>
+      ${values.map((v, i) => `<div class="fr-wheel-item" data-index="${i}" style="height:${H}px">${formatter(v)}</div>`).join('')}
+      <div class="fr-wheel-pad" style="height:${padH}px"></div>
+    </div>`;
+  const scrollEl = containerEl.querySelector('.fr-wheel-scroll');
+  const items = Array.from(containerEl.querySelectorAll('.fr-wheel-item'));
+
+  function render() {
+    const centerPos = scrollEl.scrollTop / H;
+    items.forEach((item, i) => {
+      const offset = Math.max(-2.6, Math.min(2.6, i - centerPos));
+      const abs = Math.abs(offset);
+      item.style.opacity = Math.max(0.1, 1 - abs * 0.4).toFixed(2);
+      item.style.transform = `rotateX(${(-offset * FR_WHEEL_TILT_DEG).toFixed(1)}deg) scale(${(1 - abs * 0.12).toFixed(2)})`;
+      item.classList.toggle('fr-wheel-item-active', Math.round(centerPos) === i);
+    });
+  }
+
+  let rafPending = false;
+  function requestRender() {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => { rafPending = false; render(); });
+  }
+
+  function commit(idx) {
+    idx = Math.max(0, Math.min(values.length - 1, idx));
+    hiddenSelect.value = values[idx];
+  }
+
+  let settleTimer = null;
+  scrollEl.addEventListener('scroll', () => {
+    requestRender();
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(() => {
+      commit(Math.round(scrollEl.scrollTop / H));
+    }, 100);
+  }, { passive: true });
+
+  items.forEach((item, i) => {
+    item.addEventListener('click', () => scrollEl.scrollTo({ top: i * H, behavior: 'smooth' }));
+  });
+
+  function setToValue(v) {
+    const idx = Math.max(0, values.indexOf(Number(v)));
+    scrollEl.scrollTop = idx * H;
+    commit(idx);
+    render();
+  }
+
+  render();
+  return { setToValue };
+}
+
 function populateTimeWheels(hourSelectId, minuteSelectId) {
   const hourSel = document.getElementById(hourSelectId);
   const minSel = document.getElementById(minuteSelectId);
-  hourSel.innerHTML = Array.from({ length: 9 }, (_, h) => `<option value="${h}">${h}</option>`).join('');
-  minSel.innerHTML = [0, 15, 30, 45].map(m => `<option value="${m}">${String(m).padStart(2, '0')}</option>`).join('');
+  const hourValues = Array.from({ length: 9 }, (_, h) => h);
+  const minuteValues = [0, 15, 30, 45];
+  hourSel.innerHTML = hourValues.map(h => `<option value="${h}">${h}</option>`).join('');
+  minSel.innerHTML = minuteValues.map(m => `<option value="${m}">${String(m).padStart(2, '0')}</option>`).join('');
+
+  const hourWheelEl = document.querySelector(`.fr-wheel[data-for="${hourSelectId}"]`);
+  const minWheelEl = document.querySelector(`.fr-wheel[data-for="${minuteSelectId}"]`);
+  frWheelInstances[hourSelectId] = frCreateWheel(hourWheelEl, hourValues, v => String(v), hourSel);
+  frWheelInstances[minuteSelectId] = frCreateWheel(minWheelEl, minuteValues, v => String(v).padStart(2, '0'), minSel);
+}
+
+function setWheelTime(hourSelectId, minuteSelectId, hours, minutes) {
+  if (frWheelInstances[hourSelectId]) frWheelInstances[hourSelectId].setToValue(hours);
+  if (frWheelInstances[minuteSelectId]) frWheelInstances[minuteSelectId].setToValue(minutes);
 }
 
 async function loadActivePromoDiscount() {
@@ -1221,8 +1302,7 @@ async function createJob() {
     document.getElementById('jobCampaignBadge').classList.add('d-none');
     document.getElementById('jobSize').value = 5;
     document.getElementById('jobSizeVal').textContent = '5';
-    document.getElementById('jobTimeHours').value = 0;
-    document.getElementById('jobTimeMinutes').value = 0;
+    setWheelTime('jobTimeHours', 'jobTimeMinutes', 0, 0);
     document.getElementById('jobNotes').value = '';
     document.getElementById('jobPhotos').value = '';
     loadJobsAdmin();
@@ -1259,8 +1339,6 @@ function openJobEdit(id) {
   document.getElementById('editJobSize').value = job.job_size || 5;
   document.getElementById('editJobSizeVal').textContent = job.job_size || 5;
   const totalMin = job.time_spent_minutes || 0;
-  document.getElementById('editJobTimeHours').value = Math.floor(totalMin / 60);
-  document.getElementById('editJobTimeMinutes').value = totalMin % 60;
   document.getElementById('editJobNotes').value = job.notes || '';
   document.getElementById('editJobMsg').textContent = '';
 
@@ -1272,6 +1350,16 @@ function openJobEdit(id) {
     </span>
   `).join('');
 
+  const editHours = Math.floor(totalMin / 60);
+  const editMinutes = totalMin % 60;
+  const jobEditModalEl = document.getElementById('jobEditModal');
+  if (jobEditModalEl.classList.contains('show')) {
+    setWheelTime('editJobTimeHours', 'editJobTimeMinutes', editHours, editMinutes);
+  } else {
+    jobEditModalEl.addEventListener('shown.bs.modal', () => {
+      setWheelTime('editJobTimeHours', 'editJobTimeMinutes', editHours, editMinutes);
+    }, { once: true });
+  }
   jobEditModal.show();
 }
 
