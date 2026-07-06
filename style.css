@@ -403,6 +403,45 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-tab-btn.active { background: var(--fr-gold); color: var(--fr-black); border-color: var(--fr-gold); font-weight: 700; }
 
+/* Mobile bottom icon nav — hidden on desktop, replaces the wrapping tab-button row on small screens */
+.fr-bnav { display: none; }
+@media (max-width: 720px) {
+  .fr-admin-tabs { display: none; }
+  .fr-admin-wrap { padding-bottom: 5.5rem; }
+  .fr-bnav {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 1000;
+    background: var(--fr-panel-bg);
+    border-top: 1px solid var(--fr-panel-border);
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
+    padding: 0.3rem 0.2rem calc(0.3rem + env(safe-area-inset-bottom));
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .fr-bnav-btn {
+    flex: 1 0 auto;
+    min-width: 3.6rem;
+    background: none;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    padding: 0.3rem 0.2rem;
+    color: var(--fr-panel-text-faint);
+    font-size: 0.62rem;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .fr-bnav-icon { font-size: 1.3rem; line-height: 1; }
+  .fr-bnav-btn.active { color: var(--fr-gold-deep); background: var(--fr-gold-soft); }
+}
+
 .fr-form-row { margin-bottom: 0.9rem; }
 .fr-inline-fields { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 .fr-inline-fields > * { flex: 1; min-width: 120px; }
@@ -717,8 +756,26 @@ input.fr-range-gradient::-moz-range-thumb {
   cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 
-/* Customer registry table */
-.fr-customer-table { color: var(--fr-panel-text); font-size: 0.88rem; vertical-align: middle; }
+/* Customer registry table — name column gets the most room, everything else is compact */
+.fr-customer-table { color: var(--fr-panel-text); font-size: 0.88rem; vertical-align: middle; table-layout: fixed; width: 100%; }
 .fr-customer-table th { color: var(--fr-panel-text-soft); font-weight: 700; font-size: 0.78rem; border-bottom-color: var(--fr-panel-border); }
-.fr-customer-table td { border-bottom-color: var(--fr-panel-border); }
-.fr-customer-table input.fr-input { padding: 0.35rem 0.6rem; font-size: 0.85rem; min-width: 70px; }
+.fr-customer-table td { border-bottom-color: var(--fr-panel-border); padding: 0.4rem 0.3rem; }
+.fr-customer-table input.fr-input { padding: 0.3rem 0.4rem; font-size: 0.82rem; min-width: 0; width: 100%; }
+.fr-customer-table th:nth-child(1), .fr-customer-table td:nth-child(1) { width: 15%; }
+.fr-customer-table th:nth-child(2), .fr-customer-table td:nth-child(2) { width: 46%; }
+.fr-customer-table th:nth-child(3), .fr-customer-table td:nth-child(3) { width: 12%; }
+.fr-customer-table th:nth-child(4), .fr-customer-table td:nth-child(4) { width: 18%; }
+.fr-customer-table th:nth-child(5), .fr-customer-table td:nth-child(5) { width: 9%; }
+.fr-customer-save-btn {
+  background: var(--fr-gold); color: var(--fr-black); border: none; border-radius: 8px;
+  width: 32px; height: 32px; font-size: 1rem; line-height: 1; padding: 0; cursor: pointer;
+}
+.fr-customer-save-btn:hover { background: var(--fr-gold-bright); }
+.fr-customer-save-btn:disabled { opacity: 0.6; cursor: default; }
+
+@media (max-width: 480px) {
+  .fr-customer-table { font-size: 0.8rem; }
+  .fr-customer-table th, .fr-customer-table td { padding: 0.3rem 0.2rem; }
+  .fr-customer-table input.fr-input { padding: 0.25rem 0.3rem; font-size: 0.76rem; }
+  .fr-customer-save-btn { width: 28px; height: 28px; font-size: 0.9rem; }
+}

@@ -96,6 +96,18 @@
       <button class="fr-tab-btn" data-tab="about" onclick="showTab('about')">ℹ️ Om oss</button>
     </div>
 
+    <!-- Mobile-only bottom icon nav -->
+    <nav class="fr-bnav">
+      <button class="fr-bnav-btn active" data-tab="overview" onclick="showTab('overview')"><span class="fr-bnav-icon">📅</span><span class="fr-bnav-label">Oversikt</span></button>
+      <button class="fr-bnav-btn" data-tab="create" onclick="showTab('create')"><span class="fr-bnav-icon">➕</span><span class="fr-bnav-label">Ny tid</span></button>
+      <button class="fr-bnav-btn" data-tab="services" onclick="showTab('services')"><span class="fr-bnav-icon">🧼</span><span class="fr-bnav-label">Tjenester</span></button>
+      <button class="fr-bnav-btn" data-tab="reviews" onclick="showTab('reviews')"><span class="fr-bnav-icon">⭐</span><span class="fr-bnav-label">Anmeld.</span></button>
+      <button class="fr-bnav-btn" data-tab="promo" onclick="showTab('promo')"><span class="fr-bnav-icon">🎉</span><span class="fr-bnav-label">Kampanje</span></button>
+      <button class="fr-bnav-btn" data-tab="accounting" onclick="showTab('accounting')"><span class="fr-bnav-icon">🔧</span><span class="fr-bnav-label">Drift</span></button>
+      <button class="fr-bnav-btn" data-tab="customers" onclick="showTab('customers')"><span class="fr-bnav-icon">🙋</span><span class="fr-bnav-label">Kunder</span></button>
+      <button class="fr-bnav-btn" data-tab="about" onclick="showTab('about')"><span class="fr-bnav-icon">ℹ️</span><span class="fr-bnav-label">Om oss</span></button>
+    </nav>
+
     <!-- Tab: Oversikt -->
     <div id="tab-overview" class="fr-tab-panel">
       <div class="fr-panel">
@@ -302,10 +314,10 @@
           <table class="table fr-customer-table">
             <thead>
               <tr>
-                <th>🙋 Kundenr.</th>
+                <th>🙋 #</th>
                 <th>Navn</th>
-                <th class="text-center">🚗 Jobber</th>
-                <th class="text-end">Totalt brukt</th>
+                <th class="text-center">🚗</th>
+                <th class="text-end">Brukt</th>
                 <th></th>
               </tr>
             </thead>
@@ -504,7 +516,8 @@ function enterAdmin() {
 function showTab(name) {
   document.querySelectorAll('.fr-tab-panel').forEach(p => p.classList.add('d-none'));
   document.getElementById(`tab-${name}`).classList.remove('d-none');
-  document.querySelectorAll('.fr-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.fr-tab-btn, .fr-bnav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 function handleAuthExpired() {
@@ -1218,7 +1231,7 @@ function renderCustomersAdmin() {
       <td><input class="form-control fr-input fr-customer-name-input" value="${(c.name || '').replace(/"/g, '&quot;')}" /></td>
       <td class="text-center">${c.jobCount}</td>
       <td class="text-end">kr ${c.totalSpent.toLocaleString('no-NO')}</td>
-      <td><button class="btn fr-btn-primary btn-sm" onclick="saveCustomerEdit('${c.number}', this)">💾 Lagre</button></td>
+      <td><button class="fr-customer-save-btn" onclick="saveCustomerEdit('${c.number}', this)" title="Lagre" aria-label="Lagre">💾</button></td>
     </tr>
   `).join('');
 }
@@ -1231,7 +1244,7 @@ async function saveCustomerEdit(originalNumber, btnEl) {
 
   const jobsToUpdate = (window._frJobs || []).filter(j => j.customer_number === originalNumber);
   btnEl.disabled = true;
-  btnEl.textContent = 'Lagrer …';
+  btnEl.textContent = '⏳';
   try {
     await Promise.all(jobsToUpdate.map(j => fetch('/api/admin-data?resource=jobs', {
       method: 'PATCH',
@@ -1242,7 +1255,7 @@ async function saveCustomerEdit(originalNumber, btnEl) {
   } catch (e) {
     alert('Klarte ikke å lagre kundeendringer.');
     btnEl.disabled = false;
-    btnEl.textContent = '💾 Lagre';
+    btnEl.textContent = '💾';
   }
 }
 
