@@ -31,6 +31,17 @@
   }
   .fr-range-btn.active { background: var(--fr-gold); color: var(--fr-black); border-color: var(--fr-gold); font-weight: 700; }
 
+  /* Neutral single-color SVG icons, sized relative to surrounding text so they drop into labels/buttons/headings uniformly */
+  #adminView svg, #loginView svg { width: 1em; height: 1em; vertical-align: -0.15em; flex-shrink: 0; }
+  .fr-icon { display: inline-flex; }
+  .fr-panel-head-flex { display: flex; align-items: center; justify-content: space-between; }
+  .fr-reveal-btn {
+    background: none; border: 1.5px solid var(--fr-panel-border); border-radius: 8px;
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    color: var(--fr-panel-text-soft); font-size: 1.1rem; cursor: pointer; flex-shrink: 0;
+  }
+  .fr-reveal-btn:hover { background: var(--fr-panel-bg-2); color: var(--fr-panel-text); }
+
   /* Compact flat list — no heavy day separation */
   .fr-list-row {
     display: flex; align-items: center; gap: 0.7rem;
@@ -82,7 +93,7 @@
 
   <!-- Login -->
   <div id="loginView" class="fr-panel fr-admin-login">
-    <p class="fr-label mb-2">🔑 PASSORD</p>
+    <p class="fr-label mb-2"><span class="fr-icon" data-fr-icon="lock"></span> PASSORD</p>
     <input type="password" id="pw" class="form-control fr-input fr-login-input" placeholder="Skriv inn passord" />
     <button class="btn fr-btn-primary w-100" onclick="login()">Logg inn</button>
     <div id="loginError" class="fr-login-error"></div>
@@ -101,14 +112,14 @@
     </div>
 
     <div class="fr-admin-tabs">
-      <button class="fr-tab-btn active" data-tab="overview" onclick="showTab('overview')">📅 Oversikt</button>
-      <button class="fr-tab-btn" data-tab="create" onclick="showTab('create')">➕ Opprett tid</button>
-      <button class="fr-tab-btn" data-tab="services" onclick="showTab('services')">🧼 Tjenester</button>
-      <button class="fr-tab-btn" data-tab="reviews" onclick="showTab('reviews')">⭐ Anmeldelser</button>
-      <button class="fr-tab-btn" data-tab="promo" onclick="showTab('promo')">🎉 Kampanje</button>
-      <button class="fr-tab-btn" data-tab="accounting" onclick="showTab('accounting')">🔧 Drift</button>
-      <button class="fr-tab-btn" data-tab="customers" onclick="showTab('customers')">🙋 Kunderegister</button>
-      <button class="fr-tab-btn" data-tab="about" onclick="showTab('about')">ℹ️ Om oss</button>
+      <button class="fr-tab-btn active" data-tab="overview" onclick="showTab('overview')"><span class="fr-icon" data-fr-icon="calendar"></span> Oversikt</button>
+      <button class="fr-tab-btn" data-tab="create" onclick="showTab('create')"><span class="fr-icon" data-fr-icon="plusCircle"></span> Opprett tid</button>
+      <button class="fr-tab-btn" data-tab="services" onclick="showTab('services')"><span class="fr-icon" data-fr-icon="droplet"></span> Tjenester</button>
+      <button class="fr-tab-btn" data-tab="reviews" onclick="showTab('reviews')"><span class="fr-icon" data-fr-icon="star"></span> Anmeldelser</button>
+      <button class="fr-tab-btn" data-tab="promo" onclick="showTab('promo')"><span class="fr-icon" data-fr-icon="gift"></span> Kampanje</button>
+      <button class="fr-tab-btn" data-tab="accounting" onclick="showTab('accounting')"><span class="fr-icon" data-fr-icon="wrench"></span> Drift</button>
+      <button class="fr-tab-btn" data-tab="customers" onclick="showTab('customers')"><span class="fr-icon" data-fr-icon="users"></span> Kunderegister</button>
+      <button class="fr-tab-btn" data-tab="about" onclick="showTab('about')"><span class="fr-icon" data-fr-icon="info"></span> Om oss</button>
     </div>
 
     <!-- Mobile-only bottom icon nav -->
@@ -167,22 +178,22 @@
     <!-- Tab: Opprett tid -->
     <div id="tab-create" class="fr-tab-panel d-none">
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>➕ Opprett ny ledig tid</h2></div>
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="plusCircle"></span> Opprett ny ledig tid</h2></div>
         <div class="fr-form-row">
-          <label class="fr-label">📅 Dato</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
           <input type="date" id="createDate" class="form-control fr-input" />
         </div>
         <div class="fr-inline-fields fr-form-row">
           <div>
-            <label class="fr-label">🕒 Starttid</label>
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Starttid</label>
             <input type="time" id="createTime" class="form-control fr-input" value="15:00" />
           </div>
           <div>
-            <label class="fr-label">⏱️ Varighet (min)</label>
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Varighet (min)</label>
             <input type="number" id="createDuration" class="form-control fr-input" value="180" step="15" min="15" />
           </div>
         </div>
-        <button class="btn fr-btn-primary w-100" onclick="createSlot()">✅ Opprett ledig tid</button>
+        <button class="btn fr-btn-primary w-100" onclick="createSlot()"><span class="fr-icon" data-fr-icon="checkCircle"></span> Opprett ledig tid</button>
         <div id="createMsg" class="fr-save-msg"></div>
       </div>
     </div>
@@ -190,10 +201,10 @@
     <!-- Tab: Tjenester -->
     <div id="tab-services" class="fr-tab-panel d-none">
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>🧼 Tjenester</h2></div>
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="droplet"></span> Tjenester</h2></div>
         <div id="servicesList"></div>
         <hr class="my-3" style="border-color: var(--fr-panel-border);">
-        <label class="fr-label">➕ Legg til ny tjeneste</label>
+        <label class="fr-label"><span class="fr-icon" data-fr-icon="plusCircle"></span> Legg til ny tjeneste</label>
         <input id="newServiceLabel" class="form-control fr-input mb-2" placeholder="Navn (f.eks. Motorvask)" />
         <input id="newServiceDesc" class="form-control fr-input mb-2" placeholder="Beskrivelse (valgfritt)" />
         <input id="newServicePrice" type="number" class="form-control fr-input mb-2" placeholder="Pris i kr (valgfritt)" />
@@ -205,7 +216,7 @@
     <!-- Tab: Anmeldelser -->
     <div id="tab-reviews" class="fr-tab-panel d-none">
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>⭐ Anmeldelser</h2></div>
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="star"></span> Anmeldelser</h2></div>
         <div id="reviewsList"></div>
       </div>
     </div>
@@ -213,7 +224,7 @@
     <!-- Tab: Kampanje -->
     <div id="tab-promo" class="fr-tab-panel d-none">
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>🎉 Ny kampanje</h2></div>
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="gift"></span> Ny kampanje</h2></div>
         <div class="fr-form-row">
           <label class="fr-label">Tittel</label>
           <input id="promoTitle" class="form-control fr-input" placeholder="Sommersalg" />
@@ -236,7 +247,7 @@
             <input type="date" id="promoEnd" class="form-control fr-input" />
           </div>
         </div>
-        <button class="btn fr-btn-primary w-100" onclick="createPromo()">➕ Opprett kampanje</button>
+        <button class="btn fr-btn-primary w-100" onclick="createPromo()"><span class="fr-icon" data-fr-icon="checkCircle"></span> Opprett kampanje</button>
         <div id="promoMsg" class="fr-save-msg"></div>
       </div>
       <div class="fr-panel">
@@ -248,24 +259,27 @@
     <!-- Tab: Regnskap -->
     <div id="tab-accounting" class="fr-tab-panel d-none">
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>💰 Omsetning</h2></div>
+        <div class="fr-panel-head fr-panel-head-flex">
+          <h2><span class="fr-icon" data-fr-icon="barChart"></span> Omsetning</h2>
+          <button class="fr-reveal-btn" id="accRevealBtn" onclick="toggleAccountingReveal()" title="Vis/skjul tall" aria-label="Vis/skjul tall"><span class="fr-icon" data-fr-icon="eye"></span></button>
+        </div>
         <div class="fr-accounting-summary">
-          <div><span class="fr-acc-label">Inntekt</span><span class="fr-acc-value fr-acc-income" id="accIncome">kr 0</span></div>
-          <div><span class="fr-acc-label">Utgifter</span><span class="fr-acc-value fr-acc-expense" id="accExpenses">kr 0</span></div>
-          <div><span class="fr-acc-label">Netto</span><span class="fr-acc-value" id="accNet">kr 0</span></div>
+          <div><span class="fr-acc-label">Inntekt</span><span class="fr-acc-value fr-acc-income" id="accIncome">•••</span></div>
+          <div><span class="fr-acc-label">Utgifter</span><span class="fr-acc-value fr-acc-expense" id="accExpenses">•••</span></div>
+          <div><span class="fr-acc-label">Netto</span><span class="fr-acc-value" id="accNet">•••</span></div>
         </div>
       </div>
 
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>📓 Logg ny jobb</h2></div>
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="fileText"></span> Logg ny jobb</h2></div>
         <div class="fr-form-row">
-          <label class="fr-label">📅 Dato</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
           <input type="date" id="jobDate" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">🙋 Kunde</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="user"></span> Kunde</label>
           <select id="jobCustomerSelect" class="form-control fr-input mb-2" onchange="onCustomerSelectChange()">
-            <option value="__new__">➕ Ny kunde …</option>
+            <option value="__new__">+ Ny kunde …</option>
           </select>
           <div id="newCustomerFields">
             <input id="jobCustomer" class="form-control fr-input mb-2" placeholder="Navn på ny kunde" />
@@ -273,25 +287,25 @@
           </div>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">🚗 Biltype</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="car"></span> Biltype</label>
           <input id="jobCarType" class="form-control fr-input" placeholder="VW Golf" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">🧼 Tjeneste(r)</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="droplet"></span> Tjeneste(r)</label>
           <div id="jobServicesGrid" class="fr-service-grid"></div>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">💵 Pris betalt (kr) <span id="jobCampaignBadge" class="fr-campaign-badge d-none">🎉 Kampanjepris</span></label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="dollarSign"></span> Pris betalt (kr) <span id="jobCampaignBadge" class="fr-campaign-badge d-none"><span class="fr-icon" data-fr-icon="gift"></span> Kampanjepris</span></label>
           <input type="number" id="jobPrice" class="form-control fr-input" placeholder="450" />
           <p class="fr-hint">Fylles automatisk ut fra valgte tjenester — kan overstyres (f.eks. ved tips).</p>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">📏 Hvor omfattende var jobben? Velg på skala fra 1–10</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="sliders"></span> Hvor omfattende var jobben? Velg på skala fra 1–10</label>
           <input type="range" id="jobSize" class="form-range fr-range-gradient" min="1" max="10" value="5" oninput="document.getElementById('jobSizeVal').textContent = this.value">
           <span id="jobSizeVal" class="fr-hint">5</span>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">⏱️ Tid brukt</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Tid brukt</label>
           <div class="fr-time-wheels">
             <div class="fr-wheel" data-for="jobTimeHours"></div>
             <span class="fr-time-sep">t</span>
@@ -302,14 +316,14 @@
           <select id="jobTimeMinutes" class="d-none"></select>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">📝 Notater</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="fileText"></span> Notater</label>
           <textarea id="jobNotes" class="form-control fr-input" rows="2" placeholder="Valgfritt"></textarea>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">📷 Bilder (kan velge flere)</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Bilder (kan velge flere)</label>
           <input type="file" id="jobPhotos" class="form-control fr-input" accept="image/*" multiple />
         </div>
-        <button class="btn fr-btn-primary w-100" onclick="createJob()">💾 Lagre jobb</button>
+        <button class="btn fr-btn-primary w-100" onclick="createJob()"><span class="fr-icon" data-fr-icon="save"></span> Lagre jobb</button>
         <div id="jobMsg" class="fr-save-msg"></div>
       </div>
 
@@ -319,7 +333,7 @@
       </div>
 
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>➖ Ny utgift</h2></div>
+        <div class="fr-panel-head"><h2>Ny utgift</h2></div>
         <div class="fr-inline-fields fr-form-row">
           <div>
             <label class="fr-label">Dato</label>
@@ -347,15 +361,19 @@
     <!-- Tab: Kunderegister -->
     <div id="tab-customers" class="fr-tab-panel d-none">
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>🙋 Kunderegister</h2></div>
+        <div class="fr-panel-head fr-panel-head-flex">
+          <h2><span class="fr-icon" data-fr-icon="users"></span> Kunderegister</h2>
+          <button class="fr-reveal-btn" id="customersRevealBtn" onclick="toggleCustomersReveal()" title="Vis/skjul kunderegister" aria-label="Vis/skjul kunderegister"><span class="fr-icon" data-fr-icon="eye"></span></button>
+        </div>
         <p class="fr-hint">Rediger kundenavn eller -nummer om noe er feilskrevet. Lagring oppdaterer alle jobber knyttet til kunden.</p>
-        <div class="table-responsive">
+        <p class="fr-hint" id="customersHiddenHint">Skjult av personvernhensyn — trykk på øyet for å vise.</p>
+        <div class="table-responsive d-none" id="customersTableWrap">
           <table class="table fr-customer-table">
             <thead>
               <tr>
-                <th>🙋 #</th>
+                <th><span class="fr-icon" data-fr-icon="user"></span></th>
                 <th>Navn</th>
-                <th class="text-center">🚗</th>
+                <th class="text-center"><span class="fr-icon" data-fr-icon="car"></span></th>
                 <th class="text-end">Brukt</th>
                 <th></th>
               </tr>
@@ -369,12 +387,12 @@
     <!-- Tab: Om oss -->
     <div id="tab-about" class="fr-tab-panel d-none">
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>ℹ️ Om oss-innhold</h2></div>
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="info"></span> Om oss-innhold</h2></div>
         <label class="fr-label">Overskrift</label>
         <input id="aboutHeadingInput" class="form-control fr-input mb-3" />
         <label class="fr-label">Tekst</label>
         <textarea id="aboutBodyInput" class="form-control fr-input mb-3" rows="8"></textarea>
-        <button class="btn fr-btn-primary w-100" onclick="saveAbout()">💾 Lagre</button>
+        <button class="btn fr-btn-primary w-100" onclick="saveAbout()"><span class="fr-icon" data-fr-icon="save"></span> Lagre</button>
         <div id="aboutMsg" class="fr-save-msg"></div>
       </div>
     </div>
@@ -387,7 +405,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content fr-modal">
       <div class="modal-header border-0">
-        <h5 class="modal-title">✏️ Rediger booking <span id="editCodeLabel" class="fr-list-row-code"></span></h5>
+        <h5 class="modal-title"><span class="fr-icon" data-fr-icon="edit"></span> Rediger booking <span id="editCodeLabel" class="fr-list-row-code"></span></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
       </div>
       <div class="modal-body">
@@ -396,34 +414,34 @@
           <input id="editName" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">📞 Mobilnummer</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="phone"></span> Mobilnummer</label>
           <input id="editPhone" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">🧼 Tjeneste(r)</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="droplet"></span> Tjeneste(r)</label>
           <textarea id="editServices" class="form-control fr-input" rows="2"></textarea>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">📅 Dato</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
           <input type="date" id="editDate" class="form-control fr-input" />
         </div>
         <div class="fr-inline-fields fr-form-row">
           <div>
-            <label class="fr-label">🕒 Starttid</label>
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Starttid</label>
             <input type="time" id="editTime" class="form-control fr-input" />
           </div>
           <div>
-            <label class="fr-label">⏱️ Varighet (min)</label>
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Varighet (min)</label>
             <input type="number" id="editDuration" class="form-control fr-input" step="15" min="15" />
           </div>
         </div>
         <div id="editMsg" class="fr-save-msg"></div>
       </div>
       <div class="modal-footer border-0 flex-column gap-2">
-        <button class="btn fr-btn-primary w-100" onclick="saveEdit()">💾 Lagre endringer</button>
+        <button class="btn fr-btn-primary w-100" onclick="saveEdit()"><span class="fr-icon" data-fr-icon="save"></span> Lagre endringer</button>
         <div class="d-flex gap-2 w-100">
-          <button class="btn w-50" style="background:var(--fr-panel-bg-2); border:1px solid var(--fr-panel-border); color:var(--fr-panel-text);" onclick="reopenBooking()">🔓 Sett ledig igjen</button>
-          <button class="btn w-50" style="background:#F4D8D3; border:1px solid #E0AFA6; color:#8A2E20;" onclick="deleteBooking()">🗑️ Slett permanent</button>
+          <button class="btn w-50" style="background:var(--fr-panel-bg-2); border:1px solid var(--fr-panel-border); color:var(--fr-panel-text);" onclick="reopenBooking()"><span class="fr-icon" data-fr-icon="unlock"></span> Sett ledig igjen</button>
+          <button class="btn w-50" style="background:#F4D8D3; border:1px solid #E0AFA6; color:#8A2E20;" onclick="deleteBooking()"><span class="fr-icon" data-fr-icon="trash"></span> Slett permanent</button>
         </div>
       </div>
     </div>
@@ -435,16 +453,16 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content fr-modal">
       <div class="modal-header border-0">
-        <h5 class="modal-title">✏️ Rediger jobb</h5>
+        <h5 class="modal-title"><span class="fr-icon" data-fr-icon="edit"></span> Rediger jobb</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
       </div>
       <div class="modal-body">
         <div class="fr-form-row">
-          <label class="fr-label">📅 Dato</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
           <input type="date" id="editJobDate" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">🙋 Kundenavn</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="user"></span> Kundenavn</label>
           <input id="editJobCustomer" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
@@ -452,24 +470,24 @@
           <input id="editJobCustomerNumber" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">🚗 Biltype</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="car"></span> Biltype</label>
           <input id="editJobCarType" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">🧼 Tjeneste(r)</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="droplet"></span> Tjeneste(r)</label>
           <input id="editJobServices" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">💵 Pris betalt (kr)</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="dollarSign"></span> Pris betalt (kr)</label>
           <input type="number" id="editJobPrice" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">📏 Hvor omfattende var jobben? Velg på skala fra 1–10</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="sliders"></span> Hvor omfattende var jobben? Velg på skala fra 1–10</label>
           <input type="range" id="editJobSize" class="form-range fr-range-gradient" min="1" max="10" oninput="document.getElementById('editJobSizeVal').textContent = this.value">
           <span id="editJobSizeVal" class="fr-hint"></span>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">⏱️ Tid brukt</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Tid brukt</label>
           <div class="fr-time-wheels">
             <div class="fr-wheel" data-for="editJobTimeHours"></div>
             <span class="fr-time-sep">t</span>
@@ -480,19 +498,19 @@
           <select id="editJobTimeMinutes" class="d-none"></select>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">📝 Notater</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="fileText"></span> Notater</label>
           <textarea id="editJobNotes" class="form-control fr-input" rows="2"></textarea>
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">📷 Bilder</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Bilder</label>
           <div id="editJobPhotos" class="fr-job-photos"></div>
           <input type="file" id="editJobNewPhotos" class="form-control fr-input mt-2" accept="image/*" multiple />
         </div>
         <div id="editJobMsg" class="fr-save-msg"></div>
       </div>
       <div class="modal-footer border-0 flex-column gap-2">
-        <button class="btn fr-btn-primary w-100" onclick="saveJobEdit()">💾 Lagre endringer</button>
-        <button class="btn w-100" style="background:#F4D8D3; border:1px solid #E0AFA6; color:#8A2E20;" onclick="deleteJobFromEdit()">🗑️ Slett jobb</button>
+        <button class="btn fr-btn-primary w-100" onclick="saveJobEdit()"><span class="fr-icon" data-fr-icon="save"></span> Lagre endringer</button>
+        <button class="btn w-100" style="background:#F4D8D3; border:1px solid #E0AFA6; color:#8A2E20;" onclick="deleteJobFromEdit()"><span class="fr-icon" data-fr-icon="trash"></span> Slett jobb</button>
       </div>
     </div>
   </div>
@@ -510,6 +528,45 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+/* ---------------- Nøytrale SVG-ikoner (erstatter emoji i admin-panelet) ---------------- */
+const FR_ICON_PATHS = {
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  plusCircle: '<circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>',
+  droplet: '<path d="M12 2.7l5.5 6.3a7 7 0 1 1-11 0z"/>',
+  star: '<polygon points="12 2 15 9 22 9.5 16.5 14 18 21 12 17.3 6 21 7.5 14 2 9.5 9 9"/>',
+  gift: '<rect x="3" y="8" width="18" height="4"/><path d="M12 8v13"/><path d="M19 12v7a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7"/><path d="M12 8H8.5a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8z"/><path d="M12 8h3.5a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8z"/>',
+  wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.1-3.1a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.1 2.1 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  info: '<circle cx="12" cy="12" r="9"/><line x1="12" y1="16" x2="12" y2="11"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+  car: '<path d="M5 11l1.2-3.6A2 2 0 0 1 8.1 6h7.8a2 2 0 0 1 1.9 1.4L19 11"/><rect x="2.5" y="11" width="19" height="6" rx="2"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/>',
+  phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.81.35 1.6.68 2.34a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.74-1.25a2 2 0 0 1 2.11-.45c.74.33 1.53.56 2.34.68A2 2 0 0 1 22 16.92z"/>',
+  dollarSign: '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  sliders: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>',
+  fileText: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>',
+  camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  unlock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
+  save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>',
+  edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/>',
+  checkCircle: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  ban: '<circle cx="12" cy="12" r="9"/><line x1="5.5" y1="5.5" x2="18.5" y2="18.5"/>',
+  eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  eyeOff: '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
+  trendingUp: '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+  barChart: '<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>',
+};
+function frIcon(name) {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${FR_ICON_PATHS[name] || ''}</svg>`;
+}
+function frRenderIcons(root) {
+  (root || document).querySelectorAll('[data-fr-icon]').forEach(el => { el.innerHTML = frIcon(el.dataset.frIcon); });
+}
+frRenderIcons();
+
 let currentDays = 14;
 let editingEventId = null;
 const editModal = new bootstrap.Modal(document.getElementById('editModal'));
@@ -670,7 +727,7 @@ function renderList(days) {
   if (allBooked.length) {
     const label = document.createElement('div');
     label.className = 'fr-list-section-label';
-    label.textContent = `🔒 Bookinger (${allBooked.length})`;
+    label.innerHTML = `${frIcon('lock')} Bookinger (${allBooked.length})`;
     el.appendChild(label);
     allBooked.forEach(b => {
       const row = document.createElement('div');
@@ -690,7 +747,7 @@ function renderList(days) {
   if (allOpen.length) {
     const label = document.createElement('div');
     label.className = 'fr-list-section-label';
-    label.textContent = `✅ Ledige tider (${allOpen.length})`;
+    label.innerHTML = `${frIcon('checkCircle')} Ledige tider (${allOpen.length})`;
     el.appendChild(label);
     allOpen.forEach(s => {
       const row = document.createElement('div');
@@ -831,8 +888,8 @@ async function loadServicesAdmin() {
           </div>
         </div>
         <div class="fr-service-row-actions">
-          <button class="fr-icon-btn" title="${s.active ? 'Skjul' : 'Vis'}" onclick="toggleService('${s.id}', ${!s.active})">${s.active ? '👁' : '🚫'}</button>
-          <button class="fr-icon-btn" title="Slett" onclick="deleteService('${s.id}')">✕</button>
+          <button class="fr-icon-btn" title="${s.active ? 'Skjul' : 'Vis'}" onclick="toggleService('${s.id}', ${!s.active})">${frIcon(s.active ? 'eye' : 'eyeOff')}</button>
+          <button class="fr-icon-btn" title="Slett" onclick="deleteService('${s.id}')">${frIcon('trash')}</button>
         </div>
       `;
       list.appendChild(row);
@@ -926,8 +983,8 @@ async function loadReviewsAdmin() {
           <div class="fr-service-row-desc">— ${r.name || 'Anonym'}</div>
         </div>
         <div class="fr-service-row-actions">
-          <button class="fr-icon-btn" title="${r.approved ? 'Skjul' : 'Godkjenn'}" onclick="toggleReview('${r.id}', ${!r.approved})">${r.approved ? '👁' : '✅'}</button>
-          <button class="fr-icon-btn" title="Slett" onclick="deleteReview('${r.id}')">✕</button>
+          <button class="fr-icon-btn" title="${r.approved ? 'Skjul' : 'Godkjenn'}" onclick="toggleReview('${r.id}', ${!r.approved})">${frIcon(r.approved ? 'eye' : 'checkCircle')}</button>
+          <button class="fr-icon-btn" title="Slett" onclick="deleteReview('${r.id}')">${frIcon('trash')}</button>
         </div>
       `;
       list.appendChild(row);
@@ -969,7 +1026,7 @@ async function loadPromoAdmin() {
     promos.forEach(p => {
       const row = document.createElement('div');
       row.className = 'fr-service-row';
-      const statusLabel = { auto: '🕒 Automatisk (dato)', forced_on: '✅ Alltid på', forced_off: '⛔ Alltid av' }[p.status];
+      const statusLabel = { auto: `${frIcon('clock')} Automatisk (dato)`, forced_on: `${frIcon('checkCircle')} Alltid på`, forced_off: `${frIcon('ban')} Alltid av` }[p.status];
       row.innerHTML = `
         <div>
           <div class="fr-service-row-label">${p.title} — ${p.discount_label}</div>
@@ -982,7 +1039,7 @@ async function loadPromoAdmin() {
           </div>
         </div>
         <div class="fr-service-row-actions">
-          <button class="fr-icon-btn" title="Slett" onclick="deletePromo('${p.id}')">✕</button>
+          <button class="fr-icon-btn" title="Slett" onclick="deletePromo('${p.id}')">${frIcon('trash')}</button>
         </div>
       `;
       list.appendChild(row);
@@ -1066,14 +1123,34 @@ function compressImageFile(file, maxDim = 1000, quality = 0.7) {
 }
 
 /* ---------------- Regnskap: sammendrag ---------------- */
+let accValuesVisible = false;
+let _accData = { income: 0, expenses: 0, net: 0 };
+const FR_MASK = '•••';
+
+function renderAccountingSummary() {
+  document.getElementById('accIncome').textContent = accValuesVisible ? _accData.income.toLocaleString('no-NO') : FR_MASK;
+  document.getElementById('accExpenses').textContent = accValuesVisible ? _accData.expenses.toLocaleString('no-NO') : FR_MASK;
+  const netEl = document.getElementById('accNet');
+  if (accValuesVisible) {
+    netEl.innerHTML = `${_accData.net > 0 ? frIcon('trendingUp') + ' ' : ''}${_accData.net.toLocaleString('no-NO')}`;
+  } else {
+    netEl.textContent = FR_MASK;
+  }
+  document.getElementById('accRevealBtn').innerHTML = frIcon(accValuesVisible ? 'eyeOff' : 'eye');
+}
+
+function toggleAccountingReveal() {
+  accValuesVisible = !accValuesVisible;
+  renderAccountingSummary();
+}
+
 async function loadAccountingSummary() {
   try {
     const res = await fetch('/api/admin-data?resource=accounting', { headers: authHeaders() });
     if (res.status === 401) return handleAuthExpired();
     const data = await res.json();
-    document.getElementById('accIncome').textContent = `kr ${data.income.toLocaleString('no-NO')}`;
-    document.getElementById('accExpenses').textContent = `kr ${data.expenses.toLocaleString('no-NO')}`;
-    document.getElementById('accNet').textContent = `${data.net > 0 ? '👍 🪙 ' : ''}kr ${data.net.toLocaleString('no-NO')}`;
+    _accData = { income: data.income, expenses: data.expenses, net: data.net };
+    renderAccountingSummary();
   } catch (e) { /* silent */ }
 }
 
@@ -1256,6 +1333,14 @@ function getCustomerStats() {
   return Array.from(map.values()).sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
 }
 
+let customersVisible = false;
+function toggleCustomersReveal() {
+  customersVisible = !customersVisible;
+  document.getElementById('customersTableWrap').classList.toggle('d-none', !customersVisible);
+  document.getElementById('customersHiddenHint').classList.toggle('d-none', customersVisible);
+  document.getElementById('customersRevealBtn').innerHTML = frIcon(customersVisible ? 'eyeOff' : 'eye');
+}
+
 function renderCustomersAdmin() {
   const body = document.getElementById('customersTableBody');
   if (!body) return;
@@ -1270,7 +1355,7 @@ function renderCustomersAdmin() {
       <td><input class="form-control fr-input fr-customer-name-input" value="${(c.name || '').replace(/"/g, '&quot;')}" /></td>
       <td class="text-center">${c.jobCount}</td>
       <td class="text-end">kr ${c.totalSpent.toLocaleString('no-NO')}</td>
-      <td><button class="fr-customer-save-btn" onclick="saveCustomerEdit('${c.number}', this)" title="Lagre" aria-label="Lagre">💾</button></td>
+      <td><button class="fr-customer-save-btn" onclick="saveCustomerEdit('${c.number}', this)" title="Lagre" aria-label="Lagre">${frIcon('save')}</button></td>
     </tr>
   `).join('');
 }
@@ -1283,7 +1368,7 @@ async function saveCustomerEdit(originalNumber, btnEl) {
 
   const jobsToUpdate = (window._frJobs || []).filter(j => j.customer_number === originalNumber);
   btnEl.disabled = true;
-  btnEl.textContent = '⏳';
+  btnEl.innerHTML = frIcon('clock');
   try {
     await Promise.all(jobsToUpdate.map(j => fetch('/api/admin-data?resource=jobs', {
       method: 'PATCH',
@@ -1294,7 +1379,7 @@ async function saveCustomerEdit(originalNumber, btnEl) {
   } catch (e) {
     alert('Klarte ikke å lagre kundeendringer.');
     btnEl.disabled = false;
-    btnEl.textContent = '💾';
+    btnEl.innerHTML = frIcon('save');
   }
 }
 
@@ -1306,7 +1391,7 @@ function nextCustomerNumber() {
 function populateCustomerDropdown() {
   const select = document.getElementById('jobCustomerSelect');
   const customers = getUniqueCustomers();
-  select.innerHTML = '<option value="__new__">➕ Ny kunde …</option>' +
+  select.innerHTML = '<option value="__new__">+ Ny kunde …</option>' +
     customers.map(([num, name]) => `<option value="${num}">#${num} — ${name}</option>`).join('');
   onCustomerSelectChange();
 }
@@ -1338,14 +1423,14 @@ function renderJobsList() {
     const row = document.createElement('div');
     row.className = 'fr-job-compact-row';
     row.onclick = () => openJobEdit(j.id);
-    const photoIcon = (j.photos && j.photos.length) ? `<span class="fr-job-photo-flag">📷 ${j.photos.length}</span>` : '';
-    const campaignFlag = j.campaign_price ? '<span class="fr-campaign-badge">🎉</span>' : '';
+    const photoIcon = (j.photos && j.photos.length) ? `<span class="fr-job-photo-flag">${frIcon('camera')} ${j.photos.length}</span>` : '';
+    const campaignFlag = j.campaign_price ? `<span class="fr-campaign-badge">${frIcon('gift')}</span>` : '';
     row.innerHTML = `
       <div class="fr-job-compact-main">
         <span class="fr-job-compact-date">${formatDateNO(j.job_date)}</span>
         <span class="fr-job-compact-name">${j.customer_name}</span>
-        ${j.customer_number ? `<span class="fr-job-compact-meta">🙋 #${j.customer_number}</span>` : ''}
-        ${j.car_type ? `<span class="fr-job-compact-meta">🚗 ${j.car_type}</span>` : ''}
+        ${j.customer_number ? `<span class="fr-job-compact-meta">${frIcon('user')} #${j.customer_number}</span>` : ''}
+        ${j.car_type ? `<span class="fr-job-compact-meta">${frIcon('car')} ${j.car_type}</span>` : ''}
         <span class="fr-job-compact-services">${j.services || ''}</span>
       </div>
       <div class="fr-job-compact-right">
@@ -1580,7 +1665,7 @@ async function loadExpensesAdmin() {
           <div class="fr-service-row-desc">kr ${Number(e.amount).toLocaleString('no-NO')}</div>
         </div>
         <div class="fr-service-row-actions">
-          <button class="fr-icon-btn" title="Slett" onclick="deleteExpense('${e.id}')">✕</button>
+          <button class="fr-icon-btn" title="Slett" onclick="deleteExpense('${e.id}')">${frIcon('trash')}</button>
         </div>
       `;
       list.appendChild(row);
