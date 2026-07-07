@@ -402,6 +402,16 @@
     <!-- Tab: Om oss -->
     <div id="tab-about" class="fr-tab-panel d-none">
       <div class="fr-panel">
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="camera"></span> Hero-seksjon på forsiden</h2></div>
+        <p class="fr-hint">Velg om forsiden skal vise et stillbilde eller en loopende video øverst.</p>
+        <div class="form-check form-switch fr-hero-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="heroVideoToggle" onchange="toggleHeroVideo(this.checked)">
+          <label class="form-check-label" for="heroVideoToggle" id="heroVideoToggleLabel">Bilde</label>
+        </div>
+        <div id="heroToggleMsg" class="fr-save-msg"></div>
+      </div>
+
+      <div class="fr-panel">
         <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="info"></span> Om oss-innhold</h2></div>
         <label class="fr-label">Overskrift</label>
         <input id="aboutHeadingInput" class="form-control fr-input mb-3" />
@@ -1760,7 +1770,27 @@ async function loadAboutAdmin() {
     const data = await res.json();
     document.getElementById('aboutHeadingInput').value = data.heading || '';
     document.getElementById('aboutBodyInput').value = data.body || '';
+    document.getElementById('heroVideoToggle').checked = !!data.use_hero_video;
+    document.getElementById('heroVideoToggleLabel').textContent = data.use_hero_video ? 'Video' : 'Bilde';
   } catch (e) {}
+}
+
+async function toggleHeroVideo(checked) {
+  document.getElementById('heroVideoToggleLabel').textContent = checked ? 'Video' : 'Bilde';
+  const msg = document.getElementById('heroToggleMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  try {
+    const res = await fetch('/api/admin-data?resource=about', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ use_hero_video: checked })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    if (!res.ok) throw new Error();
+    msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+  }
 }
 
 async function saveAbout() {

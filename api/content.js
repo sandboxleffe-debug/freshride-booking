@@ -32,6 +32,17 @@ export default async function handler(req, res) {
     }
   }
 
+  if (type === "hero") {
+    try {
+      const { data, error } = await supabase.from("freshride_about").select("use_hero_video").eq("id", 1).single();
+      if (error) throw error;
+      return res.status(200).json({ useVideo: !!data.use_hero_video });
+    } catch (err) {
+      console.error("content hero error:", err);
+      return res.status(200).json({ useVideo: false });
+    }
+  }
+
   if (type === "services") {
     try {
       const { data: services, error } = await supabase

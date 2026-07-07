@@ -62,8 +62,8 @@
   </div>
 </div>
 
-<!-- Hero image -->
-<div class="fr-hero-image-wrap">
+<!-- Hero image/video (video swapped in by loadHeroMedia() if enabled in admin) -->
+<div class="fr-hero-image-wrap" id="heroMediaWrap">
   <img src="assets/hero-banner.jpg" alt="FreshRide — Next-Gen Car Care" class="fr-hero-image" />
 </div>
 
@@ -212,6 +212,18 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
+
+/* ---------------- Hero media (image or looping video, set in admin) ---------------- */
+async function loadHeroMedia() {
+  try {
+    const res = await fetch('/api/content?type=hero');
+    const data = await res.json();
+    if (!data.useVideo) return;
+    document.getElementById('heroMediaWrap').innerHTML =
+      '<video class="fr-hero-image" src="assets/pika.mp4" autoplay loop muted playsinline aria-label="FreshRide — Next-Gen Car Care"></video>';
+  } catch (e) { /* silent — keeps the default image */ }
+}
+loadHeroMedia();
 
 /* ---------------- Promo banner ---------------- */
 async function loadPromo() {

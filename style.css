@@ -204,6 +204,12 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-hint { font-size: 0.86rem; color: var(--fr-panel-text-faint); min-height: 1.2rem; }
 .fr-hint-error { color: #C0392B; }
 
+.fr-hero-switch { display: flex; align-items: center; gap: 0.6rem; padding-left: 0; margin: 0.5rem 0; }
+.fr-hero-switch .form-check-input { width: 2.6rem; height: 1.4rem; margin-left: 0; cursor: pointer; }
+.fr-hero-switch .form-check-input:checked { background-color: var(--fr-gold); border-color: var(--fr-gold); }
+.fr-hero-switch .form-check-input:focus { box-shadow: 0 0 0 3px var(--fr-gold-soft); border-color: var(--fr-gold); }
+.fr-hero-switch .form-check-label { font-weight: 600; color: var(--fr-panel-text); cursor: pointer; }
+
 /* Calendar legend */
 .fr-calendar-legend { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-bottom: 1.1rem; font-size: 0.85rem; color: var(--fr-panel-text-soft); }
 .fr-legend-item { display: flex; align-items: center; gap: 0.45rem; }
