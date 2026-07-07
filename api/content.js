@@ -54,16 +54,20 @@ export default async function handler(req, res) {
 
       const ids = (services || []).map(s => s.id);
       let priceById = {};
+      let updatedAt = null;
       if (ids.length) {
         const { data: prices } = await supabase
           .from("freshride_prices")
-          .select("service_id, price_nok")
+          .select("service_id, price_nok, updated_at")
           .in("service_id", ids);
-        (prices || []).forEach(p => { priceById[p.service_id] = p.price_nok; });
+        (prices || []).forEach(p => {
+          priceById[p.service_id] = p.price_nok;
+          if (p.updated_at && (!updatedAt || p.updated_at > updatedAt)) updatedAt = p.updated_at;
+        });
       }
 
       const withPrices = (services || []).map(s => ({ ...s, price_nok: priceById[s.id] ?? null }));
-      return res.status(200).json({ services: withPrices });
+      return res.status(200).json({ services: withPrices, updatedAt });
     } catch (err) {
       console.error("content services error:", err);
       return res.status(500).json({ error: "Klarte ikke å hente tjenester" });

@@ -12,8 +12,8 @@
   gtag('config', 'G-2QTW03YX7L');
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Om FreshRide</title>
-<meta name="description" content="Om FreshRide — bilpleie av høyeste kvalitet." />
+<title>Priser — FreshRide</title>
+<meta name="description" content="Se gjeldende priser hos FreshRide." />
 
 <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
@@ -24,6 +24,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<style>
+  .fr-price-list { display: flex; flex-direction: column; gap: 1rem; }
+  .fr-price-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--fr-panel-border); }
+  .fr-price-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .fr-price-row-label { font-weight: 700; color: var(--fr-panel-text); font-size: 1.02rem; }
+  .fr-price-row-desc { font-size: 0.85rem; color: var(--fr-panel-text-faint); margin-top: 0.2rem; }
+  .fr-price-row-value { font-weight: 700; color: var(--fr-gold-deep); white-space: nowrap; font-family: var(--font-display); font-size: 1.1rem; flex-shrink: 0; }
+  .fr-price-updated { font-size: 0.85rem; color: var(--fr-panel-text-faint); margin-top: 1.5rem; text-align: center; }
+</style>
 </head>
 <body>
 
@@ -57,13 +66,13 @@
 <header class="fr-hero-copy">
   <div class="container">
     <p class="fr-eyebrow">FRESHRIDE</p>
-    <h1 class="fr-hero-title" id="aboutHeading">Om FreshRide</h1>
+    <h1 class="fr-hero-title">Priser</h1>
   </div>
 </header>
 
 <main class="container fr-main">
   <section class="fr-panel">
-    <div id="aboutBody" class="fr-prose">
+    <div id="pricesBody" class="fr-prose">
       <div class="spinner-border fr-spinner" role="status"></div>
     </div>
   </section>
@@ -83,17 +92,41 @@
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
 
-async function loadAbout() {
+const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
+
+async function loadPrices() {
+  const body = document.getElementById("pricesBody");
   try {
-    const res = await fetch("/api/content?type=about");
+    const res = await fetch("/api/content?type=services");
     const data = await res.json();
-    document.getElementById("aboutHeading").textContent = data.heading || "Om FreshRide";
-    document.getElementById("aboutBody").textContent = data.body || "";
+    const services = data.services || [];
+    if (!services.length) {
+      body.innerHTML = '<p>Ingen priser er registrert ennå.</p>';
+      return;
+    }
+
+    const rows = services.map(s => `
+      <div class="fr-price-row">
+        <div>
+          <div class="fr-price-row-label">${s.label}</div>
+          ${s.description ? `<div class="fr-price-row-desc">${s.description}</div>` : ''}
+        </div>
+        <div class="fr-price-row-value">${s.price_nok != null ? `kr ${Number(s.price_nok).toLocaleString('no-NO')}` : 'Ta kontakt'}</div>
+      </div>
+    `).join('');
+
+    let updatedLabel = '';
+    if (data.updatedAt) {
+      const d = new Date(data.updatedAt);
+      updatedLabel = `<p class="fr-price-updated">Priser gjeldende fra ${NO_MONTHS[d.getMonth()]} ${d.getFullYear()}</p>`;
+    }
+
+    body.innerHTML = `<div class="fr-price-list">${rows}</div>${updatedLabel}`;
   } catch (e) {
-    document.getElementById("aboutBody").textContent = "Klarte ikke å hente innhold akkurat nå.";
+    body.innerHTML = '<p>Klarte ikke å hente priser akkurat nå.</p>';
   }
 }
-loadAbout();
+loadPrices();
 </script>
 </body>
 </html>

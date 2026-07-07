@@ -334,6 +334,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-footer a { color: var(--fr-gold); font-weight: 600; text-decoration: none; }
 .fr-footer-dot { margin: 0 0.5rem; }
 .fr-footer-phone { white-space: nowrap; }
+.fr-footer-version { display: block; margin-top: 0.4rem; font-size: 0.68rem; opacity: 0.35; letter-spacing: 0.02em; }
 
 /* Hero booking steps */
 .fr-hero-steps {
@@ -507,27 +508,21 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   .fr-gallery-img { height: 150px; }
 }
 
-/* Reviews ticker — focus on stars + name, comment revealed on click */
+/* Reviews rotator — shows a small, uniform batch at a time and fades to the next */
 .fr-reviews-section { margin-bottom: 2.5rem; overflow: hidden; }
-.fr-reviews-track-wrap {
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
-  mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
-}
+.fr-reviews-track-wrap { overflow: hidden; }
 .fr-reviews-track {
   display: flex;
+  align-items: flex-start;
+  justify-content: center;
   gap: 0.6rem;
-  width: max-content;
-  animation: fr-ticker 55s linear infinite;
+  flex-wrap: wrap;
+  transition: opacity 0.3s ease;
 }
-.fr-reviews-track:hover { animation-play-state: paused; }
-@keyframes fr-ticker {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
+.fr-reviews-track.fr-fade-out { opacity: 0; }
 .fr-review-card {
   flex: 0 0 auto;
-  width: 130px;
+  width: 160px;
   background: rgba(246, 242, 231, 0.06);
   border: 1px solid var(--fr-line-dark-zone);
   border-radius: 12px;
@@ -561,14 +556,14 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-review-card.fr-review-open {
   z-index: 2;
   position: relative;
-  width: 210px;
+  width: 240px;
 }
 .fr-review-card.fr-review-open .fr-review-preview { display: none; }
-.fr-review-card.fr-review-open .fr-review-full { max-height: 16em; }
+.fr-review-card.fr-review-open .fr-review-full { max-height: none; }
 
 @media (max-width: 576px) {
-  .fr-review-card { width: 115px; }
-  .fr-review-card.fr-review-open { width: 190px; }
+  .fr-review-card { width: 140px; }
+  .fr-review-card.fr-review-open { width: 220px; }
 }
 
 /* Step 2 (slots) living inside the same panel as the calendar */
