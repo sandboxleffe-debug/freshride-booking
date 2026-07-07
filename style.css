@@ -439,7 +439,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
     white-space: nowrap;
   }
   .fr-bnav-icon { display: flex; }
-  .fr-bnav-icon svg { width: 21px; height: 21px; }
+  .fr-bnav-icon svg { width: 24px; height: 24px; }
   .fr-bnav-btn.active { color: var(--fr-gold); background: rgba(232,185,35,0.12); }
 }
 
