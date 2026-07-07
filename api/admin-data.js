@@ -6,6 +6,7 @@
 // (Hobby plan: 12 functions per deployment).
 
 import { getSupabaseAdmin, checkAdminPassword } from "./_lib/supabase.js";
+import { getVisitorSummary } from "./_lib/analytics.js";
 
 /* ---------------- About ---------------- */
 async function handleAbout(req, res, supabase) {
@@ -293,6 +294,18 @@ async function handleAccounting(req, res, supabase) {
   return res.status(200).json({ income, expenses: expenseTotal, net: income - expenseTotal });
 }
 
+/* ---------------- Analytics (GA4) ---------------- */
+async function handleAnalytics(req, res) {
+  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  try {
+    const summary = await getVisitorSummary();
+    return res.status(200).json(summary);
+  } catch (err) {
+    console.error("analytics error:", err);
+    return res.status(500).json({ error: "Klarte ikke å hente besøksstatistikk" });
+  }
+}
+
 export default async function handler(req, res) {
   if (!checkAdminPassword(req)) {
     return res.status(401).json({ error: "Feil passord" });
@@ -308,6 +321,7 @@ export default async function handler(req, res) {
   if (resource === "jobs") return handleJobs(req, res, supabase);
   if (resource === "expenses") return handleExpenses(req, res, supabase);
   if (resource === "accounting") return handleAccounting(req, res, supabase);
+  if (resource === "analytics") return handleAnalytics(req, res);
 
   return res.status(400).json({ error: "Missing or invalid 'resource'" });
 }
