@@ -3,6 +3,7 @@
 // POST { name?, rating, comment } -> { ok: true }  (goes in as unapproved, pending admin review)
 
 import { getSupabaseAdmin } from "./_lib/supabase.js";
+import { sendOwnerEmail } from "./_lib/email.js";
 
 export default async function handler(req, res) {
   const supabase = getSupabaseAdmin();
@@ -36,13 +37,29 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Kommentaren er for lang" });
     }
     try {
+      const cleanName = (name || "").trim().slice(0, 80) || null;
+      const cleanComment = comment.trim().slice(0, 1000);
       const { error } = await supabase.from("freshride_reviews").insert({
-        name: (name || "").trim().slice(0, 80) || null,
+        name: cleanName,
         rating: ratingNum,
-        comment: comment.trim().slice(0, 1000),
+        comment: cleanComment,
         approved: false,
       });
       if (error) throw error;
+
+      try {
+        await sendOwnerEmail({
+          subject: `Ny tilbakemelding venter på godkjenning (${ratingNum}★)`,
+          text:
+            `Ny tilbakemelding mottatt — må godkjennes i admin før den vises på siden.\n\n` +
+            `Vurdering: ${ratingNum}/5\n` +
+            `Navn: ${cleanName || "Anonym"}\n` +
+            `Kommentar: ${cleanComment}\n`,
+        });
+      } catch (emailErr) {
+        console.error("feedback notification email error:", emailErr);
+      }
+
       return res.status(200).json({ ok: true });
     } catch (err) {
       console.error("feedback POST error:", err);

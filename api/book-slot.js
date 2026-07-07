@@ -11,10 +11,10 @@
 // 3. Sends a reminder email to the business owner with the same info.
 
 import { getCalendarClient, CALENDAR_ID, getUsedCodes, generateUniqueCode } from "./_lib/google-calendar.js";
+import { sendOwnerEmail } from "./_lib/email.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const TALKDESK_URL = "https://api.talkdeskapp.eu/flows/8767c122bb494be38cec8453794ee659/interactions";
-const OWNER_EMAIL = "sandboxleffe@gmail.com";
 
 // Estimated duration per service, in minutes. Used to shrink the booked
 // calendar event when the chosen service takes less time than the
@@ -76,37 +76,20 @@ async function sendBookingSms({ phone, name, services, start, code }) {
 }
 
 async function sendOwnerReminderEmail({ name, phone, services, start, end, code }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.error("sendOwnerReminderEmail: RESEND_API_KEY is not set");
-    return false;
-  }
   const { date, time } = formatNorwegian(start);
   const endTime = new Date(end).toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL || "FreshRide <onboarding@resend.dev>",
-      to: [OWNER_EMAIL],
-      subject: `Ny booking: ${name} — ${date} kl. ${time}`,
-      text:
-        `Ny booking mottatt\n\n` +
-        `Kode: ${code}\n` +
-        `Navn: ${name}\n` +
-        `Mobil: ${phone}\n` +
-        `Dato: ${date}\n` +
-        `Tid: ${time} – ${endTime}\n` +
-        `Tjeneste(r): ${services.join(", ")}\n` +
-        `Adresse: ${BUSINESS_ADDRESS}\n`,
-    }),
+  return sendOwnerEmail({
+    subject: `Ny booking: ${name} — ${date} kl. ${time}`,
+    text:
+      `Ny booking mottatt\n\n` +
+      `Kode: ${code}\n` +
+      `Navn: ${name}\n` +
+      `Mobil: ${phone}\n` +
+      `Dato: ${date}\n` +
+      `Tid: ${time} – ${endTime}\n` +
+      `Tjeneste(r): ${services.join(", ")}\n` +
+      `Adresse: ${BUSINESS_ADDRESS}\n`,
   });
-  if (!res.ok) {
-    console.error("sendOwnerReminderEmail failed:", res.status, await res.text().catch(() => ""));
-    return false;
-  }
-  return true;
 }
 
 export default async function handler(req, res) {
