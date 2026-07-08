@@ -377,25 +377,45 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 
 /* Hamburger menu */
 .fr-hamburger {
-  background: transparent;
-  border: 1px solid var(--fr-line-dark-zone);
-  border-radius: 8px;
-  width: 2.4rem;
-  height: 2.4rem;
+  background: var(--fr-gold);
+  border: none;
+  border-radius: 10px;
+  width: 2.75rem;
+  height: 2.75rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.28rem;
+  gap: 0.26rem;
   cursor: pointer;
+  box-shadow: 0 4px 14px -4px rgba(232, 185, 35, 0.6);
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
-.fr-hamburger span { display: block; width: 1.1rem; height: 2px; background: var(--fr-text-dark-zone); border-radius: 2px; }
+.fr-hamburger:hover { background: var(--fr-gold-bright); box-shadow: 0 6px 18px -4px rgba(232, 185, 35, 0.75); }
+.fr-hamburger:active { transform: scale(0.96); }
+.fr-hamburger span { display: block; width: 1.3rem; height: 2.5px; background: var(--fr-black); border-radius: 2px; }
 
-.fr-offcanvas { background: var(--fr-black); color: var(--fr-text-dark-zone); border-left: 1px solid var(--fr-line-dark-zone); width: 280px; }
+.fr-offcanvas { background: var(--fr-black); color: var(--fr-text-dark-zone); border-left: 1px solid var(--fr-line-dark-zone); width: 300px; }
 .fr-offcanvas .btn-close { filter: invert(1); }
 .fr-offcanvas-brand { font-family: "Anton", var(--font-display), sans-serif; font-weight: 400; font-size: 1.2rem; }
-.fr-nav-link { display: block; padding: 0.9rem 0; color: var(--fr-text-dark-zone-soft); text-decoration: none; font-weight: 600; border-bottom: 1px solid var(--fr-line-dark-zone); }
-.fr-nav-link:hover { color: var(--fr-gold); }
+.fr-nav-cta {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  background: var(--fr-gold); color: var(--fr-black); font-weight: 700; font-size: 0.95rem;
+  border-radius: 10px; padding: 0.85rem 1rem; margin-bottom: 1.4rem;
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.fr-nav-cta:hover { background: var(--fr-gold-bright); color: var(--fr-black); }
+.fr-nav-cta:active { transform: scale(0.98); }
+.fr-nav-link {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.95rem 0.6rem; margin: 0 -0.6rem;
+  border-radius: 10px;
+  color: var(--fr-text-dark-zone-soft); text-decoration: none; font-weight: 600;
+  border-bottom: 1px solid var(--fr-line-dark-zone);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.fr-nav-link:hover { color: var(--fr-gold); background: rgba(232, 185, 35, 0.08); }
 .fr-nav-link-admin { color: var(--fr-text-dark-zone-faint); font-weight: 500; font-size: 0.88rem; margin-top: 0.75rem; border-bottom: none; }
 
 /* About page prose */
