@@ -418,6 +418,58 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-nav-link:hover { color: var(--fr-gold); background: rgba(232, 185, 35, 0.08); }
 .fr-nav-link-admin { color: var(--fr-text-dark-zone-faint); font-weight: 500; font-size: 0.88rem; margin-top: 0.75rem; border-bottom: none; }
 
+/* Expandable icon nav rail — thin icon strip on the right, expands on tap */
+.fr-nav-rail {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 1030;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  background: rgba(8, 7, 10, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--fr-line-dark-zone);
+  border-right: none;
+  border-radius: 16px 0 0 16px;
+  padding: 0.55rem 0.45rem;
+  overflow: hidden;
+  width: 3.3rem;
+  transition: width 0.28s ease;
+  box-shadow: -6px 0 24px -10px rgba(0, 0, 0, 0.6);
+}
+.fr-nav-rail.fr-nav-rail-open { width: 13.5rem; }
+.fr-nav-rail-toggle, .fr-nav-rail-item {
+  display: flex; align-items: center; gap: 0.85rem;
+  padding: 0.6rem 0.45rem;
+  border-radius: 10px;
+  color: var(--fr-text-dark-zone-soft);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  border: none; background: none; width: 100%; text-align: left;
+}
+.fr-nav-rail-toggle {
+  color: var(--fr-gold);
+  margin-bottom: 0.2rem;
+  border-bottom: 1px solid var(--fr-line-dark-zone);
+  border-radius: 10px 10px 0 0;
+  padding-bottom: 0.8rem;
+}
+.fr-nav-rail-item:hover { background: rgba(232, 185, 35, 0.1); color: var(--fr-gold); }
+.fr-nav-rail-icon { width: 1.3rem; height: 1.3rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.fr-nav-rail-icon svg { width: 1.2rem; height: 1.2rem; }
+.fr-nav-rail-label { opacity: 0; font-size: 0.85rem; font-weight: 600; transition: opacity 0.15s ease; }
+.fr-nav-rail-open .fr-nav-rail-label { opacity: 1; }
+.fr-nav-rail-item-admin { color: var(--fr-text-dark-zone-faint); font-size: 0.85rem; margin-top: 0.2rem; border-top: 1px solid var(--fr-line-dark-zone); padding-top: 0.8rem; }
+
+@media (max-width: 480px) {
+  .fr-nav-rail.fr-nav-rail-open { width: 12rem; }
+}
+
 /* About page prose */
 .fr-prose { font-size: 1.02rem; line-height: 1.75; color: var(--fr-panel-text-soft); white-space: pre-line; }
 .fr-prose strong { color: var(--fr-panel-text); }

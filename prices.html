@@ -87,26 +87,42 @@
     <a class="navbar-brand fr-brand" href="index.html">
       <span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span>
     </a>
-    <button class="fr-hamburger ms-auto" type="button" data-bs-toggle="offcanvas" data-bs-target="#navMenu" aria-controls="navMenu" aria-label="Meny">
-      <span></span><span></span><span></span>
-    </button>
   </div>
 </nav>
 
-<div class="offcanvas offcanvas-end fr-offcanvas" tabindex="-1" id="navMenu">
-  <div class="offcanvas-header">
-    <span class="fr-offcanvas-brand"><span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span></span>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Lukk"></button>
-  </div>
-  <div class="offcanvas-body">
-    <a href="index.html#step-date" class="fr-nav-cta">📅 Book time nå</a>
-    <a href="index.html" class="fr-nav-link">🏠 Forside</a>
-    <a href="about.html" class="fr-nav-link">ℹ️ Om oss</a>
-    <a href="prices.html" class="fr-nav-link">💰 Priser</a>
-    <a href="feedback.html" class="fr-nav-link">⭐ Gi tilbakemelding</a>
-    <a href="https://willydeals.myspreadshop.no/" target="_blank" rel="noopener" class="fr-nav-link">🛍️ Merchandise</a>
-    <a href="admin.html" class="fr-nav-link fr-nav-link-admin">🔒 Admin</a>
-  </div>
+<!-- Expandable icon nav rail -->
+<div class="fr-nav-rail" id="navRail">
+  <button class="fr-nav-rail-toggle" type="button" onclick="toggleNavRail()" aria-label="Åpne meny" title="Meny">
+    <span class="fr-nav-rail-icon" data-rail-icon="menu"></span>
+  </button>
+  <a href="index.html#step-date" class="fr-nav-rail-item" title="Book time">
+    <span class="fr-nav-rail-icon" data-rail-icon="calendar"></span>
+    <span class="fr-nav-rail-label">Book time</span>
+  </a>
+  <a href="index.html" class="fr-nav-rail-item" title="Forside">
+    <span class="fr-nav-rail-icon" data-rail-icon="home"></span>
+    <span class="fr-nav-rail-label">Forside</span>
+  </a>
+  <a href="about.html" class="fr-nav-rail-item" title="Om oss">
+    <span class="fr-nav-rail-icon" data-rail-icon="info"></span>
+    <span class="fr-nav-rail-label">Om oss</span>
+  </a>
+  <a href="prices.html" class="fr-nav-rail-item" title="Priser">
+    <span class="fr-nav-rail-icon" data-rail-icon="dollarSign"></span>
+    <span class="fr-nav-rail-label">Priser</span>
+  </a>
+  <a href="feedback.html" class="fr-nav-rail-item" title="Gi tilbakemelding">
+    <span class="fr-nav-rail-icon" data-rail-icon="star"></span>
+    <span class="fr-nav-rail-label">Tilbakemelding</span>
+  </a>
+  <a href="https://willydeals.myspreadshop.no/" target="_blank" rel="noopener" class="fr-nav-rail-item" title="Merchandise">
+    <span class="fr-nav-rail-icon" data-rail-icon="bag"></span>
+    <span class="fr-nav-rail-label">Merchandise</span>
+  </a>
+  <a href="admin.html" class="fr-nav-rail-item fr-nav-rail-item-admin" title="Admin">
+    <span class="fr-nav-rail-icon" data-rail-icon="lock"></span>
+    <span class="fr-nav-rail-label">Admin</span>
+  </a>
 </div>
 
 <header class="fr-hero-copy">
@@ -135,6 +151,7 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="nav-rail.js"></script>
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
 
