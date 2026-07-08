@@ -21,18 +21,17 @@ const TALKDESK_URL = "https://api.talkdeskapp.eu/flows/8767c122bb494be38cec84537
 // original "Ledig" slot. If multiple services are chosen, the longest
 // estimate among them is used.
 const SERVICE_DURATIONS_MIN = {
-  "Full pakke": 180,
-  "Kun innvendig": 90,
-  "Kun utvendig": 90,
-  "Premium pakke": 240,
-  "Innvendig med rens av seter": 150,
+  "FreshRide Complete": 180,
+  "FreshRide Interior": 90,
+  "FreshRide Exterior": 90,
+  "FreshRide Premium": 240,
+  "FreshRide Interior+": 150,
 };
 
 function estimatedDurationMinutes(services) {
   const matched = services
-    .map(s => Object.keys(SERVICE_DURATIONS_MIN).find(key => s.startsWith(key)))
-    .filter(Boolean)
-    .map(key => SERVICE_DURATIONS_MIN[key]);
+    .map(s => SERVICE_DURATIONS_MIN[s])
+    .filter(v => v !== undefined);
   if (!matched.length) return null; // unknown service — keep original slot length
   return Math.max(...matched);
 }

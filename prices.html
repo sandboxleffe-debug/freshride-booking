@@ -25,13 +25,58 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-  .fr-price-list { display: flex; flex-direction: column; gap: 1rem; }
-  .fr-price-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--fr-panel-border); }
-  .fr-price-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .fr-price-row-label { font-weight: 700; color: var(--fr-panel-text); font-size: 1.02rem; }
-  .fr-price-row-desc { font-size: 0.85rem; color: var(--fr-panel-text-faint); margin-top: 0.2rem; }
-  .fr-price-row-value { font-weight: 700; color: var(--fr-gold-deep); white-space: nowrap; font-family: var(--font-display); font-size: 1.1rem; flex-shrink: 0; }
-  .fr-price-updated { font-size: 0.85rem; color: var(--fr-panel-text-faint); margin-top: 1.5rem; text-align: center; }
+  .fr-prices-intro { text-align: center; color: var(--fr-text-dark-zone-faint); font-size: 0.9rem; max-width: 32rem; margin: 0 auto 2rem; }
+  .fr-price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.1rem; margin-bottom: 1.5rem; }
+  .fr-price-card {
+    background: var(--fr-panel-bg);
+    border: 1px solid var(--fr-panel-border);
+    border-radius: var(--fr-radius);
+    padding: 1.6rem 1.3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.3rem;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
+  .fr-price-card:hover { border-color: var(--fr-gold); transform: translateY(-3px); }
+  .fr-price-card-icon {
+    width: 46px; height: 46px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--fr-gold-soft);
+    border-radius: 50%;
+    color: var(--fr-gold-deep);
+    margin-bottom: 0.5rem;
+  }
+  .fr-price-card-icon svg { width: 22px; height: 22px; }
+  .fr-price-card-title { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: var(--fr-panel-text); margin: 0; }
+  .fr-price-card-desc { font-size: 0.85rem; color: var(--fr-panel-text-faint); margin: 0.2rem 0 0; line-height: 1.4; }
+  .fr-price-card-value { margin-top: 0.9rem; padding-top: 0.9rem; width: 100%; border-top: 1px solid var(--fr-panel-border); font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; color: var(--fr-gold-deep); }
+  .fr-price-card-value.fr-price-tba { font-size: 0.82rem; font-family: var(--font-body); font-weight: 600; color: var(--fr-panel-text-faint); }
+
+  /* Premium tier — a touch more exclusive: gold-gradient icon, subtle glow border, small badge */
+  .fr-price-card--premium {
+    border: 1px solid var(--fr-gold);
+    box-shadow: 0 0 0 1px var(--fr-gold-soft), 0 10px 28px -10px rgba(232, 185, 35, 0.45);
+    position: relative;
+  }
+  .fr-price-card--premium:hover { transform: translateY(-4px); }
+  .fr-price-card--premium .fr-price-card-icon {
+    background: linear-gradient(135deg, var(--fr-gold-bright), var(--fr-gold-deep));
+    color: var(--fr-black);
+    box-shadow: 0 0 0 3px var(--fr-gold-soft);
+  }
+  .fr-price-card--premium .fr-price-card-value { border-top-color: var(--fr-gold-soft); font-size: 1.4rem; }
+  .fr-price-card--premium-badge {
+    position: absolute; top: -0.6rem; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--fr-gold-bright), var(--fr-gold-deep));
+    color: var(--fr-black);
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 0.25rem 0.7rem; border-radius: 999px;
+    box-shadow: 0 2px 8px -2px rgba(0,0,0,0.4);
+  }
+  .fr-price-updated { font-size: 0.85rem; color: var(--fr-text-dark-zone-faint); text-align: center; margin: 0; }
+  .fr-price-state { text-align: center; color: var(--fr-text-dark-zone-faint); }
 </style>
 </head>
 <body>
@@ -71,11 +116,11 @@
 </header>
 
 <main class="container fr-main">
-  <section class="fr-panel">
-    <div id="pricesBody" class="fr-prose">
-      <div class="spinner-border fr-spinner" role="status"></div>
-    </div>
-  </section>
+  <p class="fr-prices-intro">En oversikt over hva vi tilbyr. Book direkte fra forsiden når du har funnet pakken som passer.</p>
+  <div class="fr-price-grid" id="pricesGrid">
+    <div class="fr-price-state"><div class="spinner-border fr-spinner" role="status"></div></div>
+  </div>
+  <p class="fr-price-updated" id="pricesUpdated"></p>
 </main>
 
 <footer class="fr-footer">
@@ -94,36 +139,53 @@ document.getElementById("year").textContent = new Date().getFullYear();
 
 const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
 
+const PRICE_ICONS = {
+  droplet: '<path d="M12 2.5C10 5.3 6 10.6 6 14.2a6 6 0 0 0 12 0c0-3.6-4-8.9-6-11.7Z"/>',
+  car: '<path fill-rule="evenodd" d="M5.6 5.5A2 2 0 0 1 7.5 4h9a2 2 0 0 1 1.9 1.5L19.8 11H21a2 2 0 0 1 2 2v4a1 1 0 0 1-1 1h-1.1a2.5 2.5 0 0 1-4.9 0H8a2.5 2.5 0 0 1-4.9 0H2a1 1 0 0 1-1-1v-4a2 2 0 0 1 2-2h1.2L5.6 5.5ZM6.2 10h11.6l-1.3-4H7.5l-1.3 4ZM6 16a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm12 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z" clip-rule="evenodd"/>',
+  diamond: '<path d="M7 3h10l5 6-10 13L2 9Z"/><path d="M2 9h20M7 3l5 6 5-6M12 9v13" stroke="rgba(0,0,0,0.28)" stroke-width="0.6" fill="none"/>',
+};
+
+function iconForLabel(label) {
+  const l = (label || "").toLowerCase();
+  if (l.includes("premium")) return PRICE_ICONS.diamond;
+  if (l.includes("exterior") || l.includes("complete")) return PRICE_ICONS.car;
+  return PRICE_ICONS.droplet;
+}
+
 async function loadPrices() {
-  const body = document.getElementById("pricesBody");
+  const grid = document.getElementById("pricesGrid");
   try {
     const res = await fetch("/api/content?type=services");
     const data = await res.json();
     const services = data.services || [];
     if (!services.length) {
-      body.innerHTML = '<p>Ingen priser er registrert ennå.</p>';
+      grid.innerHTML = '<p class="fr-price-state">Ingen priser er registrert ennå.</p>';
       return;
     }
 
-    const rows = services.map(s => `
-      <div class="fr-price-row">
-        <div>
-          <div class="fr-price-row-label">${s.label}</div>
-          ${s.description ? `<div class="fr-price-row-desc">${s.description}</div>` : ''}
+    grid.innerHTML = services.map(s => {
+      const isPremium = (s.label || "").toLowerCase().includes("premium");
+      return `
+      <div class="fr-price-card${isPremium ? ' fr-price-card--premium' : ''}">
+        ${isPremium ? '<span class="fr-price-card--premium-badge">Eksklusiv</span>' : ''}
+        <div class="fr-price-card-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">${iconForLabel(s.label)}</svg>
         </div>
-        <div class="fr-price-row-value">${s.price_nok != null ? `kr ${Number(s.price_nok).toLocaleString('no-NO')}` : 'Ta kontakt'}</div>
+        <h3 class="fr-price-card-title">${s.label}</h3>
+        ${s.description ? `<p class="fr-price-card-desc">${s.description}</p>` : ''}
+        <div class="fr-price-card-value ${s.price_nok == null ? 'fr-price-tba' : ''}">
+          ${s.price_nok != null ? `kr ${Number(s.price_nok).toLocaleString('no-NO')}` : 'Ta kontakt'}
+        </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
-    let updatedLabel = '';
     if (data.updatedAt) {
       const d = new Date(data.updatedAt);
-      updatedLabel = `<p class="fr-price-updated">Priser gjeldende fra ${NO_MONTHS[d.getMonth()]} ${d.getFullYear()}</p>`;
+      document.getElementById("pricesUpdated").textContent = `Priser gjeldende fra ${NO_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
     }
-
-    body.innerHTML = `<div class="fr-price-list">${rows}</div>${updatedLabel}`;
   } catch (e) {
-    body.innerHTML = '<p>Klarte ikke å hente priser akkurat nå.</p>';
+    grid.innerHTML = '<p class="fr-price-state">Klarte ikke å hente priser akkurat nå.</p>';
   }
 }
 loadPrices();
