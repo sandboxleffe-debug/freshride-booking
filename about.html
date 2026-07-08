@@ -33,16 +33,12 @@
     <a class="navbar-brand fr-brand" href="index.html">
       <span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span>
     </a>
-  </div>
-</nav>
-
-<!-- Expandable icon nav rail — sits in normal flow right under the header -->
-<div class="fr-nav-rail-anchor">
-<div class="fr-nav-rail" id="navRail">
-  <button class="fr-nav-rail-toggle" type="button" onclick="toggleNavRail()" aria-label="Åpne meny" title="Meny">
-    <span class="fr-nav-rail-icon" data-rail-icon="menu"></span>
-  </button>
-  <a href="index.html#step-date" class="fr-nav-rail-item" title="Book time">
+    <div class="fr-nav-rail-wrap ms-auto">
+      <button class="fr-hamburger" type="button" onclick="toggleNavRail()" aria-label="Åpne meny" title="Meny">
+        <span class="fr-nav-rail-icon" data-rail-icon="menu"></span>
+      </button>
+      <div class="fr-nav-rail" id="navRail">
+        <a href="index.html#step-date" class="fr-nav-rail-item" title="Book time">
     <span class="fr-nav-rail-icon" data-rail-icon="calendar"></span>
     <span class="fr-nav-rail-label">Book time</span>
   </a>
@@ -70,8 +66,10 @@
     <span class="fr-nav-rail-icon" data-rail-icon="lock"></span>
     <span class="fr-nav-rail-label">Admin</span>
   </a>
-</div>
-</div>
+      </div>
+    </div>
+  </div>
+</nav>
 
 <header class="fr-hero-copy">
   <div class="container">

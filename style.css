@@ -378,22 +378,22 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 /* Hamburger menu */
 .fr-hamburger {
   background: var(--fr-gold);
+  color: var(--fr-black);
   border: none;
   border-radius: 10px;
   width: 2.75rem;
   height: 2.75rem;
+  flex-shrink: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.26rem;
   cursor: pointer;
   box-shadow: 0 4px 14px -4px rgba(232, 185, 35, 0.6);
   transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 .fr-hamburger:hover { background: var(--fr-gold-bright); box-shadow: 0 6px 18px -4px rgba(232, 185, 35, 0.75); }
 .fr-hamburger:active { transform: scale(0.96); }
-.fr-hamburger span { display: block; width: 1.3rem; height: 2.5px; background: var(--fr-black); border-radius: 2px; }
+.fr-hamburger .fr-nav-rail-icon svg { width: 1.35rem; height: 1.35rem; }
 
 .fr-offcanvas { background: var(--fr-black); color: var(--fr-text-dark-zone); border-left: 1px solid var(--fr-line-dark-zone); width: 300px; }
 .fr-offcanvas .btn-close { filter: invert(1); }
@@ -418,15 +418,14 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-nav-link:hover { color: var(--fr-gold); background: rgba(232, 185, 35, 0.08); }
 .fr-nav-link-admin { color: var(--fr-text-dark-zone-faint); font-weight: 500; font-size: 0.88rem; margin-top: 0.75rem; border-bottom: none; }
 
-/* Expandable icon nav — a single compact button right under the header that drops
-   open into a labeled menu. Lives in normal page flow (not fixed), and collapsed
-   it's just one small button, so it never overlaps page content. */
-.fr-nav-rail-anchor { position: relative; height: 0; }
+/* Expandable icon nav dropdown — anchored to the gold .fr-hamburger button in the
+   navbar itself (same row as the logo), so it can never drift over the brand. */
+.fr-nav-rail-wrap { position: relative; }
 .fr-nav-rail {
   position: absolute;
-  top: 0.7rem;
-  right: 1rem;
-  z-index: 30;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  z-index: 1030;
   display: flex;
   flex-direction: column;
   background: rgba(8, 7, 10, 0.95);
@@ -434,14 +433,14 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--fr-line-dark-zone);
   border-radius: 14px;
-  width: 2.9rem;
-  max-height: 2.9rem;
+  width: 0;
+  max-height: 0;
   overflow: hidden;
   transition: width 0.25s ease, max-height 0.25s ease;
-  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.6);
 }
 .fr-nav-rail.fr-nav-rail-open { width: 13.5rem; max-height: 30rem; }
-.fr-nav-rail-toggle, .fr-nav-rail-item {
+.fr-nav-rail-item {
   display: flex; align-items: center; gap: 0.85rem;
   padding: 0.65rem 0.6rem;
   color: var(--fr-text-dark-zone-soft);
@@ -449,10 +448,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   white-space: nowrap;
   cursor: pointer;
   border: none; background: none; width: 100%; text-align: left; flex-shrink: 0;
-}
-.fr-nav-rail-toggle {
-  color: var(--fr-gold);
-  border-bottom: 1px solid var(--fr-line-dark-zone);
+  box-sizing: border-box;
 }
 .fr-nav-rail-item:hover { background: rgba(232, 185, 35, 0.1); color: var(--fr-gold); }
 .fr-nav-rail-icon { width: 1.3rem; height: 1.3rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
