@@ -19,7 +19,10 @@ function toggleNavRail() {
 }
 document.addEventListener('click', (e) => {
   const rail = document.getElementById('navRail');
-  if (rail.classList.contains('fr-nav-rail-open') && !rail.contains(e.target)) {
+  // Ignore clicks anywhere inside the wrap (rail itself + the hamburger button
+  // that toggles it) — otherwise the same click that opens the rail immediately
+  // bubbles here and closes it again, since the button isn't a descendant of #navRail.
+  if (rail.classList.contains('fr-nav-rail-open') && !e.target.closest('.fr-nav-rail-wrap')) {
     rail.classList.remove('fr-nav-rail-open');
   }
 });
