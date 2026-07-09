@@ -12,8 +12,8 @@ async function getAccessToken() {
     key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
     scopes: ["https://www.googleapis.com/auth/analytics.readonly"],
   });
-  const { token } = await auth.authorize();
-  return token;
+  const { access_token } = await auth.authorize();
+  return access_token;
 }
 
 async function runReport(body) {
