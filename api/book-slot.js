@@ -14,6 +14,7 @@ import { getCalendarClient, CALENDAR_ID, getUsedCodes, generateUniqueCode } from
 import { sendOwnerEmail } from "./_lib/email.js";
 import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
+import { getTalkdeskAccessToken } from "./_lib/talkdesk-auth.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const TALKDESK_URL = "https://api.talkdeskapp.eu/flows/8767c122bb494be38cec8453794ee659/interactions";
@@ -81,9 +82,17 @@ async function logNotification({ channel, recipient, code, name, status }) {
 }
 
 async function sendTalkdeskSms({ toPhone, name, time, date, services, message }) {
-  const token = process.env.TALKDESK_ACCESS_TOKEN;
+  let token;
+  try {
+    token = await getTalkdeskAccessToken();
+  } catch (err) {
+    // Falls back to the old manually-pasted token until TALKDESK_CLIENT_ID/
+    // TALKDESK_CLIENT_SECRET are configured in Vercel — see talkdesk-auth.js.
+    console.error("sendTalkdeskSms: OAuth token fetch failed, falling back to static token:", err.message);
+    token = process.env.TALKDESK_ACCESS_TOKEN;
+  }
   if (!token) {
-    console.error("sendTalkdeskSms: TALKDESK_ACCESS_TOKEN is not set");
+    console.error("sendTalkdeskSms: no Talkdesk access token available");
     return false;
   }
   const res = await fetch(TALKDESK_URL, {
