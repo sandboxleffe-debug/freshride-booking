@@ -92,7 +92,7 @@
     <h1 class="fr-hero-title">La proffene <span class="fr-highlight">gjøre jobben</span></h1>
     <p class="fr-hero-text">Slik booker du:</p>
     <div class="fr-steps-grid">
-      <div class="fr-step-card fr-step-card-1">
+      <div class="fr-step-card">
         <span class="fr-step-num">1</span>
         <span class="fr-step-label">Velg en dato</span>
       </div>
@@ -509,7 +509,9 @@ function render() {
     `;
     btn.onclick = () => {
       selected = e;
-      document.getElementById("modalSlotLabel").textContent = `${start} – ${end}`;
+      const weekday = NO_WEEKDAYS[new Date(e.start).getDay()];
+      const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+      document.getElementById("modalSlotLabel").textContent = `${weekdayCap} kl. ${start} – ${end}`;
       document.getElementById("formError").classList.add('d-none');
       document.getElementById("serviceError").classList.add('d-none');
       document.querySelectorAll(".fr-service-checkbox").forEach(cb => {
