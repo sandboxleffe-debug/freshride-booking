@@ -413,6 +413,18 @@
       </div>
 
       <div class="fr-panel">
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="phone"></span> SMS-varsel til deg selv</h2></div>
+        <p class="fr-hint">Send en ekstra SMS til deg selv (i tillegg til kunden) hver gang noen booker.</p>
+        <div class="form-check form-switch fr-hero-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="ownerSmsToggle" onchange="toggleOwnerSms(this.checked)">
+          <label class="form-check-label" for="ownerSmsToggle" id="ownerSmsToggleLabel">Av</label>
+        </div>
+        <label class="fr-label mt-2">Mobilnummer (flere kan skilles med komma)</label>
+        <input id="ownerSmsPhoneInput" class="form-control fr-input mb-2" placeholder="92133900, 91234567" onchange="saveOwnerSmsPhone(this.value)" />
+        <div id="ownerSmsMsg" class="fr-save-msg"></div>
+      </div>
+
+      <div class="fr-panel">
         <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="info"></span> Om oss-innhold</h2></div>
         <label class="fr-label">Overskrift</label>
         <input id="aboutHeadingInput" class="form-control fr-input mb-3" />
@@ -1773,6 +1785,9 @@ async function loadAboutAdmin() {
     document.getElementById('aboutBodyInput').value = data.body || '';
     document.getElementById('heroVideoToggle').checked = !!data.use_hero_video;
     document.getElementById('heroVideoToggleLabel').textContent = data.use_hero_video ? 'Video' : 'Bilde';
+    document.getElementById('ownerSmsToggle').checked = !!data.owner_sms_notify;
+    document.getElementById('ownerSmsToggleLabel').textContent = data.owner_sms_notify ? 'På' : 'Av';
+    document.getElementById('ownerSmsPhoneInput').value = data.owner_sms_phone || '';
   } catch (e) {}
 }
 
@@ -1785,6 +1800,41 @@ async function toggleHeroVideo(checked) {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ use_hero_video: checked })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    if (!res.ok) throw new Error();
+    msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+  }
+}
+
+async function toggleOwnerSms(checked) {
+  document.getElementById('ownerSmsToggleLabel').textContent = checked ? 'På' : 'Av';
+  const msg = document.getElementById('ownerSmsMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  try {
+    const res = await fetch('/api/admin-data?resource=about', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ owner_sms_notify: checked })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    if (!res.ok) throw new Error();
+    msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+  }
+}
+
+async function saveOwnerSmsPhone(value) {
+  const msg = document.getElementById('ownerSmsMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  try {
+    const res = await fetch('/api/admin-data?resource=about', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ owner_sms_phone: value.trim() })
     });
     if (res.status === 401) return handleAuthExpired();
     if (!res.ok) throw new Error();

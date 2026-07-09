@@ -12,6 +12,7 @@
 
 import { getCalendarClient, CALENDAR_ID, getUsedCodes, generateUniqueCode } from "./_lib/google-calendar.js";
 import { sendOwnerEmail } from "./_lib/email.js";
+import { getSupabaseAdmin } from "./_lib/supabase.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const TALKDESK_URL = "https://api.talkdeskapp.eu/flows/8767c122bb494be38cec8453794ee659/interactions";
@@ -67,29 +68,60 @@ function buildBookingText({ name, phone, services, date, time, endTime, code }) 
   );
 }
 
-async function sendBookingSms({ phone, name, services, start, end, code }) {
+async function sendTalkdeskSms({ toPhone, name, time, date, services, message }) {
   const token = process.env.TALKDESK_ACCESS_TOKEN;
   if (!token) {
-    console.error("sendBookingSms: TALKDESK_ACCESS_TOKEN is not set");
+    console.error("sendTalkdeskSms: TALKDESK_ACCESS_TOKEN is not set");
     return false;
   }
-  const { date, time } = formatNorwegian(start);
-  const endTime = new Date(end).toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
-  const message = buildBookingText({ name, phone, services, date, time, endTime, code });
   const res = await fetch(TALKDESK_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      des_number: toE164Norway(phone), name, time, date,
+      des_number: toE164Norway(toPhone), name, time, date,
       services: services.join(", "), address: BUSINESS_ADDRESS,
       message,
     }),
   });
   if (!res.ok) {
-    console.error("sendBookingSms failed:", res.status, await res.text().catch(() => ""));
+    console.error("sendTalkdeskSms failed:", res.status, await res.text().catch(() => ""));
     return false;
   }
   return true;
+}
+
+async function sendBookingSms({ phone, name, services, start, end, code }) {
+  const { date, time } = formatNorwegian(start);
+  const endTime = new Date(end).toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+  const message = buildBookingText({ name, phone, services, date, time, endTime, code });
+  return sendTalkdeskSms({ toPhone: phone, name, time, date, services, message });
+}
+
+// Extra SMS to the business owner's own number(s), if enabled in admin
+// (Om oss-fanen). Separate from the owner email — some prefer SMS.
+async function sendOwnerSms({ name, phone, services, start, end, code }) {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("freshride_about")
+      .select("owner_sms_notify, owner_sms_phone")
+      .eq("id", 1)
+      .single();
+    if (error || !data?.owner_sms_notify || !data?.owner_sms_phone) return false;
+
+    const { date, time } = formatNorwegian(start);
+    const endTime = new Date(end).toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+    const message = buildBookingText({ name, phone, services, date, time, endTime, code });
+
+    const numbers = data.owner_sms_phone.split(",").map(n => n.trim()).filter(Boolean);
+    const results = await Promise.all(
+      numbers.map(toPhone => sendTalkdeskSms({ toPhone, name, time, date, services, message }))
+    );
+    return results.some(Boolean);
+  } catch (err) {
+    console.error("sendOwnerSms error:", err);
+    return false;
+  }
 }
 
 async function sendOwnerReminderEmail({ name, phone, services, start, end, code }) {
@@ -155,6 +187,12 @@ export default async function handler(req, res) {
     emailSent = await sendOwnerReminderEmail({ name, phone, services, start, end: finalEnd, code });
   } catch (err) {
     console.error("book-slot email error:", err);
+  }
+
+  try {
+    await sendOwnerSms({ name, phone, services, start, end: finalEnd, code });
+  } catch (err) {
+    console.error("book-slot owner sms error:", err);
   }
 
   return res.status(200).json({ ok: true, smsSent, emailSent, code });

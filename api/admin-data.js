@@ -11,7 +11,7 @@ import { getVisitorSummary } from "./_lib/analytics.js";
 /* ---------------- About ---------------- */
 async function handleAbout(req, res, supabase) {
   if (req.method === "GET") {
-    const { data, error } = await supabase.from("freshride_about").select("heading, body, use_hero_video").eq("id", 1).single();
+    const { data, error } = await supabase.from("freshride_about").select("heading, body, use_hero_video, owner_sms_notify, owner_sms_phone").eq("id", 1).single();
     if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å hente innhold" }); }
     return res.status(200).json(data);
   }
@@ -24,10 +24,13 @@ async function handleAbout(req, res, supabase) {
     return res.status(200).json({ ok: true });
   }
   if (req.method === "PATCH") {
-    const { use_hero_video } = req.body || {};
-    if (typeof use_hero_video !== "boolean") return res.status(400).json({ error: "Missing use_hero_video" });
-    const { error } = await supabase.from("freshride_about")
-      .update({ use_hero_video, updated_at: new Date().toISOString() }).eq("id", 1);
+    const { use_hero_video, owner_sms_notify, owner_sms_phone } = req.body || {};
+    const updates = { updated_at: new Date().toISOString() };
+    if (typeof use_hero_video === "boolean") updates.use_hero_video = use_hero_video;
+    if (typeof owner_sms_notify === "boolean") updates.owner_sms_notify = owner_sms_notify;
+    if (typeof owner_sms_phone === "string") updates.owner_sms_phone = owner_sms_phone.trim() || null;
+    if (Object.keys(updates).length === 1) return res.status(400).json({ error: "Nothing to update" });
+    const { error } = await supabase.from("freshride_about").update(updates).eq("id", 1);
     if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å lagre" }); }
     return res.status(200).json({ ok: true });
   }
