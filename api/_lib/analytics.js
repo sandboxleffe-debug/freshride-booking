@@ -36,15 +36,16 @@ async function runReport(body) {
 }
 
 // Today's active users + page views, plus a same-metric comparison for
-// yesterday so the admin card can show a simple up/down trend. The
-// "dateRange" dimension + named ranges disambiguate which row is which.
+// yesterday so the admin card can show a simple up/down trend. Naming each
+// dateRange makes GA4 auto-populate a "dateRange" pseudo-dimension in the
+// response (dimensionValues[0]) with that name — it must not be requested
+// in `dimensions` itself, GA4 rejects that as an invalid field.
 export async function getVisitorSummary() {
   const data = await runReport({
     dateRanges: [
       { startDate: "today", endDate: "today", name: "today" },
       { startDate: "yesterday", endDate: "yesterday", name: "yesterday" },
     ],
-    dimensions: [{ name: "dateRange" }],
     metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }],
   });
 
