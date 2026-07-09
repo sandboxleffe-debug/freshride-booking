@@ -5,6 +5,7 @@
 
 import { getCalendarClient, CALENDAR_ID } from "./_lib/google-calendar.js";
 import { checkAdminPassword } from "./_lib/supabase.js";
+import { getOsloParts, osloWallTimeToUtc } from "./_lib/timezone.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -19,8 +20,9 @@ export default async function handler(req, res) {
   try {
     const calendar = getCalendarClient();
 
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = getOsloParts(new Date());
+    const pad = n => String(n).padStart(2, "0");
+    const start = osloWallTimeToUtc(`${today.year}-${pad(today.month)}-${pad(today.day)}`, "00:00");
     const end = new Date(start);
     end.setDate(end.getDate() + daysAhead);
 

@@ -17,6 +17,7 @@
 
 import { getCalendarClient, CALENDAR_ID } from "./_lib/google-calendar.js";
 import { checkAdminPassword } from "./_lib/supabase.js";
+import { osloWallTimeToUtc } from "./_lib/timezone.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 
@@ -36,7 +37,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Missing date, startTime, or durationMinutes" });
       }
       try {
-        const start = new Date(`${date}T${startTime}:00`);
+        const start = osloWallTimeToUtc(date, startTime);
         const end = new Date(start.getTime() + Number(durationMinutes) * 60 * 1000);
 
         const { data: existing } = await calendar.events.list({
@@ -109,7 +110,7 @@ export default async function handler(req, res) {
       }
 
       if (date && startTime && durationMinutes) {
-        const startDt = new Date(`${date}T${startTime}:00`);
+        const startDt = osloWallTimeToUtc(date, startTime);
         const endDt = new Date(startDt.getTime() + Number(durationMinutes) * 60 * 1000);
         requestBody.start = { dateTime: startDt.toISOString(), timeZone: "Europe/Oslo" };
         requestBody.end = { dateTime: endDt.toISOString(), timeZone: "Europe/Oslo" };

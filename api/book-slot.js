@@ -15,6 +15,7 @@ import { sendOwnerEmail } from "./_lib/email.js";
 import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 import { getTalkdeskAccessToken } from "./_lib/talkdesk-auth.js";
+import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const TALKDESK_URL = "https://api.talkdeskapp.eu/flows/8767c122bb494be38cec8453794ee659/interactions";
@@ -49,9 +50,9 @@ const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august
 
 function formatNorwegian(dateTimeStr) {
   if (!dateTimeStr) return { date: "", time: "" };
-  const d = new Date(dateTimeStr);
-  const date = `${d.getDate()} ${NO_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-  const time = d.toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+  const p = getOsloParts(dateTimeStr);
+  const date = `${p.day} ${NO_MONTHS[p.month - 1]} ${p.year}`;
+  const time = `${p.hour}:${p.minute}`;
   return { date, time };
 }
 
@@ -113,7 +114,7 @@ async function sendTalkdeskSms({ toPhone, name, time, date, services, message })
 
 async function sendBookingSms({ phone, name, services, start, end, code }) {
   const { date, time } = formatNorwegian(start);
-  const endTime = new Date(end).toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+  const endTime = formatOsloTime(end);
   const message = buildBookingText({ name, phone, services, date, time, endTime, code });
   return sendTalkdeskSms({ toPhone: phone, name, time, date, services, message });
 }
@@ -131,7 +132,7 @@ async function sendOwnerSms({ name, phone, services, start, end, code }) {
     if (error || !data?.owner_sms_notify || !data?.owner_sms_phone) return false;
 
     const { date, time } = formatNorwegian(start);
-    const endTime = new Date(end).toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+    const endTime = formatOsloTime(end);
     const message = buildBookingText({ name, phone, services, date, time, endTime, code });
 
     const numbers = data.owner_sms_phone.split(",").map(n => n.trim()).filter(Boolean);
@@ -151,7 +152,7 @@ async function sendOwnerSms({ name, phone, services, start, end, code }) {
 
 async function sendOwnerReminderEmail({ name, phone, services, start, end, code }) {
   const { date, time } = formatNorwegian(start);
-  const endTime = new Date(end).toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+  const endTime = formatOsloTime(end);
   return sendOwnerEmail({
     subject: `Ny booking: ${name} — ${date} kl. ${time}`,
     text: buildBookingText({ name, phone, services, date, time, endTime, code }),

@@ -8,14 +8,15 @@
 // function count limit (Hobby plan: 12 functions per deployment).
 
 import { getCalendarClient, CALENDAR_ID } from "./_lib/google-calendar.js";
+import { osloWallTimeToUtc } from "./_lib/timezone.js";
 
 async function handleDay(req, res, calendar) {
   const { date } = req.query;
   if (!date) return res.status(400).json({ error: "Missing 'date' query param" });
 
   try {
-    const timeMin = new Date(`${date}T00:00:00`).toISOString();
-    const timeMax = new Date(`${date}T23:59:59`).toISOString();
+    const timeMin = osloWallTimeToUtc(date, "00:00").toISOString();
+    const timeMax = osloWallTimeToUtc(date, "23:59:59").toISOString();
 
     const { data } = await calendar.events.list({
       calendarId: CALENDAR_ID,
@@ -41,8 +42,11 @@ async function handleMonth(req, res, calendar) {
   if (!year || !month) return res.status(400).json({ error: "Missing 'year' or 'month' query param" });
 
   try {
-    const start = new Date(Number(year), Number(month) - 1, 1);
-    const end = new Date(Number(year), Number(month), 1);
+    const pad = n => String(n).padStart(2, "0");
+    const nextMonth = Number(month) === 12 ? 1 : Number(month) + 1;
+    const nextYear = Number(month) === 12 ? Number(year) + 1 : Number(year);
+    const start = osloWallTimeToUtc(`${year}-${pad(month)}-01`, "00:00");
+    const end = osloWallTimeToUtc(`${nextYear}-${pad(nextMonth)}-01`, "00:00");
 
     const { data } = await calendar.events.list({
       calendarId: CALENDAR_ID,
