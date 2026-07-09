@@ -301,7 +301,7 @@ async function handleNotifications(req, res, supabase) {
     .from("freshride_notifications")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(150);
   if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å hente varslingslogg" }); }
   return res.status(200).json({ notifications: data });
 }
