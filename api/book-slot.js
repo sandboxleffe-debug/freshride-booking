@@ -52,19 +52,37 @@ function formatNorwegian(dateTimeStr) {
   return { date, time };
 }
 
-async function sendBookingSms({ phone, name, services, start, code }) {
+// Shared plain-text body used for both the SMS and the owner email, so the
+// two notifications always read identically.
+function buildBookingText({ name, phone, services, date, time, endTime, code }) {
+  return (
+    `Ny booking mottatt\n\n` +
+    `Kode: ${code}\n` +
+    `Navn: ${name}\n` +
+    `Mobil: ${phone}\n` +
+    `Dato: ${date}\n` +
+    `Tid: ${time} – ${endTime}\n` +
+    `Tjeneste(r): ${services.join(", ")}\n` +
+    `Adresse: ${BUSINESS_ADDRESS}\n`
+  );
+}
+
+async function sendBookingSms({ phone, name, services, start, end, code }) {
   const token = process.env.TALKDESK_ACCESS_TOKEN;
   if (!token) {
     console.error("sendBookingSms: TALKDESK_ACCESS_TOKEN is not set");
     return false;
   }
   const { date, time } = formatNorwegian(start);
+  const endTime = new Date(end).toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+  const message = buildBookingText({ name, phone, services, date, time, endTime, code });
   const res = await fetch(TALKDESK_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      des_number: toE164Norway(phone), name, time,
-      services: services.join(", "), address: BUSINESS_ADDRESS, date, code,
+      des_number: toE164Norway(phone), name, time, date, code,
+      services: services.join(", "), address: BUSINESS_ADDRESS,
+      message,
     }),
   });
   if (!res.ok) {
@@ -79,15 +97,7 @@ async function sendOwnerReminderEmail({ name, phone, services, start, end, code 
   const endTime = new Date(end).toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
   return sendOwnerEmail({
     subject: `Ny booking: ${name} — ${date} kl. ${time}`,
-    text:
-      `Ny booking mottatt\n\n` +
-      `Kode: ${code}\n` +
-      `Navn: ${name}\n` +
-      `Mobil: ${phone}\n` +
-      `Dato: ${date}\n` +
-      `Tid: ${time} – ${endTime}\n` +
-      `Tjeneste(r): ${services.join(", ")}\n` +
-      `Adresse: ${BUSINESS_ADDRESS}\n`,
+    text: buildBookingText({ name, phone, services, date, time, endTime, code }),
   });
 }
 
@@ -135,7 +145,7 @@ export default async function handler(req, res) {
 
   let smsSent = false;
   try {
-    smsSent = await sendBookingSms({ phone, name, services, start, code });
+    smsSent = await sendBookingSms({ phone, name, services, start, end: finalEnd, code });
   } catch (err) {
     console.error("book-slot sms error:", err);
   }
