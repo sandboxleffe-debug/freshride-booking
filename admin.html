@@ -123,11 +123,10 @@
       <button class="fr-tab-btn active" data-tab="overview" onclick="showTab('overview')"><span class="fr-icon" data-fr-icon="calendar"></span> Oversikt</button>
       <button class="fr-tab-btn" data-tab="create" onclick="showTab('create')"><span class="fr-icon" data-fr-icon="plusCircle"></span> Opprett tid</button>
       <button class="fr-tab-btn" data-tab="services" onclick="showTab('services')"><span class="fr-icon" data-fr-icon="droplet"></span> Tjenester</button>
+      <button class="fr-tab-btn" data-tab="about" onclick="showTab('about')"><span class="fr-icon" data-fr-icon="sliders"></span> Innstillinger</button>
       <button class="fr-tab-btn" data-tab="reviews" onclick="showTab('reviews')"><span class="fr-icon" data-fr-icon="star"></span> Anmeldelser</button>
-      <button class="fr-tab-btn" data-tab="promo" onclick="showTab('promo')"><span class="fr-icon" data-fr-icon="gift"></span> Kampanje</button>
       <button class="fr-tab-btn" data-tab="accounting" onclick="showTab('accounting')"><span class="fr-icon" data-fr-icon="wrench"></span> Drift</button>
       <button class="fr-tab-btn" data-tab="customers" onclick="showTab('customers')"><span class="fr-icon" data-fr-icon="users"></span> Kunderegister</button>
-      <button class="fr-tab-btn" data-tab="about" onclick="showTab('about')"><span class="fr-icon" data-fr-icon="sliders"></span> Innstillinger</button>
     </div>
 
     <!-- Mobile-only bottom icon nav -->
@@ -144,13 +143,13 @@
         <span class="fr-bnav-icon" data-fr-icon="droplet"></span>
         <span class="fr-bnav-label">Tjenester</span>
       </button>
+      <button class="fr-bnav-btn fr-bnav-btn-main" data-tab="about" onclick="showTab('about')">
+        <span class="fr-bnav-icon" data-fr-icon="sliders"></span>
+        <span class="fr-bnav-label">Innst.</span>
+      </button>
       <button class="fr-bnav-btn" data-tab="reviews" onclick="showTab('reviews')">
         <span class="fr-bnav-icon" data-fr-icon="star"></span>
         <span class="fr-bnav-label">Anmeld.</span>
-      </button>
-      <button class="fr-bnav-btn" data-tab="promo" onclick="showTab('promo')">
-        <span class="fr-bnav-icon" data-fr-icon="gift"></span>
-        <span class="fr-bnav-label">Kampanje</span>
       </button>
       <button class="fr-bnav-btn" data-tab="accounting" onclick="showTab('accounting')">
         <span class="fr-bnav-icon" data-fr-icon="wrench"></span>
@@ -159,10 +158,6 @@
       <button class="fr-bnav-btn" data-tab="customers" onclick="showTab('customers')">
         <span class="fr-bnav-icon" data-fr-icon="users"></span>
         <span class="fr-bnav-label">Kunder</span>
-      </button>
-      <button class="fr-bnav-btn" data-tab="about" onclick="showTab('about')">
-        <span class="fr-bnav-icon" data-fr-icon="sliders"></span>
-        <span class="fr-bnav-label">Innst.</span>
       </button>
     </nav>
 
@@ -230,40 +225,6 @@
     </div>
 
     <!-- Tab: Kampanje -->
-    <div id="tab-promo" class="fr-tab-panel d-none">
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="gift"></span> Ny kampanje</h2></div>
-        <div class="fr-form-row">
-          <label class="fr-label">Tittel</label>
-          <input id="promoTitle" class="form-control fr-input" placeholder="Sommersalg" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label">Rabattmerke (vises i banneret)</label>
-          <input id="promoDiscountLabel" class="form-control fr-input" placeholder="10%" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label">Beskrivelse</label>
-          <input id="promoDescription" class="form-control fr-input" placeholder="10% på alle bookinger i juli" />
-        </div>
-        <div class="fr-inline-fields fr-form-row">
-          <div>
-            <label class="fr-label">Fra dato</label>
-            <input type="date" id="promoStart" class="form-control fr-input" />
-          </div>
-          <div>
-            <label class="fr-label">Til dato</label>
-            <input type="date" id="promoEnd" class="form-control fr-input" />
-          </div>
-        </div>
-        <button class="btn fr-btn-primary w-100" onclick="createPromo()"><span class="fr-icon" data-fr-icon="checkCircle"></span> Opprett kampanje</button>
-        <div id="promoMsg" class="fr-save-msg"></div>
-      </div>
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2>Alle kampanjer</h2></div>
-        <div id="promoList"></div>
-      </div>
-    </div>
-
     <!-- Tab: Regnskap -->
     <div id="tab-accounting" class="fr-tab-panel d-none">
       <div class="fr-panel">
@@ -423,6 +384,38 @@
         <label class="fr-label mt-2">Mobilnummer (flere kan skilles med komma)</label>
         <input id="ownerSmsPhoneInput" class="form-control fr-input mb-2" placeholder="92133900, 91234567" onchange="saveOwnerSmsPhone(this.value)" />
         <div id="ownerSmsMsg" class="fr-save-msg"></div>
+      </div>
+
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="gift"></span> Ny kampanje</h2></div>
+        <div class="fr-form-row">
+          <label class="fr-label">Tittel</label>
+          <input id="promoTitle" class="form-control fr-input" placeholder="Sommersalg" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Rabattmerke (vises i banneret)</label>
+          <input id="promoDiscountLabel" class="form-control fr-input" placeholder="10%" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Beskrivelse</label>
+          <input id="promoDescription" class="form-control fr-input" placeholder="10% på alle bookinger i juli" />
+        </div>
+        <div class="fr-inline-fields fr-form-row">
+          <div>
+            <label class="fr-label">Fra dato</label>
+            <input type="date" id="promoStart" class="form-control fr-input" />
+          </div>
+          <div>
+            <label class="fr-label">Til dato</label>
+            <input type="date" id="promoEnd" class="form-control fr-input" />
+          </div>
+        </div>
+        <button class="btn fr-btn-primary w-100" onclick="createPromo()"><span class="fr-icon" data-fr-icon="checkCircle"></span> Opprett kampanje</button>
+        <div id="promoMsg" class="fr-save-msg"></div>
+      </div>
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>Alle kampanjer</h2></div>
+        <div id="promoList"></div>
       </div>
 
       <div class="fr-panel">
@@ -754,7 +747,10 @@ function fmtTime(iso) {
 }
 function fmtDateShort(iso) {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString('no-NO', { day: '2-digit', month: '2-digit' });
+  // Built manually — Intl's 'no-NO' locale doesn't zero-pad day/month with '2-digit'.
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
 }
 
 function renderList(days) {
@@ -1819,7 +1815,7 @@ async function loadNotifications() {
       return;
     }
     box.innerHTML = items.map(n => {
-      const when = new Date(n.created_at).toLocaleString('no-NO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const when = `${fmtDateShort(n.created_at)} ${fmtTime(n.created_at)}`;
       const label = NOTIF_CHANNEL_LABELS[n.channel] || n.channel;
       const ok = n.status === 'ok';
       return `
