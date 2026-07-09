@@ -13,6 +13,7 @@
 import { getCalendarClient, CALENDAR_ID, getUsedCodes, generateUniqueCode } from "./_lib/google-calendar.js";
 import { sendOwnerEmail } from "./_lib/email.js";
 import { getSupabaseAdmin } from "./_lib/supabase.js";
+import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const TALKDESK_URL = "https://api.talkdeskapp.eu/flows/8767c122bb494be38cec8453794ee659/interactions";
@@ -68,6 +69,17 @@ function buildBookingText({ name, phone, services, date, time, endTime, code }) 
   );
 }
 
+async function logNotification({ channel, recipient, code, name, status }) {
+  try {
+    const supabase = getSupabaseAdmin();
+    await supabase.from("freshride_notifications").insert({
+      channel, recipient, booking_code: code, customer_name: name, status,
+    });
+  } catch (err) {
+    console.error("logNotification error:", err);
+  }
+}
+
 async function sendTalkdeskSms({ toPhone, name, time, date, services, message }) {
   const token = process.env.TALKDESK_ACCESS_TOKEN;
   if (!token) {
@@ -115,7 +127,11 @@ async function sendOwnerSms({ name, phone, services, start, end, code }) {
 
     const numbers = data.owner_sms_phone.split(",").map(n => n.trim()).filter(Boolean);
     const results = await Promise.all(
-      numbers.map(toPhone => sendTalkdeskSms({ toPhone, name, time, date, services, message }))
+      numbers.map(async toPhone => {
+        const ok = await sendTalkdeskSms({ toPhone, name, time, date, services, message });
+        await logNotification({ channel: "sms_eier", recipient: toPhone, code, name, status: ok ? "ok" : "failed" });
+        return ok;
+      })
     );
     return results.some(Boolean);
   } catch (err) {
@@ -141,6 +157,12 @@ export default async function handler(req, res) {
   const { eventId, name, phone, services, start, end } = req.body || {};
   if (!eventId || !name || !phone || !Array.isArray(services) || services.length === 0) {
     return res.status(400).json({ error: "Missing eventId, name, phone, or services" });
+  }
+
+  const ip = getClientIp(req);
+  const allowed = await checkRateLimit({ key: `book-slot:${ip}`, maxRequests: 5, windowSeconds: 600 });
+  if (!allowed) {
+    return res.status(429).json({ error: "For mange bookingforsøk. Prøv igjen om litt." });
   }
 
   let code;
@@ -181,6 +203,7 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error("book-slot sms error:", err);
   }
+  await logNotification({ channel: "sms_kunde", recipient: phone, code, name, status: smsSent ? "ok" : "failed" });
 
   let emailSent = false;
   try {
@@ -188,6 +211,7 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error("book-slot email error:", err);
   }
+  await logNotification({ channel: "epost_eier", recipient: "eier", code, name, status: emailSent ? "ok" : "failed" });
 
   try {
     await sendOwnerSms({ name, phone, services, start, end: finalEnd, code });

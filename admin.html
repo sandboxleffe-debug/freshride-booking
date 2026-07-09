@@ -61,6 +61,7 @@
   .fr-list-row-meta { font-size: 0.78rem; color: var(--fr-panel-text-faint); }
   .fr-list-row-code { font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; color: var(--fr-gold-deep); background: var(--fr-gold-soft); padding: 0.1rem 0.4rem; border-radius: 6px; }
   .fr-list-row-open { color: #2E7D32; font-weight: 600; font-size: 0.82rem; }
+  .fr-notif-failed { color: #C62828; font-weight: 600; font-size: 0.82rem; }
   .fr-list-section-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fr-text-dark-zone-faint); margin: 1.2rem 0 0.5rem; }
 
   .fr-login-input { width: 100%; margin-bottom: 0.9rem; }
@@ -126,7 +127,7 @@
       <button class="fr-tab-btn" data-tab="promo" onclick="showTab('promo')"><span class="fr-icon" data-fr-icon="gift"></span> Kampanje</button>
       <button class="fr-tab-btn" data-tab="accounting" onclick="showTab('accounting')"><span class="fr-icon" data-fr-icon="wrench"></span> Drift</button>
       <button class="fr-tab-btn" data-tab="customers" onclick="showTab('customers')"><span class="fr-icon" data-fr-icon="users"></span> Kunderegister</button>
-      <button class="fr-tab-btn" data-tab="about" onclick="showTab('about')"><span class="fr-icon" data-fr-icon="info"></span> Om oss</button>
+      <button class="fr-tab-btn" data-tab="about" onclick="showTab('about')"><span class="fr-icon" data-fr-icon="sliders"></span> Innstillinger</button>
     </div>
 
     <!-- Mobile-only bottom icon nav -->
@@ -160,8 +161,8 @@
         <span class="fr-bnav-label">Kunder</span>
       </button>
       <button class="fr-bnav-btn" data-tab="about" onclick="showTab('about')">
-        <span class="fr-bnav-icon" data-fr-icon="info"></span>
-        <span class="fr-bnav-label">Om oss</span>
+        <span class="fr-bnav-icon" data-fr-icon="sliders"></span>
+        <span class="fr-bnav-label">Innst.</span>
       </button>
     </nav>
 
@@ -433,6 +434,12 @@
         <button class="btn fr-btn-primary w-100" onclick="saveAbout()"><span class="fr-icon" data-fr-icon="save"></span> Lagre</button>
         <div id="aboutMsg" class="fr-save-msg"></div>
       </div>
+
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="bell"></span> Varslingslogg</h2></div>
+        <p class="fr-hint">Siste SMS- og e-postvarsler som er forsøkt sendt, nyeste først.</p>
+        <div id="notificationsLog"></div>
+      </div>
     </div>
 
   </div>
@@ -597,6 +604,7 @@ const FR_ICON_PATHS = {
   trendingUp: '<path d="M2.3 16.3 9 9.6l4 4L21.6 5H16V3h9v9h-2V6.4L13 17 9 13l-6.3 6.3-1.4-1.4Z"/>',
   trendingDown: '<path d="M2.3 6.4 9 13.1l4-4L21.6 18H16v2h9v-9h-2v6.6L13 6l-4 4-6.3-6.3-1.4 1.4Z"/>',
   barChart: '<path d="M4 10h4v10H4V10Zm6-6h4v16h-4V4Zm6 3h4v13h-4V7Z"/>',
+  bell: '<path d="M12 1a1 1 0 0 1 1 1v1.1a7 7 0 0 1 6 6.9v4.5l1.7 2.6a1 1 0 0 1-.8 1.5H4.1a1 1 0 0 1-.8-1.5L5 14.5V10a7 7 0 0 1 6-6.9V2a1 1 0 0 1 1-1Zm0 20a2.5 2.5 0 0 1-2.4-1.8h4.8A2.5 2.5 0 0 1 12 21Z"/>',
 };
 function frIcon(name) {
   return `<svg viewBox="0 0 24 24" fill="currentColor">${FR_ICON_PATHS[name] || ''}</svg>`;
@@ -644,6 +652,7 @@ function enterAdmin() {
   loadAccountingSummary();
   loadAnalyticsSummary();
   loadAboutAdmin();
+  loadNotifications();
   document.getElementById('createDate').valueAsDate = new Date();
   document.getElementById('jobDate').valueAsDate = new Date();
   document.getElementById('expDate').valueAsDate = new Date();
@@ -1189,6 +1198,7 @@ async function loadAnalyticsSummary() {
     const res = await fetch('/api/admin-data?resource=analytics', { headers: authHeaders() });
     if (res.status === 401) return handleAuthExpired();
     const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.error || 'Ukjent feil');
     document.getElementById('gaVisitors').textContent = data.todayVisitors.toLocaleString('no-NO');
     document.getElementById('gaPageViews').textContent = data.todayPageViews.toLocaleString('no-NO');
 
@@ -1205,7 +1215,7 @@ async function loadAnalyticsSummary() {
       hint.textContent = 'Ingen besøkende registrert ennå i dag';
     }
   } catch (e) {
-    document.getElementById('gaTrendHint').textContent = 'Klarte ikke å hente besøksstatistikk.';
+    document.getElementById('gaTrendHint').textContent = `Klarte ikke å hente besøksstatistikk: ${e.message}`;
   }
 }
 
@@ -1789,6 +1799,42 @@ async function loadAboutAdmin() {
     document.getElementById('ownerSmsToggleLabel').textContent = data.owner_sms_notify ? 'På' : 'Av';
     document.getElementById('ownerSmsPhoneInput').value = data.owner_sms_phone || '';
   } catch (e) {}
+}
+
+const NOTIF_CHANNEL_LABELS = {
+  sms_kunde: 'SMS til kunde',
+  sms_eier: 'SMS til deg',
+  epost_eier: 'E-post til deg',
+};
+
+async function loadNotifications() {
+  const box = document.getElementById('notificationsLog');
+  try {
+    const res = await fetch('/api/admin-data?resource=notifications', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    const items = data.notifications || [];
+    if (!items.length) {
+      box.innerHTML = '<p class="fr-hint">Ingen varsler enda.</p>';
+      return;
+    }
+    box.innerHTML = items.map(n => {
+      const when = new Date(n.created_at).toLocaleString('no-NO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const label = NOTIF_CHANNEL_LABELS[n.channel] || n.channel;
+      const ok = n.status === 'ok';
+      return `
+        <div class="fr-list-row">
+          <div class="fr-list-row-when">${when}</div>
+          <div class="fr-list-row-body">
+            <div class="fr-list-row-name">${label}${n.booking_code ? ` <span class="fr-list-row-code">${n.booking_code}</span>` : ''}</div>
+            <div class="fr-list-row-meta">${n.customer_name || ''}${n.recipient ? ' · ' + n.recipient : ''}</div>
+          </div>
+          <div class="${ok ? 'fr-list-row-open' : 'fr-notif-failed'}">${ok ? 'OK' : 'Feilet'}</div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<p class="fr-hint">Klarte ikke å hente varslingslogg.</p>';
+  }
 }
 
 async function toggleHeroVideo(checked) {

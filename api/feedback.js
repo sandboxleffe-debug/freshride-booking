@@ -4,9 +4,18 @@
 
 import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { sendOwnerEmail } from "./_lib/email.js";
+import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 
 export default async function handler(req, res) {
   const supabase = getSupabaseAdmin();
+
+  if (req.method === "POST") {
+    const ip = getClientIp(req);
+    const allowed = await checkRateLimit({ key: `feedback:${ip}`, maxRequests: 5, windowSeconds: 600 });
+    if (!allowed) {
+      return res.status(429).json({ error: "For mange forsøk. Prøv igjen om litt." });
+    }
+  }
 
   if (req.method === "GET") {
     try {

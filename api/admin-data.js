@@ -294,6 +294,18 @@ async function handleExpenses(req, res, supabase) {
   return res.status(405).json({ error: "Method not allowed" });
 }
 
+/* ---------------- Notifications (SMS/email log) ---------------- */
+async function handleNotifications(req, res, supabase) {
+  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  const { data, error } = await supabase
+    .from("freshride_notifications")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å hente varslingslogg" }); }
+  return res.status(200).json({ notifications: data });
+}
+
 /* ---------------- Accounting summary ---------------- */
 async function handleAccounting(req, res, supabase) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
@@ -313,7 +325,7 @@ async function handleAnalytics(req, res) {
     return res.status(200).json(summary);
   } catch (err) {
     console.error("analytics error:", err);
-    return res.status(500).json({ error: "Klarte ikke å hente besøksstatistikk" });
+    return res.status(500).json({ error: "Klarte ikke å hente besøksstatistikk", detail: err.message });
   }
 }
 
@@ -332,6 +344,7 @@ export default async function handler(req, res) {
   if (resource === "jobs") return handleJobs(req, res, supabase);
   if (resource === "expenses") return handleExpenses(req, res, supabase);
   if (resource === "accounting") return handleAccounting(req, res, supabase);
+  if (resource === "notifications") return handleNotifications(req, res, supabase);
   if (resource === "analytics") return handleAnalytics(req, res);
 
   return res.status(400).json({ error: "Missing or invalid 'resource'" });
