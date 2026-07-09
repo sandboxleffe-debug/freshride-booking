@@ -80,7 +80,7 @@ async function sendBookingSms({ phone, name, services, start, end, code }) {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      des_number: toE164Norway(phone), name, time, date, code,
+      des_number: toE164Norway(phone), name, time, date,
       services: services.join(", "), address: BUSINESS_ADDRESS,
       message,
     }),
