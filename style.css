@@ -27,6 +27,7 @@
 * { box-sizing: border-box; }
 
 html, body { height: 100%; }
+html { scroll-behavior: smooth; }
 
 body {
   font-family: var(--font-body);
@@ -376,6 +377,16 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+.fr-step-card-link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+.fr-step-card-link:hover {
+  border-color: var(--fr-gold);
+  background: rgba(232,185,35,0.14);
+  transform: translateY(-2px);
 }
 
 @media (max-width: 480px) {
