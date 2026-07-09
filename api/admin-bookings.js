@@ -38,6 +38,18 @@ export default async function handler(req, res) {
       try {
         const start = new Date(`${date}T${startTime}:00`);
         const end = new Date(start.getTime() + Number(durationMinutes) * 60 * 1000);
+
+        const { data: existing } = await calendar.events.list({
+          calendarId: CALENDAR_ID,
+          timeMin: start.toISOString(),
+          timeMax: end.toISOString(),
+          singleEvents: true,
+        });
+        const overlapsBooking = (existing.items || []).some(ev => ev.summary && ev.summary !== "Ledig");
+        if (overlapsBooking) {
+          return res.status(409).json({ error: "Det er allerede en booking i dette tidsrommet" });
+        }
+
         const { data } = await calendar.events.insert({
           calendarId: CALENDAR_ID,
           requestBody: {

@@ -336,24 +336,35 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-footer-phone { white-space: nowrap; }
 .fr-footer-version { display: block; margin-top: 0.4rem; font-size: 0.68rem; opacity: 0.35; letter-spacing: 0.02em; }
 
-/* Hero booking steps */
-.fr-hero-steps {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 0.5rem;
-  display: flex;
-  flex-direction: column;
+/* Hero booking steps — step 1 full-width (the actual call to action),
+   steps 2+3 side by side underneath so they read as supporting info
+   without pushing the calendar further down the page. */
+.fr-steps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
+  margin: 0 0 0.5rem;
 }
-.fr-hero-steps li {
+.fr-step-card {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  font-size: 1rem;
+  gap: 0.6rem;
+  background: rgba(246,242,231,0.08);
+  border: 1px solid var(--fr-line-dark-zone);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 600;
   color: var(--fr-text-dark-zone);
-  font-weight: 500;
 }
-.fr-hero-step-num {
+.fr-step-card-1 {
+  grid-column: 1 / -1;
+  background: var(--fr-gold-soft);
+  border-color: rgba(232,185,35,0.35);
+  padding: 0.85rem 1rem;
+  font-size: 1.05rem;
+}
+.fr-step-num {
   flex-shrink: 0;
   width: 1.7rem;
   height: 1.7rem;
@@ -366,6 +377,14 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+.fr-step-card-1 .fr-step-num { width: 2rem; height: 2rem; font-size: 1rem; }
+
+@media (max-width: 480px) {
+  .fr-step-card { font-size: 0.78rem; padding: 0.55rem 0.55rem; gap: 0.45rem; }
+  .fr-step-card-1 { font-size: 0.92rem; padding: 0.75rem 0.9rem; }
+  .fr-step-num { width: 1.5rem; height: 1.5rem; font-size: 0.8rem; }
+  .fr-step-card-1 .fr-step-num { width: 1.8rem; height: 1.8rem; font-size: 0.92rem; }
 }
 
 @media (max-width: 576px) {
@@ -506,21 +525,21 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
     cursor: pointer;
     white-space: nowrap;
   }
-  .fr-bnav-icon { display: flex; }
-  .fr-bnav-icon svg { width: 21px; height: 21px; }
+  .fr-bnav-icon { display: flex; align-items: center; justify-content: center; color: var(--fr-gold); }
+  #adminView .fr-bnav-icon svg { width: 27px; height: 27px; }
   .fr-bnav-btn.active { color: var(--fr-gold); background: rgba(232,185,35,0.12); }
 
   /* Center "Innstillinger" button — bigger, raised, always in focus */
   .fr-bnav-btn-main { overflow: visible; }
   .fr-bnav-btn-main .fr-bnav-icon {
-    width: 2.7rem; height: 2.7rem;
-    margin-top: -1.15rem;
+    width: 3.1rem; height: 3.1rem;
+    margin-top: -1.3rem;
     background: var(--fr-gold);
     color: var(--fr-black);
     border-radius: 50%;
     box-shadow: 0 4px 14px rgba(0,0,0,0.4);
   }
-  .fr-bnav-btn-main .fr-bnav-icon svg { width: 26px; height: 26px; }
+  #adminView .fr-bnav-btn-main .fr-bnav-icon svg { width: 30px; height: 30px; }
   .fr-bnav-btn-main .fr-bnav-label { font-weight: 700; }
   .fr-bnav-btn-main.active .fr-bnav-icon { box-shadow: 0 4px 18px rgba(232,185,35,0.55); }
 }

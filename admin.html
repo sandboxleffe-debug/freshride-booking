@@ -57,7 +57,7 @@
   .fr-list-row:hover { border-color: var(--fr-gold); }
   .fr-list-row-when { font-family: var(--font-display); font-weight: 600; font-size: 0.85rem; min-width: 5.4rem; color: var(--fr-panel-text); }
   .fr-list-row-body { flex: 1; min-width: 0; }
-  .fr-list-row-name { font-weight: 600; font-size: 0.9rem; }
+  .fr-list-row-name { font-weight: 600; font-size: 0.9rem; color: var(--fr-panel-text); }
   .fr-list-row-meta { font-size: 0.78rem; color: var(--fr-panel-text-faint); }
   .fr-list-row-code { font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; color: var(--fr-gold-deep); background: var(--fr-gold-soft); padding: 0.1rem 0.4rem; border-radius: 6px; }
   .fr-list-row-open { color: #2E7D32; font-weight: 600; font-size: 0.82rem; }
@@ -903,12 +903,13 @@ async function createSlot() {
       body: JSON.stringify({ action: 'create', date, startTime, durationMinutes })
     });
     if (res.status === 401) return handleAuthExpired();
-    if (!res.ok) throw new Error('failed');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Klarte ikke å opprette tiden.');
     msg.textContent = 'Ledig tid opprettet ✓'; msg.classList.add('ok');
     fetchOverview();
     loadMonthCalendar();
   } catch (e) {
-    msg.textContent = 'Klarte ikke å opprette tiden.'; msg.classList.add('err');
+    msg.textContent = e.message || 'Klarte ikke å opprette tiden.'; msg.classList.add('err');
   }
 }
 
