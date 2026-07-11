@@ -101,6 +101,18 @@
   .fr-tl-dot-new { background: rgba(232,185,35,0.4); border: 1.5px solid var(--fr-gold); }
   .fr-tl-weekday { font-size: 0.85rem; font-weight: 600; color: var(--fr-panel-text-soft); margin-top: 0.35rem; }
 
+  .fr-tl-booked-block {
+    position: absolute; top: 0; bottom: 0; cursor: pointer;
+    transition: background 0.1s ease;
+  }
+  .fr-tl-booked-block:hover { background: rgba(0,0,0,0.12); }
+  .fr-tl-booking-info {
+    margin-top: 0.6rem; padding: 0.6rem 0.75rem;
+    background: var(--fr-panel-bg-2); border: 1px solid var(--fr-panel-border); border-radius: 10px;
+  }
+  .fr-tl-booking-info-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; color: var(--fr-panel-text); }
+  .fr-tl-booking-info-meta { font-size: 0.8rem; color: var(--fr-panel-text-soft); margin-top: 0.2rem; }
+
   .fr-login-input { width: 100%; margin-bottom: 0.9rem; }
   .fr-login-error { color: #FF8A7A; font-size: 0.85rem; margin-top: 0.6rem; min-height: 1.1rem; }
 </style>
@@ -1057,6 +1069,20 @@ function renderCreateDayTimeline() {
     labels.push(`<span style="left:${((h - startHour) / totalHours) * 100}%">${h}</span>`);
   }
 
+  // Invisible clickable regions over each booked event, precisely
+  // positioned (not just per-hour like the background coloring) — click to
+  // see who has that time without leaving "Opprett tid".
+  window._frCreateTlBookings = data.booked || [];
+  const bookedBlocksHtml = (data.booked || []).map((b, i) => {
+    const s = new Date(b.start), e = new Date(b.end);
+    const sFrac = (s.getHours() + s.getMinutes() / 60 - startHour) / totalHours;
+    const eFrac = (e.getHours() + e.getMinutes() / 60 - startHour) / totalHours;
+    const left = Math.max(0, sFrac) * 100;
+    const width = (Math.min(1, eFrac) - Math.max(0, sFrac)) * 100;
+    if (width <= 0) return '';
+    return `<div class="fr-tl-booked-block" style="left:${left}%; width:${width}%;" onclick="showCreateTlBookingInfo(${i})" title="Vis hvem som har denne tiden"></div>`;
+  }).join('');
+
   const time = document.getElementById('createTime').value;
   const duration = Number(document.getElementById('createDuration').value) || 0;
   let startFrac = 0, widthFrac = 0;
@@ -1067,17 +1093,34 @@ function renderCreateDayTimeline() {
   }
 
   box.innerHTML = `
-    <div class="fr-tl-bar">${hoursHtml}<div class="fr-tl-new" id="tlNewBlock"></div></div>
+    <div class="fr-tl-bar">${hoursHtml}${bookedBlocksHtml}<div class="fr-tl-new" id="tlNewBlock"></div></div>
     <div class="fr-tl-labels">${labels.join('')}</div>
     <div class="fr-tl-legend">
       <span><i class="fr-tl-dot fr-tl-dot-open"></i> Ledig</span>
-      <span><i class="fr-tl-dot fr-tl-dot-booked"></i> Booket</span>
+      <span><i class="fr-tl-dot fr-tl-dot-booked"></i> Booket (trykk for info)</span>
       <span><i class="fr-tl-dot fr-tl-dot-new"></i> Ny tid</span>
     </div>
+    <div id="createTlBookingInfo" class="fr-tl-booking-info d-none"></div>
   `;
 
   positionTimelineOverlay(startFrac, widthFrac);
   setupTimelineDrag(widthFrac);
+}
+
+function showCreateTlBookingInfo(index) {
+  const b = (window._frCreateTlBookings || [])[index];
+  const box = document.getElementById('createTlBookingInfo');
+  if (!b || !box) return;
+  box.classList.remove('d-none');
+  box.innerHTML = `
+    <div class="fr-tl-booking-info-row">
+      <strong>${b.name}</strong>
+      ${b.code ? `<span class="fr-list-row-code">${b.code}</span>` : ''}
+      ${b.customerNumber ? `<span class="fr-list-row-code fr-list-row-customer">${formatCustomerId(b.customerNumber)}</span>` : ''}
+    </div>
+    <div class="fr-tl-booking-info-meta">${fmtTime(b.start)} – ${fmtTime(b.end)}${b.phone ? ' · ' + b.phone : ''}</div>
+    ${b.services ? `<div class="fr-tl-booking-info-meta">${b.services}</div>` : ''}
+  `;
 }
 
 function timeToFrac(timeStr) {

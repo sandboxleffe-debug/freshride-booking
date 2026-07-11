@@ -27,13 +27,30 @@ export default async function handler(req, res) {
     if (date) {
       const timeMin = osloWallTimeToUtc(date, "00:00").toISOString();
       const timeMax = osloWallTimeToUtc(date, "23:59:59").toISOString();
-      const { data } = await calendar.events.list({
-        calendarId: CALENDAR_ID, timeMin, timeMax, singleEvents: true, orderBy: "startTime",
-      });
+      const [{ data }, phoneMap] = await Promise.all([
+        calendar.events.list({
+          calendarId: CALENDAR_ID, timeMin, timeMax, singleEvents: true, orderBy: "startTime",
+        }),
+        buildPhoneCustomerMap(getSupabaseAdmin()),
+      ]);
       const available = [], booked = [];
       for (const e of data.items || []) {
-        if (e.summary === "Ledig") available.push({ id: e.id, start: e.start?.dateTime, end: e.end?.dateTime });
-        else booked.push({ id: e.id, start: e.start?.dateTime, end: e.end?.dateTime, name: (e.summary || "Ukjent").split(" - ")[0] });
+        if (e.summary === "Ledig") {
+          available.push({ id: e.id, start: e.start?.dateTime, end: e.end?.dateTime });
+        } else {
+          const parts = (e.summary || "Ukjent").split(" - ");
+          const phone = parts[1] || "";
+          booked.push({
+            id: e.id,
+            start: e.start?.dateTime,
+            end: e.end?.dateTime,
+            name: parts[0] || "Ukjent",
+            phone,
+            code: e.extendedProperties?.private?.freshride_code || null,
+            customerNumber: lookupCustomerNumber(phoneMap, phone),
+            services: (e.description || "").replace(/^Tjeneste:\s*/i, ""),
+          });
+        }
       }
       return res.status(200).json({ date, available, booked });
     }
