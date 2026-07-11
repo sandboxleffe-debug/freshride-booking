@@ -113,6 +113,38 @@
   .fr-tl-booking-info-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; color: var(--fr-panel-text); }
   .fr-tl-booking-info-meta { font-size: 0.8rem; color: var(--fr-panel-text-soft); margin-top: 0.2rem; }
 
+  /* Admin's own month calendar (Oversikt tab) — deliberately separate class
+     names from the public booking calendar's .fr-calendar-* (style.css),
+     since that one was reworked with a different DOM structure (collapsed
+     past weeks etc.) that this simpler read-only view doesn't need. */
+  .fr-admin-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.4rem; }
+  .fr-admin-cal-dow {
+    text-align: center; font-size: 0.7rem; color: var(--fr-panel-text-faint);
+    text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 0.35rem;
+  }
+  .fr-admin-cal-day {
+    aspect-ratio: 1;
+    border-radius: 10px;
+    border: 1.5px solid var(--fr-panel-border);
+    background: var(--fr-panel-bg-2);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem;
+    font-size: 0.88rem;
+    color: var(--fr-panel-text);
+  }
+  .fr-admin-cal-day.fr-admin-cal-day-empty { visibility: hidden; }
+  .fr-admin-cal-day.fr-admin-cal-day-today { font-weight: 700; position: relative; }
+  .fr-admin-cal-day.fr-admin-cal-day-today span:first-child {
+    background: var(--fr-panel-text); color: var(--fr-panel-bg); border-radius: 50%;
+    width: 1.6rem; height: 1.6rem; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .fr-admin-cal-dot { width: 0.4rem; height: 0.4rem; border-radius: 50%; }
+  .fr-admin-cal-day.fr-admin-cal-status-green { background: rgba(62, 162, 70, 0.16); border-color: rgba(62, 162, 70, 0.65); border-width: 1.5px; }
+  .fr-admin-cal-day.fr-admin-cal-status-green .fr-admin-cal-dot { background: #3EA246; }
+  .fr-admin-cal-day.fr-admin-cal-status-orange { background: rgba(217, 138, 21, 0.16); border-color: rgba(217, 138, 21, 0.65); border-width: 1.5px; }
+  .fr-admin-cal-day.fr-admin-cal-status-orange .fr-admin-cal-dot { background: #D98A15; }
+  .fr-admin-cal-day.fr-admin-cal-status-red { background: rgba(198, 59, 46, 0.14); border-color: rgba(198, 59, 46, 0.6); border-width: 1.5px; }
+  .fr-admin-cal-day.fr-admin-cal-status-red .fr-admin-cal-dot { background: #C63B2E; }
+
   .fr-login-input { width: 100%; margin-bottom: 0.9rem; }
   .fr-login-error { color: #FF8A7A; font-size: 0.85rem; margin-top: 0.6rem; min-height: 1.1rem; }
 </style>
@@ -215,7 +247,7 @@
       <div class="fr-panel">
         <div class="fr-calendar">
           <div class="fr-calendar-head" id="calendarMonthLabel"></div>
-          <div class="fr-calendar-grid" id="calendarGrid"></div>
+          <div class="fr-admin-cal-grid" id="calendarGrid"></div>
         </div>
       </div>
 
@@ -753,7 +785,7 @@ async function loadMonthCalendar() {
   grid.innerHTML = "";
   DOW_LABELS.forEach(d => {
     const el = document.createElement("div");
-    el.className = "fr-calendar-dow";
+    el.className = "fr-admin-cal-dow";
     el.textContent = d;
     grid.appendChild(el);
   });
@@ -765,7 +797,7 @@ async function loadMonthCalendar() {
 
   for (let i = 0; i < startWeekday; i++) {
     const el = document.createElement("div");
-    el.className = "fr-calendar-day fr-day-empty";
+    el.className = "fr-admin-cal-day fr-admin-cal-day-empty";
     grid.appendChild(el);
   }
 
@@ -780,16 +812,16 @@ async function loadMonthCalendar() {
     const cellDate = new Date(year, month - 1, d);
     const key = toDateKey(cellDate);
     const cell = document.createElement("div");
-    cell.className = "fr-calendar-day";
-    if (key === todayKey) cell.classList.add("fr-day-today");
+    cell.className = "fr-admin-cal-day";
+    if (key === todayKey) cell.classList.add("fr-admin-cal-day-today");
     const status = dayStatuses[key];
-    if (status) cell.classList.add(`fr-status-${status}`);
+    if (status) cell.classList.add(`fr-admin-cal-status-${status}`);
     const num = document.createElement("span");
     num.textContent = d;
     cell.appendChild(num);
     if (status) {
       const dot = document.createElement("span");
-      dot.className = "fr-day-dot";
+      dot.className = "fr-admin-cal-dot";
       cell.appendChild(dot);
     }
     grid.appendChild(cell);
