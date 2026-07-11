@@ -76,8 +76,11 @@
   .fr-tl-new {
     position: absolute; top: -2px; bottom: -2px;
     background: rgba(232,185,35,0.4); border: 2px solid var(--fr-gold); border-radius: 6px;
-    box-sizing: border-box;
+    box-sizing: border-box; cursor: grab; touch-action: none;
+    transition: background 0.1s ease, border-color 0.1s ease;
   }
+  .fr-tl-new-dragging { cursor: grabbing; }
+  .fr-tl-new.fr-tl-new-conflict { background: rgba(220,38,38,0.55); border-color: #DC2626; }
   .fr-tl-labels { position: relative; height: 1.1rem; margin-top: 0.15rem; }
   .fr-tl-labels span { position: absolute; transform: translateX(-50%); font-size: 0.68rem; color: var(--fr-panel-text-faint); }
   .fr-tl-legend { display: flex; gap: 0.9rem; margin-top: 0.5rem; font-size: 0.75rem; color: var(--fr-panel-text-soft); flex-wrap: wrap; }
@@ -988,22 +991,17 @@ function renderCreateDayTimeline() {
     labels.push(`<span style="left:${((h - startHour) / totalHours) * 100}%">${h}</span>`);
   }
 
-  let overlayHtml = '';
   const time = document.getElementById('createTime').value;
   const duration = Number(document.getElementById('createDuration').value) || 0;
+  let startFrac = 0, widthFrac = 0;
   if (time && duration > 0) {
     const [hh, mm] = time.split(':').map(Number);
-    const startFrac = (hh + mm / 60 - startHour) / totalHours;
-    const endFrac = (hh + mm / 60 + duration / 60 - startHour) / totalHours;
-    const left = Math.max(0, startFrac) * 100;
-    const width = (Math.min(1, endFrac) - Math.max(0, startFrac)) * 100;
-    if (width > 0) {
-      overlayHtml = `<div class="fr-tl-new" style="left:${left}%; width:${width}%;"></div>`;
-    }
+    startFrac = (hh + mm / 60 - startHour) / totalHours;
+    widthFrac = (duration / 60) / totalHours;
   }
 
   box.innerHTML = `
-    <div class="fr-tl-bar">${hoursHtml}${overlayHtml}</div>
+    <div class="fr-tl-bar">${hoursHtml}<div class="fr-tl-new" id="tlNewBlock"></div></div>
     <div class="fr-tl-labels">${labels.join('')}</div>
     <div class="fr-tl-legend">
       <span><i class="fr-tl-dot fr-tl-dot-open"></i> Ledig</span>
@@ -1011,6 +1009,87 @@ function renderCreateDayTimeline() {
       <span><i class="fr-tl-dot fr-tl-dot-new"></i> Ny tid</span>
     </div>
   `;
+
+  positionTimelineOverlay(startFrac, widthFrac);
+  setupTimelineDrag(widthFrac);
+}
+
+function timeToFrac(timeStr) {
+  const totalHours = CREATE_TL_END_HOUR - CREATE_TL_START_HOUR;
+  const [hh, mm] = timeStr.split(':').map(Number);
+  return (hh + mm / 60 - CREATE_TL_START_HOUR) / totalHours;
+}
+
+function fracToTimeStr(frac) {
+  const totalHours = CREATE_TL_END_HOUR - CREATE_TL_START_HOUR;
+  const hourFloat = CREATE_TL_START_HOUR + frac * totalHours;
+  const snappedMinutes = Math.round((hourFloat * 60) / 15) * 15;
+  const hh = Math.floor(snappedMinutes / 60);
+  const mm = snappedMinutes % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
+// True if the block spanning [startFrac, startFrac+widthFrac) overlaps any
+// already-booked event that day.
+function timelineOverlapsBooking(startFrac, widthFrac) {
+  const data = window._frCreateDayData;
+  if (!data) return false;
+  const totalHours = CREATE_TL_END_HOUR - CREATE_TL_START_HOUR;
+  const dragStart = CREATE_TL_START_HOUR + startFrac * totalHours;
+  const dragEnd = CREATE_TL_START_HOUR + (startFrac + widthFrac) * totalHours;
+  return (data.booked || []).some(b => {
+    const s = new Date(b.start), e = new Date(b.end);
+    const sH = s.getHours() + s.getMinutes() / 60;
+    const eH = e.getHours() + e.getMinutes() / 60;
+    return dragEnd > sH && dragStart < eH;
+  });
+}
+
+function positionTimelineOverlay(startFrac, widthFrac) {
+  const overlay = document.getElementById('tlNewBlock');
+  if (!overlay) return;
+  const clampedStart = Math.max(0, Math.min(1 - widthFrac, startFrac));
+  overlay.style.display = widthFrac > 0 ? 'block' : 'none';
+  overlay.style.left = `${clampedStart * 100}%`;
+  overlay.style.width = `${widthFrac * 100}%`;
+  overlay.classList.toggle('fr-tl-new-conflict', timelineOverlapsBooking(clampedStart, widthFrac));
+}
+
+// Lets the admin grab the gold "new time" block and slide it left/right
+// along the timeline to pick a start time, instead of only typing it in.
+// Turns red while dragging over an already-booked hour.
+function setupTimelineDrag(widthFrac) {
+  const bar = document.querySelector('.fr-tl-bar');
+  const overlay = document.getElementById('tlNewBlock');
+  if (!bar || !overlay || widthFrac <= 0) return;
+
+  overlay.onpointerdown = (e) => {
+    const barRect = bar.getBoundingClientRect();
+    const startLeftFrac = overlay.offsetLeft / barRect.width;
+    const pointerStartX = e.clientX;
+    overlay.setPointerCapture(e.pointerId);
+    overlay.classList.add('fr-tl-new-dragging');
+
+    const onMove = (ev) => {
+      const deltaFrac = (ev.clientX - pointerStartX) / barRect.width;
+      const newLeftFrac = Math.max(0, Math.min(1 - widthFrac, startLeftFrac + deltaFrac));
+      overlay.style.left = `${newLeftFrac * 100}%`;
+      overlay.classList.toggle('fr-tl-new-conflict', timelineOverlapsBooking(newLeftFrac, widthFrac));
+    };
+
+    const onUp = () => {
+      overlay.classList.remove('fr-tl-new-dragging');
+      overlay.removeEventListener('pointermove', onMove);
+      overlay.removeEventListener('pointerup', onUp);
+      const finalLeftFrac = overlay.offsetLeft / bar.getBoundingClientRect().width;
+      const snappedTime = fracToTimeStr(finalLeftFrac);
+      document.getElementById('createTime').value = snappedTime;
+      positionTimelineOverlay(timeToFrac(snappedTime), widthFrac);
+    };
+
+    overlay.addEventListener('pointermove', onMove);
+    overlay.addEventListener('pointerup', onUp);
+  };
 }
 
 /* ---------------- Tjenester ---------------- */
