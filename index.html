@@ -389,6 +389,10 @@ function formatDateLabel(key) {
   return `${NO_WEEKDAYS[d.getDay()]} ${d.getDate()} ${NO_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+// Fixed-date Norwegian public holidays only (not the Easter-linked ones,
+// which move every year) — "M-D" keys. Closed days, same as Sundays.
+const NO_FIXED_HOLIDAYS = new Set(["1-1", "5-1", "5-17", "12-25", "12-26"]);
+
 async function loadMonthCalendar() {
   const now = new Date();
   const year = now.getFullYear();
@@ -397,23 +401,20 @@ async function loadMonthCalendar() {
 
   const grid = document.getElementById("calendarGrid");
   grid.innerHTML = "";
+  const dowRow = document.createElement("div");
+  dowRow.className = "fr-calendar-dow-row";
   DOW_LABELS.forEach(d => {
     const el = document.createElement("div");
     el.className = "fr-calendar-dow";
     el.textContent = d;
-    grid.appendChild(el);
+    dowRow.appendChild(el);
   });
+  grid.appendChild(dowRow);
 
   const firstOfMonth = new Date(year, month - 1, 1);
   const daysInMonth = new Date(year, month, 0).getDate();
   let startWeekday = firstOfMonth.getDay(); // 0=Sun..6=Sat
   startWeekday = startWeekday === 0 ? 6 : startWeekday - 1; // Monday-first offset
-
-  for (let i = 0; i < startWeekday; i++) {
-    const el = document.createElement("div");
-    el.className = "fr-calendar-day fr-day-empty";
-    grid.appendChild(el);
-  }
 
   const todayKey = toDateKey(now);
   let dayStatuses = {};
@@ -427,36 +428,83 @@ async function loadMonthCalendar() {
     // fail silently — calendar still renders, just without color coding
   }
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    const cellDate = new Date(year, month - 1, d);
-    const key = toDateKey(cellDate);
-    const isPast = key < todayKey;
+  // Current week (Mon-Sun) gets extra visual focus below.
+  const curDow = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  const curWeekStart = new Date(now); curWeekStart.setDate(now.getDate() - curDow);
+  const curWeekEnd = new Date(curWeekStart); curWeekEnd.setDate(curWeekStart.getDate() + 6);
+  const curWeekStartKey = toDateKey(curWeekStart);
+  const curWeekEndKey = toDateKey(curWeekEnd);
 
-    const cell = document.createElement("div");
-    cell.className = "fr-calendar-day";
-    if (isPast) cell.classList.add("fr-day-past");
-    if (key === todayKey) cell.classList.add("fr-day-today");
-    const status = dayStatuses[key];
-    if (status) cell.classList.add(`fr-status-${status}`);
+  // Flat list of cells (null = padding), then chunked into 7-day weeks.
+  const cells = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month - 1, d));
+  while (cells.length % 7 !== 0) cells.push(null);
 
-    const num = document.createElement("span");
-    num.textContent = d;
-    cell.appendChild(num);
+  for (let w = 0; w < cells.length; w += 7) {
+    const weekCells = cells.slice(w, w + 7);
+    const realDates = weekCells.filter(Boolean);
+    const isFullyPast = realDates.length > 0 && realDates.every(d => toDateKey(d) < todayKey);
 
-    if (status) {
-      const dot = document.createElement("span");
-      dot.className = "fr-day-dot";
-      cell.appendChild(dot);
+    if (isFullyPast) {
+      // Already-passed weeks can't be booked — collapse to a slim label
+      // instead of a full row of squares, so late in the month the useful
+      // (current/future) weeks aren't buried under empty space.
+      const first = realDates[0], last = realDates[realDates.length - 1];
+      const bar = document.createElement("div");
+      bar.className = "fr-calendar-week-collapsed";
+      bar.textContent = `${first.getDate()}.–${last.getDate()}. ${MONTH_LABELS[first.getMonth()].slice(0, 3)}`;
+      grid.appendChild(bar);
+      continue;
     }
 
-    if (!isPast) {
-      cell.onclick = () => {
-        document.querySelectorAll(".fr-calendar-day.fr-day-selected").forEach(el => el.classList.remove("fr-day-selected"));
-        cell.classList.add("fr-day-selected");
-        loadSlotsForDate(key);
-      };
-    }
-    grid.appendChild(cell);
+    const isCurrentWeek = realDates.some(d => {
+      const k = toDateKey(d);
+      return k >= curWeekStartKey && k <= curWeekEndKey;
+    });
+
+    const weekRow = document.createElement("div");
+    weekRow.className = "fr-calendar-week" + (isCurrentWeek ? " fr-calendar-week-current" : "");
+
+    weekCells.forEach(cellDate => {
+      if (!cellDate) {
+        const el = document.createElement("div");
+        el.className = "fr-calendar-day fr-day-empty";
+        weekRow.appendChild(el);
+        return;
+      }
+      const key = toDateKey(cellDate);
+      const isPast = key < todayKey;
+      const isClosed = cellDate.getDay() === 0 || NO_FIXED_HOLIDAYS.has(`${cellDate.getMonth() + 1}-${cellDate.getDate()}`);
+
+      const cell = document.createElement("div");
+      cell.className = "fr-calendar-day";
+      if (isPast) cell.classList.add("fr-day-past");
+      if (key === todayKey) cell.classList.add("fr-day-today");
+      if (isClosed) cell.classList.add("fr-day-closed");
+      const status = dayStatuses[key];
+      if (status && !isClosed) cell.classList.add(`fr-status-${status}`);
+
+      const num = document.createElement("span");
+      num.textContent = cellDate.getDate();
+      cell.appendChild(num);
+
+      if (status && !isClosed) {
+        const dot = document.createElement("span");
+        dot.className = "fr-day-dot";
+        cell.appendChild(dot);
+      }
+
+      if (!isPast && !isClosed) {
+        cell.onclick = () => {
+          document.querySelectorAll(".fr-calendar-day.fr-day-selected").forEach(el => el.classList.remove("fr-day-selected"));
+          cell.classList.add("fr-day-selected");
+          loadSlotsForDate(key);
+        };
+      }
+      weekRow.appendChild(cell);
+    });
+    grid.appendChild(weekRow);
   }
 }
 loadMonthCalendar();

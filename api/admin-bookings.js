@@ -18,6 +18,7 @@
 import { getCalendarClient, CALENDAR_ID } from "./_lib/google-calendar.js";
 import { checkAdminPassword, getSupabaseAdmin } from "./_lib/supabase.js";
 import { osloWallTimeToUtc } from "./_lib/timezone.js";
+import { createDraftJobLog } from "./_lib/customers.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 
@@ -101,6 +102,39 @@ export default async function handler(req, res) {
       } catch (err) {
         console.error("admin-bookings reopen error:", err);
         return res.status(500).json({ error: "Klarte ikke å sette tiden ledig igjen" });
+      }
+    }
+
+    // Manual version of the auto-draft that book-slot.js creates on new
+    // bookings — for bookings made before that existed, or whenever the
+    // admin wants to log a job ahead of time.
+    if (action === "create-job-draft") {
+      const { eventId } = req.body || {};
+      if (!eventId) return res.status(400).json({ error: "Missing eventId" });
+      try {
+        const { data: existing } = await calendar.events.get({ calendarId: CALENDAR_ID, eventId });
+        if (!existing.summary || existing.summary === "Ledig") {
+          return res.status(400).json({ error: "Denne tiden er ikke booket" });
+        }
+        const parts = existing.summary.split(" - ");
+        const name = parts[0] || "Ukjent";
+        const phone = parts[1] || "";
+        const services = (existing.description || "").replace(/^Tjeneste:\s*/i, "");
+        const code = existing.extendedProperties?.private?.freshride_code || null;
+        const jobDate = (existing.start?.dateTime || "").slice(0, 10) || new Date().toISOString().slice(0, 10);
+
+        const supabase = getSupabaseAdmin();
+        const result = await createDraftJobLog(supabase, { name, phone, services, jobDate, code });
+        if (!result.ok && result.reason === "exists") {
+          return res.status(409).json({ error: "Det finnes allerede en jobblogg for denne bookingen" });
+        }
+        if (!result.ok) {
+          return res.status(500).json({ error: "Klarte ikke å opprette jobblogg" });
+        }
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error("admin-bookings create-job-draft error:", err);
+        return res.status(500).json({ error: "Klarte ikke å opprette jobblogg" });
       }
     }
 

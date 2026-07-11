@@ -530,6 +530,7 @@
       </div>
       <div class="modal-footer border-0 flex-column gap-2">
         <button class="btn fr-btn-primary w-100" onclick="saveEdit()"><span class="fr-icon" data-fr-icon="save"></span> Lagre endringer</button>
+        <button class="btn w-100" style="background:var(--fr-panel-bg-2); border:1px solid var(--fr-panel-border); color:var(--fr-panel-text);" id="createJobDraftBtn" onclick="createJobDraftFromBooking()"><span class="fr-icon" data-fr-icon="fileText"></span> Opprett jobblogg</button>
         <div class="d-flex gap-2 w-100">
           <button class="btn w-50" style="background:var(--fr-panel-bg-2); border:1px solid var(--fr-panel-border); color:var(--fr-panel-text);" onclick="reopenBooking()"><span class="fr-icon" data-fr-icon="unlock"></span> Sett ledig igjen</button>
           <button class="btn w-50" style="background:#F4D8D3; border:1px solid #E0AFA6; color:#8A2E20;" onclick="deleteBooking()"><span class="fr-icon" data-fr-icon="trash"></span> Slett permanent</button>
@@ -906,6 +907,30 @@ async function saveEdit() {
     setTimeout(() => editModal.hide(), 600);
   } catch (e) {
     msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+  }
+}
+
+async function createJobDraftFromBooking() {
+  const btn = document.getElementById('createJobDraftBtn');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `${frIcon('clock')} Oppretter …`;
+  try {
+    const res = await fetch('/api/admin-bookings', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId: editingEventId, action: 'create-job-draft' })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Klarte ikke å opprette jobblogg.');
+    btn.innerHTML = `${frIcon('checkCircle')} Jobblogg opprettet ✓`;
+    loadJobsAdmin();
+    setTimeout(() => { btn.disabled = false; btn.innerHTML = originalHtml; }, 2000);
+  } catch (e) {
+    alert(e.message || 'Klarte ikke å opprette jobblogg.');
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
   }
 }
 

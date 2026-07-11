@@ -225,10 +225,22 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
   margin-bottom: 0.85rem; color: var(--fr-panel-text); text-transform: capitalize;
 }
-.fr-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.4rem; }
+.fr-calendar-grid { display: flex; flex-direction: column; gap: 0.4rem; }
+.fr-calendar-dow-row, .fr-calendar-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.4rem; }
 .fr-calendar-dow {
   text-align: center; font-size: 0.7rem; color: var(--fr-panel-text-faint);
   text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 0.35rem;
+}
+.fr-calendar-week-current {
+  background: rgba(232, 185, 35, 0.10);
+  border: 1px solid rgba(232, 185, 35, 0.35);
+  border-radius: 12px;
+  padding: 0.3rem;
+  margin: -0.3rem;
+}
+.fr-calendar-week-collapsed {
+  text-align: center; font-size: 0.72rem; color: var(--fr-panel-text-faint);
+  padding: 0.3rem 0; opacity: 0.7; letter-spacing: 0.02em;
 }
 .fr-calendar-day {
   aspect-ratio: 1;
@@ -243,8 +255,14 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-calendar-day:hover { transform: translateY(-2px); border-color: var(--fr-gold); }
 .fr-calendar-day.fr-day-empty { visibility: hidden; cursor: default; }
-.fr-calendar-day.fr-day-past { opacity: 0.4; cursor: not-allowed; }
+.fr-calendar-day.fr-day-past { opacity: 0.25; filter: grayscale(0.4); cursor: not-allowed; }
 .fr-calendar-day.fr-day-past:hover { transform: none; border-color: var(--fr-panel-border); }
+.fr-calendar-day.fr-day-closed {
+  cursor: not-allowed;
+  opacity: 0.55;
+  background-image: repeating-linear-gradient(135deg, rgba(0,0,0,0.07) 0px, rgba(0,0,0,0.07) 3px, transparent 3px, transparent 8px);
+}
+.fr-calendar-day.fr-day-closed:hover { transform: none; border-color: var(--fr-panel-border); }
 .fr-calendar-day.fr-day-selected { border-color: #2E7D32; border-width: 2px; box-shadow: 0 0 0 2px rgba(46, 125, 50, 0.25); }
 .fr-calendar-day.fr-day-today { font-weight: 700; position: relative; }
 .fr-calendar-day.fr-day-today span:first-child {
@@ -645,6 +663,13 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   color: var(--fr-text-dark-zone-soft);
   line-height: 1.4;
   margin: 0.35rem 0 0;
+  /* Fixed 3-line clamp — without this, cards with longer text ran to 4
+     lines, changing the whole row's height and nudging the calendar below
+     it up/down every time such a review scrolled into view. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .fr-review-full {
   font-size: 0.75rem;

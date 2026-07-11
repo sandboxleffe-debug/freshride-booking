@@ -58,3 +58,30 @@ export async function getNextCustomerNumber(supabase) {
   const nums = (data || []).map(r => Number(r.customer_number)).filter(n => !isNaN(n));
   return nums.length ? Math.max(...nums) + 1 : 1;
 }
+
+// Pre-fills a "draft" job log entry for a booking, so completing it later
+// isn't starting from a blank form. Used both automatically (book-slot.js,
+// the moment a customer books) and manually (admin-bookings.js, for
+// bookings made before this existed, or one the admin wants to log ahead
+// of time). Skips if a job for this booking_code already exists.
+export async function createDraftJobLog(supabase, { name, phone, services, jobDate, code }) {
+  if (code) {
+    const { data: existing } = await supabase.from("freshride_jobs").select("id").eq("booking_code", code).limit(1);
+    if (existing && existing.length) return { ok: false, reason: "exists" };
+  }
+  const match = await findCustomerByPhone(supabase, phone);
+  const customer_number = match ? match.customer_number : String(await getNextCustomerNumber(supabase));
+
+  const { error } = await supabase.from("freshride_jobs").insert({
+    job_date: jobDate,
+    customer_name: name,
+    customer_phone: phone,
+    customer_number,
+    services: Array.isArray(services) ? services.join(", ") : (services || ""),
+    price_paid: 0,
+    status: "draft",
+    booking_code: code || null,
+  });
+  if (error) return { ok: false, reason: "error" };
+  return { ok: true };
+}
