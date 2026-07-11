@@ -814,6 +814,12 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-job-compact-right { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 .fr-job-photo-flag { font-size: 0.75rem; color: var(--fr-panel-text-faint); }
 .fr-job-compact-price { font-weight: 700; color: var(--fr-gold-deep); font-size: 0.88rem; white-space: nowrap; }
+.fr-job-compact-draft { background: rgba(230,145,56,0.08); border-left: 3px solid #E69138; padding-left: calc(0.7rem - 3px); }
+.fr-job-compact-draft:hover { background: rgba(230,145,56,0.16); }
+.fr-draft-badge {
+  display: inline-block; background: rgba(230,145,56,0.18); color: #B5651D;
+  font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; white-space: nowrap;
+}
 
 /* "Vis flere" button — needs to read clearly on the light panel background */
 .fr-show-more-btn {

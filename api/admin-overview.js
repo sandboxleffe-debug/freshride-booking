@@ -4,8 +4,9 @@
 // -> { days: [{ date, available: [...], booked: [...] }, ...] }
 
 import { getCalendarClient, CALENDAR_ID } from "./_lib/google-calendar.js";
-import { checkAdminPassword } from "./_lib/supabase.js";
+import { checkAdminPassword, getSupabaseAdmin } from "./_lib/supabase.js";
 import { getOsloParts, osloWallTimeToUtc } from "./_lib/timezone.js";
+import { buildPhoneCustomerMap, lookupCustomerNumber } from "./_lib/customers.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -43,14 +44,17 @@ export default async function handler(req, res) {
     const end = new Date(start);
     end.setDate(end.getDate() + daysAhead);
 
-    const { data } = await calendar.events.list({
-      calendarId: CALENDAR_ID,
-      timeMin: start.toISOString(),
-      timeMax: end.toISOString(),
-      singleEvents: true,
-      orderBy: "startTime",
-      maxResults: 2500,
-    });
+    const [{ data }, phoneMap] = await Promise.all([
+      calendar.events.list({
+        calendarId: CALENDAR_ID,
+        timeMin: start.toISOString(),
+        timeMax: end.toISOString(),
+        singleEvents: true,
+        orderBy: "startTime",
+        maxResults: 2500,
+      }),
+      buildPhoneCustomerMap(getSupabaseAdmin()),
+    ]);
 
     const byDate = {};
     for (const e of data.items || []) {
@@ -69,13 +73,15 @@ export default async function handler(req, res) {
         });
       } else {
         const parts = (e.summary || "Ukjent").split(" - ");
+        const phone = parts[1] || "";
         byDate[dateKey].booked.push({
           id: e.id,
           code,
           start: e.start?.dateTime,
           end: e.end?.dateTime,
           name: parts[0] || "Ukjent",
-          phone: parts[1] || "",
+          phone,
+          customerNumber: lookupCustomerNumber(phoneMap, phone),
           services: (e.description || "").replace(/^Tjeneste:\s*/i, ""),
           location: e.location || "",
         });

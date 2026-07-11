@@ -16,10 +16,23 @@
 // Vercel's function count limit (Hobby plan: 12 per deployment).
 
 import { getCalendarClient, CALENDAR_ID } from "./_lib/google-calendar.js";
-import { checkAdminPassword } from "./_lib/supabase.js";
+import { checkAdminPassword, getSupabaseAdmin } from "./_lib/supabase.js";
 import { osloWallTimeToUtc } from "./_lib/timezone.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
+
+// Removes the auto-created draft job log tied to a cancelled/deleted booking
+// — never touches a job that's already been completed, only a still-pending
+// draft, so finished work is never silently wiped by a later calendar edit.
+async function deleteDraftJobByCode(code) {
+  if (!code) return;
+  try {
+    const supabase = getSupabaseAdmin();
+    await supabase.from("freshride_jobs").delete().eq("booking_code", code).eq("status", "draft");
+  } catch (err) {
+    console.error("deleteDraftJobByCode error:", err);
+  }
+}
 
 export default async function handler(req, res) {
   if (!checkAdminPassword(req)) {
@@ -70,6 +83,9 @@ export default async function handler(req, res) {
       const { eventId } = req.body || {};
       if (!eventId) return res.status(400).json({ error: "Missing eventId" });
       try {
+        const { data: existing } = await calendar.events.get({ calendarId: CALENDAR_ID, eventId });
+        const code = existing.extendedProperties?.private?.freshride_code;
+
         await calendar.events.patch({
           calendarId: CALENDAR_ID,
           eventId,
@@ -80,6 +96,7 @@ export default async function handler(req, res) {
             extendedProperties: { private: { freshride_code: "" } },
           },
         });
+        await deleteDraftJobByCode(code);
         return res.status(200).json({ ok: true });
       } catch (err) {
         console.error("admin-bookings reopen error:", err);
@@ -130,7 +147,14 @@ export default async function handler(req, res) {
     const { eventId } = req.body || {};
     if (!eventId) return res.status(400).json({ error: "Missing eventId" });
     try {
+      let code;
+      try {
+        const { data: existing } = await calendar.events.get({ calendarId: CALENDAR_ID, eventId });
+        code = existing.extendedProperties?.private?.freshride_code;
+      } catch (_) { /* event already gone — nothing to look up */ }
+
       await calendar.events.delete({ calendarId: CALENDAR_ID, eventId });
+      await deleteDraftJobByCode(code);
       return res.status(200).json({ ok: true });
     } catch (err) {
       console.error("admin-bookings DELETE error:", err);

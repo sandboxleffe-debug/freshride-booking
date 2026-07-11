@@ -16,6 +16,7 @@ import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 import { getTalkdeskAccessToken } from "./_lib/talkdesk-auth.js";
 import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
+import { findCustomerByPhone, getNextCustomerNumber } from "./_lib/customers.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const TALKDESK_URL = "https://api.talkdeskapp.eu/flows/8767c122bb494be38cec8453794ee659/interactions";
@@ -159,6 +160,37 @@ async function sendOwnerReminderEmail({ name, phone, services, start, end, code 
   });
 }
 
+// Pre-fills a "draft" job log entry the moment a booking comes in, so the
+// owner isn't starting from a blank form when the job is actually done —
+// date, customer, and services are already known. Matches the customer by
+// phone against job history (freshride_jobs) to reuse their FR-number
+// instead of minting a new one for a repeat customer. Best-effort: never
+// blocks the booking itself if this fails.
+async function createDraftJobLog({ name, phone, services, start, code }) {
+  try {
+    const supabase = getSupabaseAdmin();
+    const match = await findCustomerByPhone(supabase, phone);
+    const customer_number = match ? match.customer_number : String(await getNextCustomerNumber(supabase));
+
+    const p = getOsloParts(start);
+    const pad = n => String(n).padStart(2, "0");
+    const job_date = `${p.year}-${pad(p.month)}-${pad(p.day)}`;
+
+    await supabase.from("freshride_jobs").insert({
+      job_date,
+      customer_name: name,
+      customer_phone: phone,
+      customer_number,
+      services: services.join(", "),
+      price_paid: 0,
+      status: "draft",
+      booking_code: code,
+    });
+  } catch (err) {
+    console.error("createDraftJobLog error:", err);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -206,6 +238,8 @@ export default async function handler(req, res) {
     console.error("book-slot calendar error:", err);
     return res.status(500).json({ error: "Klarte ikke å bekrefte booking" });
   }
+
+  await createDraftJobLog({ name, phone, services, start, code });
 
   let smsSent = false;
   try {

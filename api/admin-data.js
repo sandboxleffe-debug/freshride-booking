@@ -235,11 +235,12 @@ async function handleJobs(req, res, supabase) {
   }
 
   if (req.method === "PATCH") {
-    const { id, customer_name, customer_number, car_type, services, price_paid, notes, job_size, time_spent_minutes, job_date, campaign_price } = req.body || {};
+    const { id, customer_name, customer_number, customer_phone, car_type, services, price_paid, notes, job_size, time_spent_minutes, job_date, campaign_price, status } = req.body || {};
     if (!id) return res.status(400).json({ error: "Missing id" });
     const updates = {};
     if (customer_name !== undefined) updates.customer_name = customer_name;
     if (customer_number !== undefined) updates.customer_number = customer_number;
+    if (customer_phone !== undefined) updates.customer_phone = customer_phone;
     if (car_type !== undefined) updates.car_type = car_type;
     if (services !== undefined) updates.services = services;
     if (price_paid !== undefined) updates.price_paid = price_paid;
@@ -248,6 +249,7 @@ async function handleJobs(req, res, supabase) {
     if (time_spent_minutes !== undefined) updates.time_spent_minutes = time_spent_minutes;
     if (job_date !== undefined) updates.job_date = job_date;
     if (campaign_price !== undefined) updates.campaign_price = campaign_price;
+    if (status !== undefined) updates.status = status;
     const { error } = await supabase.from("freshride_jobs").update(updates).eq("id", id);
     if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å oppdatere jobb" }); }
     return res.status(200).json({ ok: true });

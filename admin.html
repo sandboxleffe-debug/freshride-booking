@@ -60,11 +60,16 @@
   .fr-list-row-name { font-weight: 600; font-size: 0.9rem; color: var(--fr-panel-text); }
   .fr-list-row-meta { font-size: 0.78rem; color: var(--fr-panel-text-faint); }
   .fr-list-row-code { font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; color: var(--fr-gold-deep); background: var(--fr-gold-soft); padding: 0.1rem 0.4rem; border-radius: 6px; }
+  .fr-list-row-code.fr-list-row-customer { color: #2E6E8E; background: rgba(46,110,142,0.14); }
   .fr-list-row-open { color: #2E7D32; font-weight: 600; font-size: 0.82rem; }
   .fr-notif-icons { display: flex; gap: 0.3rem; flex-shrink: 0; }
   .fr-notif-chip { font-size: 1.05rem; line-height: 1; }
   .fr-notif-chip-bad { filter: grayscale(1); opacity: 0.35; }
   .fr-list-section-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fr-text-dark-zone-faint); margin: 1.2rem 0 0.5rem; }
+  /* #list (Oversikt) sits outside .fr-panel on the dark background — but
+     #jobsList sits inside a light .fr-panel, where the faint light-on-light
+     color above is nearly invisible. Override when nested in a panel. */
+  .fr-panel .fr-list-section-label { color: var(--fr-panel-text-soft); }
 
   /* Opprett tid: day timeline (09-21), shows existing slots + the one being created */
   .fr-day-timeline { margin: 0.9rem 0 1.1rem; }
@@ -398,6 +403,7 @@
               <tr>
                 <th><span class="fr-icon" data-fr-icon="user"></span></th>
                 <th>Navn</th>
+                <th><span class="fr-icon" data-fr-icon="phone"></span> Mobil</th>
                 <th class="text-center"><span class="fr-icon" data-fr-icon="car"></span></th>
                 <th class="text-end">Brukt</th>
                 <th></th>
@@ -538,7 +544,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content fr-modal">
       <div class="modal-header border-0">
-        <h5 class="modal-title"><span class="fr-icon" data-fr-icon="edit"></span> Rediger jobb</h5>
+        <h5 class="modal-title"><span class="fr-icon" data-fr-icon="edit"></span> Rediger jobb <span id="editJobDraftBadge" class="fr-draft-badge d-none">Kladd fra booking</span></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
       </div>
       <div class="modal-body">
@@ -551,8 +557,12 @@
           <input id="editJobCustomer" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label"># Kundenummer</label>
+          <label class="fr-label">Kundenummer</label>
           <input id="editJobCustomerNumber" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="phone"></span> Mobilnummer</label>
+          <input id="editJobCustomerPhone" class="form-control fr-input" placeholder="92133900" />
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="car"></span> Biltype</label>
@@ -594,7 +604,7 @@
         <div id="editJobMsg" class="fr-save-msg"></div>
       </div>
       <div class="modal-footer border-0 flex-column gap-2">
-        <button class="btn fr-btn-primary w-100" onclick="saveJobEdit()"><span class="fr-icon" data-fr-icon="save"></span> Lagre endringer</button>
+        <button class="btn fr-btn-primary w-100" id="saveJobEditBtn" onclick="saveJobEdit()"><span class="fr-icon" data-fr-icon="save"></span> Lagre endringer</button>
         <button class="btn w-100" style="background:#F4D8D3; border:1px solid #E0AFA6; color:#8A2E20;" onclick="deleteJobFromEdit()"><span class="fr-icon" data-fr-icon="trash"></span> Slett jobb</button>
       </div>
     </div>
@@ -829,7 +839,7 @@ function renderList(days) {
       row.innerHTML = `
         <div class="fr-list-row-when">${fmtDateShort(b.start)} · ${fmtTime(b.start)}</div>
         <div class="fr-list-row-body">
-          <div class="fr-list-row-name">${b.name} ${b.code ? `<span class="fr-list-row-code">${b.code}</span>` : ''}</div>
+          <div class="fr-list-row-name">${b.name} ${b.code ? `<span class="fr-list-row-code">${b.code}</span>` : ''}${b.customerNumber ? ` <span class="fr-list-row-code fr-list-row-customer">${formatCustomerId(b.customerNumber)}</span>` : ''}</div>
           <div class="fr-list-row-meta">${b.phone}${b.services ? ' · ' + b.services : ''}</div>
         </div>
       `;
@@ -1608,17 +1618,25 @@ function getUniqueCustomers() {
 }
 
 /* ---------------- Kunderegister ---------------- */
+function formatCustomerId(number) {
+  return number ? `FR${number}` : '';
+}
+function parseCustomerId(value) {
+  return String(value || '').trim().replace(/^FR/i, '').trim();
+}
+
 function getCustomerStats() {
   const jobs = window._frJobs || [];
   const map = new Map();
   jobs.forEach(j => {
     if (!j.customer_number) return;
     if (!map.has(j.customer_number)) {
-      map.set(j.customer_number, { number: j.customer_number, name: j.customer_name, jobCount: 0, totalSpent: 0 });
+      map.set(j.customer_number, { number: j.customer_number, name: j.customer_name, phone: '', jobCount: 0, totalSpent: 0 });
     }
     const c = map.get(j.customer_number);
     c.jobCount += 1;
     c.totalSpent += Number(j.price_paid || 0);
+    if (!c.phone && j.customer_phone) c.phone = j.customer_phone;
   });
   return Array.from(map.values()).sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
 }
@@ -1636,13 +1654,14 @@ function renderCustomersAdmin() {
   if (!body) return;
   const customers = getCustomerStats();
   if (!customers.length) {
-    body.innerHTML = '<tr><td colspan="5" class="fr-empty-day">Ingen kunder registrert ennå.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="fr-empty-day">Ingen kunder registrert ennå.</td></tr>';
     return;
   }
   body.innerHTML = customers.map(c => `
     <tr data-number="${c.number}">
-      <td><input class="form-control fr-input fr-customer-number-input" value="${c.number}" /></td>
+      <td><input class="form-control fr-input fr-customer-number-input" value="${formatCustomerId(c.number)}" /></td>
       <td><input class="form-control fr-input fr-customer-name-input" value="${(c.name || '').replace(/"/g, '&quot;')}" /></td>
+      <td><input class="form-control fr-input fr-customer-phone-input" value="${(c.phone || '').replace(/"/g, '&quot;')}" placeholder="92133900" /></td>
       <td class="text-center">${c.jobCount}</td>
       <td class="text-end">kr ${c.totalSpent.toLocaleString('no-NO')}</td>
       <td><button class="fr-customer-save-btn" onclick="saveCustomerEdit('${c.number}', this)" title="Lagre" aria-label="Lagre">${frIcon('save')}</button></td>
@@ -1652,8 +1671,9 @@ function renderCustomersAdmin() {
 
 async function saveCustomerEdit(originalNumber, btnEl) {
   const row = btnEl.closest('tr');
-  const newNumber = row.querySelector('.fr-customer-number-input').value.trim();
+  const newNumber = parseCustomerId(row.querySelector('.fr-customer-number-input').value);
   const newName = row.querySelector('.fr-customer-name-input').value.trim();
+  const newPhone = row.querySelector('.fr-customer-phone-input').value.trim();
   if (!newNumber || !newName) return;
 
   const jobsToUpdate = (window._frJobs || []).filter(j => j.customer_number === originalNumber);
@@ -1663,7 +1683,7 @@ async function saveCustomerEdit(originalNumber, btnEl) {
     await Promise.all(jobsToUpdate.map(j => fetch('/api/admin-data?resource=jobs', {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: j.id, customer_name: newName, customer_number: newNumber })
+      body: JSON.stringify({ id: j.id, customer_name: newName, customer_number: newNumber, customer_phone: newPhone || null })
     })));
     await loadJobsAdmin();
   } catch (e) {
@@ -1682,7 +1702,7 @@ function populateCustomerDropdown() {
   const select = document.getElementById('jobCustomerSelect');
   const customers = getUniqueCustomers();
   select.innerHTML = '<option value="__new__">+ Ny kunde …</option>' +
-    customers.map(([num, name]) => `<option value="${num}">#${num} — ${name}</option>`).join('');
+    customers.map(([num, name]) => `<option value="${num}">${formatCustomerId(num)} — ${name}</option>`).join('');
   onCustomerSelectChange();
 }
 
@@ -1692,7 +1712,7 @@ function onCustomerSelectChange() {
   document.getElementById('newCustomerFields').classList.toggle('d-none', !isNew);
   if (isNew) {
     document.getElementById('jobCustomer').value = '';
-    document.getElementById('newCustomerNumberHint').textContent = `Får kundenummer #${nextCustomerNumber()}`;
+    document.getElementById('newCustomerNumberHint').textContent = `Får kundenummer ${formatCustomerId(nextCustomerNumber())}`;
   }
 }
 
@@ -1701,40 +1721,68 @@ function openLightbox(url) {
   lightboxModal.show();
 }
 
+function buildJobRow(j, isDraft) {
+  const row = document.createElement('div');
+  row.className = 'fr-job-compact-row' + (isDraft ? ' fr-job-compact-draft' : '');
+  row.onclick = () => openJobEdit(j.id);
+  const photoIcon = (j.photos && j.photos.length) ? `<span class="fr-job-photo-flag">${frIcon('camera')} ${j.photos.length}</span>` : '';
+  const campaignFlag = j.campaign_price ? `<span class="fr-campaign-badge">${frIcon('gift')}</span>` : '';
+  row.innerHTML = `
+    <div class="fr-job-compact-main">
+      <span class="fr-job-compact-date">${formatDateNO(j.job_date)}</span>
+      <span class="fr-job-compact-name">${j.customer_name}</span>
+      ${j.customer_number ? `<span class="fr-job-compact-meta">${frIcon('user')} ${formatCustomerId(j.customer_number)}</span>` : ''}
+      ${j.car_type ? `<span class="fr-job-compact-meta">${frIcon('car')} ${j.car_type}</span>` : ''}
+      <span class="fr-job-compact-services">${j.services || ''}</span>
+    </div>
+    <div class="fr-job-compact-right">
+      ${isDraft
+        ? '<span class="fr-draft-badge">Kladd</span>'
+        : `${campaignFlag}${photoIcon}<span class="fr-job-compact-price">kr ${Number(j.price_paid).toLocaleString('no-NO')}</span>`}
+    </div>
+  `;
+  return row;
+}
+
 function renderJobsList() {
   const list = document.getElementById('jobsList');
   const jobs = window._frJobs || [];
   list.innerHTML = '';
   if (!jobs.length) { list.innerHTML = '<p class="fr-empty-day">Ingen jobber logget ennå.</p>'; return; }
 
-  const visible = jobsShowAll ? jobs : jobs.slice(0, JOBS_PAGE_SIZE);
+  // Draft jobs are auto-created the moment a customer books — pre-filled
+  // with date/customer/services so completing them later is quick. Shown
+  // separately and in full (not paginated) so none get missed.
+  const drafts = jobs.filter(j => j.status === 'draft');
+  const completed = jobs.filter(j => j.status !== 'draft');
 
-  visible.forEach(j => {
-    const row = document.createElement('div');
-    row.className = 'fr-job-compact-row';
-    row.onclick = () => openJobEdit(j.id);
-    const photoIcon = (j.photos && j.photos.length) ? `<span class="fr-job-photo-flag">${frIcon('camera')} ${j.photos.length}</span>` : '';
-    const campaignFlag = j.campaign_price ? `<span class="fr-campaign-badge">${frIcon('gift')}</span>` : '';
-    row.innerHTML = `
-      <div class="fr-job-compact-main">
-        <span class="fr-job-compact-date">${formatDateNO(j.job_date)}</span>
-        <span class="fr-job-compact-name">${j.customer_name}</span>
-        ${j.customer_number ? `<span class="fr-job-compact-meta">${frIcon('user')} #${j.customer_number}</span>` : ''}
-        ${j.car_type ? `<span class="fr-job-compact-meta">${frIcon('car')} ${j.car_type}</span>` : ''}
-        <span class="fr-job-compact-services">${j.services || ''}</span>
-      </div>
-      <div class="fr-job-compact-right">
-        ${campaignFlag}${photoIcon}
-        <span class="fr-job-compact-price">kr ${Number(j.price_paid).toLocaleString('no-NO')}</span>
-      </div>
-    `;
-    list.appendChild(row);
-  });
+  if (drafts.length) {
+    const label = document.createElement('div');
+    label.className = 'fr-list-section-label';
+    label.innerHTML = `${frIcon('clock')} Ikke fullført (${drafts.length})`;
+    list.appendChild(label);
+    drafts.forEach(j => list.appendChild(buildJobRow(j, true)));
+  }
 
-  if (jobs.length > JOBS_PAGE_SIZE) {
+  if (!completed.length) {
+    if (!drafts.length) list.innerHTML = '<p class="fr-empty-day">Ingen jobber logget ennå.</p>';
+    return;
+  }
+
+  if (drafts.length) {
+    const label = document.createElement('div');
+    label.className = 'fr-list-section-label';
+    label.innerHTML = `${frIcon('checkCircle')} Fullført`;
+    list.appendChild(label);
+  }
+
+  const visible = jobsShowAll ? completed : completed.slice(0, JOBS_PAGE_SIZE);
+  visible.forEach(j => list.appendChild(buildJobRow(j, false)));
+
+  if (completed.length > JOBS_PAGE_SIZE) {
     const btn = document.createElement('button');
     btn.className = 'fr-show-more-btn w-100 mt-2';
-    btn.textContent = jobsShowAll ? '▲ Vis færre' : `▼ Vis flere oppføringer (${jobs.length - JOBS_PAGE_SIZE} til)`;
+    btn.textContent = jobsShowAll ? '▲ Vis færre' : `▼ Vis flere oppføringer (${completed.length - JOBS_PAGE_SIZE} til)`;
     btn.onclick = (e) => { e.stopPropagation(); jobsShowAll = !jobsShowAll; renderJobsList(); };
     list.appendChild(btn);
   }
@@ -1843,7 +1891,13 @@ function openJobEdit(id) {
   editingJobId = id;
   document.getElementById('editJobDate').value = job.job_date || '';
   document.getElementById('editJobCustomer').value = job.customer_name || '';
-  document.getElementById('editJobCustomerNumber').value = job.customer_number || '';
+  document.getElementById('editJobCustomerNumber').value = formatCustomerId(job.customer_number);
+  document.getElementById('editJobCustomerPhone').value = job.customer_phone || '';
+  document.getElementById('editJobDraftBadge').classList.toggle('d-none', job.status !== 'draft');
+  const saveBtn = document.getElementById('saveJobEditBtn');
+  saveBtn.innerHTML = job.status === 'draft'
+    ? `${frIcon('checkCircle')} Fullfør jobb`
+    : `${frIcon('save')} Lagre endringer`;
   document.getElementById('editJobCarType').value = job.car_type || '';
   document.getElementById('editJobServices').value = job.services || '';
   document.getElementById('editJobPrice').value = job.price_paid ?? '';
@@ -1900,13 +1954,18 @@ async function saveJobEdit() {
         id: editingJobId,
         job_date: document.getElementById('editJobDate').value,
         customer_name: document.getElementById('editJobCustomer').value.trim(),
-        customer_number: document.getElementById('editJobCustomerNumber').value.trim(),
+        customer_number: parseCustomerId(document.getElementById('editJobCustomerNumber').value),
+        customer_phone: document.getElementById('editJobCustomerPhone').value.trim() || null,
         car_type: document.getElementById('editJobCarType').value.trim(),
         services: document.getElementById('editJobServices').value.trim(),
         price_paid: Number(document.getElementById('editJobPrice').value),
         job_size: Number(document.getElementById('editJobSize').value),
         time_spent_minutes: (hours * 60 + minutes) || null,
         notes: document.getElementById('editJobNotes').value.trim(),
+        // Saving via this modal always finalizes the job — whether it was a
+        // draft auto-created from a booking, or an already-completed one
+        // being touched up.
+        status: 'completed',
       })
     });
     if (res.status === 401) return handleAuthExpired();
