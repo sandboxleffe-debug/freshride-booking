@@ -807,9 +807,12 @@ async function fetchOverview() {
   try {
     const res = await fetch(`/api/admin-overview?days=${currentDays}`, { headers: authHeaders() });
     if (res.status === 401) return handleAuthExpired();
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || data.error || `Feil ${res.status}`);
     renderList(data.days || []);
-  } catch (e) {}
+  } catch (e) {
+    document.getElementById('list').innerHTML = `<p class="fr-empty-day">Klarte ikke å hente oversikt: ${e.message}</p>`;
+  }
 }
 
 function fmtTime(iso) {
