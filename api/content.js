@@ -98,5 +98,39 @@ export default async function handler(req, res) {
     }
   }
 
+  if (type === "references") {
+    try {
+      const { data: jobs, error } = await supabase
+        .from("freshride_jobs")
+        .select("id, car_type, reference_product_name, services, photo_paths_before, photo_paths_after, job_date")
+        .eq("show_as_reference", true)
+        .order("job_date", { ascending: false });
+      if (error) throw error;
+
+      const references = [];
+      for (const j of jobs || []) {
+        const beforePath = (j.photo_paths_before || [])[0];
+        const afterPath = (j.photo_paths_after || [])[0];
+        if (!beforePath || !afterPath) continue;
+        const [{ data: signedBefore }, { data: signedAfter }] = await Promise.all([
+          supabase.storage.from("job-photos").createSignedUrl(beforePath, 3600),
+          supabase.storage.from("job-photos").createSignedUrl(afterPath, 3600),
+        ]);
+        if (!signedBefore?.signedUrl || !signedAfter?.signedUrl) continue;
+        references.push({
+          id: j.id,
+          carType: j.car_type || "",
+          productName: j.reference_product_name || j.services || "",
+          before: signedBefore.signedUrl,
+          after: signedAfter.signedUrl,
+        });
+      }
+      return res.status(200).json({ references });
+    } catch (err) {
+      console.error("content references error:", err);
+      return res.status(500).json({ error: "Klarte ikke å hente referanser" });
+    }
+  }
+
   return res.status(400).json({ error: "Missing or invalid 'type'" });
 }

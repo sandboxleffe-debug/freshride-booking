@@ -178,6 +178,7 @@
     <a href="about.html" class="fr-nav-link">ℹ️ Om oss</a>
     <a href="prices.html" class="fr-nav-link">💰 Priser</a>
     <a href="feedback.html" class="fr-nav-link">⭐ Gi tilbakemelding</a>
+    <a href="resultater.html" class="fr-nav-link">🖼️ Resultater</a>
     <a href="https://willydeals.myspreadshop.no/" target="_blank" rel="noopener" class="fr-nav-link">🛍️ Merchandise</a>
     <a href="admin.html" class="fr-nav-link fr-nav-link-admin">🔒 Admin</a>
   </div>
@@ -398,10 +399,17 @@
           <label class="fr-label"><span class="fr-icon" data-fr-icon="fileText"></span> Notater</label>
           <textarea id="jobNotes" class="form-control fr-input" rows="2" placeholder="Valgfritt"></textarea>
         </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Bilder (kan velge flere)</label>
-          <input type="file" id="jobPhotos" class="form-control fr-input" accept="image/*" multiple />
+        <div class="fr-inline-fields fr-form-row">
+          <div>
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Førbilder</label>
+            <input type="file" id="jobPhotosBefore" class="form-control fr-input" accept="image/*" multiple />
+          </div>
+          <div>
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Etterbilder</label>
+            <input type="file" id="jobPhotosAfter" class="form-control fr-input" accept="image/*" multiple />
+          </div>
         </div>
+        <p class="fr-hint">Før- og etterbilder brukes på Resultater-siden hvis jobben merkes som referanse.</p>
         <button class="btn fr-btn-primary w-100" onclick="createJob()"><span class="fr-icon" data-fr-icon="save"></span> Lagre jobb</button>
         <div id="jobMsg" class="fr-save-msg"></div>
       </div>
@@ -655,6 +663,29 @@
           <div id="editJobPhotos" class="fr-job-photos"></div>
           <input type="file" id="editJobNewPhotos" class="form-control fr-input mt-2" accept="image/*" multiple />
         </div>
+
+        <div class="fr-form-row">
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Førbilder (Resultater-siden)</label>
+          <div id="editJobPhotosBefore" class="fr-job-photos"></div>
+          <input type="file" id="editJobNewPhotosBefore" class="form-control fr-input mt-2" accept="image/*" multiple />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Etterbilder (Resultater-siden)</label>
+          <div id="editJobPhotosAfter" class="fr-job-photos"></div>
+          <input type="file" id="editJobNewPhotosAfter" class="form-control fr-input mt-2" accept="image/*" multiple />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="star"></span> Produktnavn på Resultater-siden</label>
+          <input id="editJobReferenceProductName" class="form-control fr-input" placeholder="F.eks. Premium" />
+        </div>
+        <div class="fr-form-row">
+          <div class="form-check form-switch fr-hero-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="editJobShowReference">
+            <label class="form-check-label" for="editJobShowReference">Vis under referanser</label>
+          </div>
+          <p class="fr-hint" id="editJobReferenceHint">Krever minst ett før- og ett etterbilde.</p>
+        </div>
+
         <div id="editJobMsg" class="fr-save-msg"></div>
       </div>
       <div class="modal-footer border-0 flex-column gap-2">
@@ -1987,6 +2018,7 @@ function buildJobRow(j, isDraft) {
   row.onclick = () => openJobEdit(j.id);
   const photoIcon = (j.photos && j.photos.length) ? `<span class="fr-job-photo-flag">${frIcon('camera')} ${j.photos.length}</span>` : '';
   const campaignFlag = j.campaign_price ? `<span class="fr-campaign-badge">${frIcon('gift')}</span>` : '';
+  const referenceFlag = j.show_as_reference ? `<span class="fr-job-photo-flag" title="Vises på Resultater-siden">${frIcon('star')}</span>` : '';
   row.innerHTML = `
     <div class="fr-job-compact-main">
       <span class="fr-job-compact-date">${formatDateNO(j.job_date)}</span>
@@ -1998,7 +2030,7 @@ function buildJobRow(j, isDraft) {
     <div class="fr-job-compact-right">
       ${isDraft
         ? '<span class="fr-draft-badge">Kladd</span>'
-        : `${campaignFlag}${photoIcon}<span class="fr-job-compact-price">kr ${Number(j.price_paid).toLocaleString('no-NO')}</span>`}
+        : `${referenceFlag}${campaignFlag}${photoIcon}<span class="fr-job-compact-price">kr ${Number(j.price_paid).toLocaleString('no-NO')}</span>`}
     </div>
   `;
   return row;
@@ -2085,7 +2117,8 @@ async function createJob() {
   const time_spent_minutes = (hours * 60 + minutes) || null;
   const notes = document.getElementById('jobNotes').value.trim();
   const campaign_price = !document.getElementById('jobCampaignBadge').classList.contains('d-none');
-  const photoFiles = document.getElementById('jobPhotos').files;
+  const beforeFiles = document.getElementById('jobPhotosBefore').files;
+  const afterFiles = document.getElementById('jobPhotosAfter').files;
   const msg = document.getElementById('jobMsg');
   msg.textContent = ''; msg.className = 'fr-save-msg';
 
@@ -2101,14 +2134,23 @@ async function createJob() {
     const data = await res.json();
     const jobId = data.job.id;
 
-    if (photoFiles.length) {
-      msg.textContent = `Laster opp ${photoFiles.length} bilde(r) …`;
-      for (const file of photoFiles) {
+    const totalPhotos = beforeFiles.length + afterFiles.length;
+    if (totalPhotos) {
+      msg.textContent = `Laster opp ${totalPhotos} bilde(r) …`;
+      for (const file of beforeFiles) {
         const base64 = await compressImageFile(file);
         await fetch('/api/admin-data?resource=jobs', {
           method: 'POST',
           headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'upload-photo', jobId, imageBase64: base64, mimeType: 'image/jpeg' })
+          body: JSON.stringify({ action: 'upload-photo', jobId, imageBase64: base64, mimeType: 'image/jpeg', category: 'before' })
+        });
+      }
+      for (const file of afterFiles) {
+        const base64 = await compressImageFile(file);
+        await fetch('/api/admin-data?resource=jobs', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'upload-photo', jobId, imageBase64: base64, mimeType: 'image/jpeg', category: 'after' })
         });
       }
     }
@@ -2123,7 +2165,8 @@ async function createJob() {
     document.getElementById('jobSizeVal').textContent = '5';
     setWheelTime('jobTimeHours', 'jobTimeMinutes', 0, 0);
     document.getElementById('jobNotes').value = '';
-    document.getElementById('jobPhotos').value = '';
+    document.getElementById('jobPhotosBefore').value = '';
+    document.getElementById('jobPhotosAfter').value = '';
     loadJobsAdmin();
     loadAccountingSummary();
   } catch (e) {
@@ -2145,6 +2188,27 @@ async function deleteJob(id) {
 /* ---------------- Rediger jobb ---------------- */
 let editingJobId = null;
 
+function renderJobPhotoThumbs(photos, jobId) {
+  return (photos || []).map(p => `
+    <span style="position:relative; display:inline-block;">
+      <img src="${p.url}" class="fr-job-thumb" onclick="openLightbox('${p.url}')">
+      <button onclick="deleteJobPhoto('${jobId}', '${p.path}')" style="position:absolute; top:-6px; right:-6px; background:#C0392B; color:#fff; border:none; border-radius:50%; width:1.1rem; height:1.1rem; font-size:0.65rem; line-height:1;">✕</button>
+    </span>
+  `).join('');
+}
+
+function updateJobReferenceCheckboxState(job) {
+  const hasBefore = (job.photosBefore || []).length > 0;
+  const hasAfter = (job.photosAfter || []).length > 0;
+  const cb = document.getElementById('editJobShowReference');
+  const canShow = hasBefore && hasAfter;
+  cb.disabled = !canShow;
+  if (!canShow) cb.checked = false;
+  document.getElementById('editJobReferenceHint').textContent = canShow
+    ? 'Krever minst ett før- og ett etterbilde.'
+    : 'Last opp minst ett før- og ett etterbilde for å kunne vise denne jobben som referanse.';
+}
+
 function openJobEdit(id) {
   const job = (window._frJobs || []).find(j => j.id === id);
   if (!job) return;
@@ -2165,15 +2229,14 @@ function openJobEdit(id) {
   document.getElementById('editJobSizeVal').textContent = job.job_size || 5;
   const totalMin = job.time_spent_minutes || 0;
   document.getElementById('editJobNotes').value = job.notes || '';
+  document.getElementById('editJobReferenceProductName').value = job.reference_product_name || '';
+  document.getElementById('editJobShowReference').checked = !!job.show_as_reference;
   document.getElementById('editJobMsg').textContent = '';
 
-  const photosEl = document.getElementById('editJobPhotos');
-  photosEl.innerHTML = (job.photos || []).map(p => `
-    <span style="position:relative; display:inline-block;">
-      <img src="${p.url}" class="fr-job-thumb" onclick="openLightbox('${p.url}')">
-      <button onclick="deleteJobPhoto('${job.id}', '${p.path}')" style="position:absolute; top:-6px; right:-6px; background:#C0392B; color:#fff; border:none; border-radius:50%; width:1.1rem; height:1.1rem; font-size:0.65rem; line-height:1;">✕</button>
-    </span>
-  `).join('');
+  document.getElementById('editJobPhotos').innerHTML = renderJobPhotoThumbs(job.photos, job.id);
+  document.getElementById('editJobPhotosBefore').innerHTML = renderJobPhotoThumbs(job.photosBefore, job.id);
+  document.getElementById('editJobPhotosAfter').innerHTML = renderJobPhotoThumbs(job.photosAfter, job.id);
+  updateJobReferenceCheckboxState(job);
 
   const editHours = Math.floor(totalMin / 60);
   const editMinutes = totalMin % 60;
@@ -2199,14 +2262,34 @@ async function deleteJobPhoto(jobId, path) {
   jobEditModal.hide();
 }
 
+async function uploadJobPhotos(files, jobId, category) {
+  for (const file of files) {
+    const base64 = await compressImageFile(file);
+    await fetch('/api/admin-data?resource=jobs', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'upload-photo', jobId, imageBase64: base64, mimeType: 'image/jpeg', category })
+    });
+  }
+}
+
 async function saveJobEdit() {
   const msg = document.getElementById('editJobMsg');
   msg.textContent = ''; msg.className = 'fr-save-msg';
   const newPhotoFiles = document.getElementById('editJobNewPhotos').files;
+  const newBeforeFiles = document.getElementById('editJobNewPhotosBefore').files;
+  const newAfterFiles = document.getElementById('editJobNewPhotosAfter').files;
   const hours = Number(document.getElementById('editJobTimeHours').value) || 0;
   const minutes = Number(document.getElementById('editJobTimeMinutes').value) || 0;
 
   try {
+    // Upload any new photos first — the reference-toggle PATCH below checks
+    // for before/after photos server-side, so they need to exist already if
+    // this save is the one adding them.
+    await uploadJobPhotos(newPhotoFiles, editingJobId, undefined);
+    await uploadJobPhotos(newBeforeFiles, editingJobId, 'before');
+    await uploadJobPhotos(newAfterFiles, editingJobId, 'after');
+
     const res = await fetch('/api/admin-data?resource=jobs', {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
@@ -2222,6 +2305,8 @@ async function saveJobEdit() {
         job_size: Number(document.getElementById('editJobSize').value),
         time_spent_minutes: (hours * 60 + minutes) || null,
         notes: document.getElementById('editJobNotes').value.trim(),
+        reference_product_name: document.getElementById('editJobReferenceProductName').value.trim() || null,
+        show_as_reference: document.getElementById('editJobShowReference').checked,
         // Saving via this modal always finalizes the job — whether it was a
         // draft auto-created from a booking, or an already-completed one
         // being touched up.
@@ -2229,24 +2314,15 @@ async function saveJobEdit() {
       })
     });
     if (res.status === 401) return handleAuthExpired();
-
-    if (newPhotoFiles.length) {
-      for (const file of newPhotoFiles) {
-        const base64 = await compressImageFile(file);
-        await fetch('/api/admin-data?resource=jobs', {
-          method: 'POST',
-          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'upload-photo', jobId: editingJobId, imageBase64: base64, mimeType: 'image/jpeg' })
-        });
-      }
-    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Klarte ikke å lagre.');
 
     msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
     loadJobsAdmin();
     loadAccountingSummary();
     setTimeout(() => jobEditModal.hide(), 600);
   } catch (e) {
-    msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+    msg.textContent = e.message || 'Klarte ikke å lagre.'; msg.classList.add('err');
   }
 }
 

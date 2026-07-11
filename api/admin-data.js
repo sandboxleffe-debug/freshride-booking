@@ -160,15 +160,18 @@ async function handleJobs(req, res, supabase) {
     if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å hente jobber" }); }
 
     // Turn stored photo paths into short-lived signed URLs (bucket is private)
+    const signPaths = async paths => {
+      if (!paths?.length) return [];
+      const { data: signed } = await supabase.storage.from("job-photos").createSignedUrls(paths, 3600);
+      return (signed || []).map((s, i) => ({ path: paths[i], url: s.signedUrl })).filter(p => p.url);
+    };
     const jobs = await Promise.all((data || []).map(async job => {
-      let photos = [];
-      if (job.photo_paths?.length) {
-        const { data: signed } = await supabase.storage.from("job-photos").createSignedUrls(job.photo_paths, 3600);
-        photos = (signed || [])
-          .map((s, i) => ({ path: job.photo_paths[i], url: s.signedUrl }))
-          .filter(p => p.url);
-      }
-      return { ...job, photos };
+      const [photos, photosBefore, photosAfter] = await Promise.all([
+        signPaths(job.photo_paths),
+        signPaths(job.photo_paths_before),
+        signPaths(job.photo_paths_after),
+      ]);
+      return { ...job, photos, photosBefore, photosAfter };
     }));
 
     const income = (data || []).reduce((sum, j) => sum + Number(j.price_paid || 0), 0);
@@ -179,8 +182,9 @@ async function handleJobs(req, res, supabase) {
     const { action } = req.body || {};
 
     if (action === "upload-photo") {
-      const { jobId, imageBase64, mimeType } = req.body || {};
+      const { jobId, imageBase64, mimeType, category } = req.body || {};
       if (!jobId || !imageBase64) return res.status(400).json({ error: "Missing jobId or imageBase64" });
+      const column = category === "before" ? "photo_paths_before" : category === "after" ? "photo_paths_after" : "photo_paths";
       try {
         const buffer = Buffer.from(imageBase64, "base64");
         const ext = (mimeType || "image/jpeg").split("/")[1] || "jpg";
@@ -190,10 +194,10 @@ async function handleJobs(req, res, supabase) {
         });
         if (uploadErr) throw uploadErr;
 
-        const { data: job, error: getErr } = await supabase.from("freshride_jobs").select("photo_paths").eq("id", jobId).single();
+        const { data: job, error: getErr } = await supabase.from("freshride_jobs").select(column).eq("id", jobId).single();
         if (getErr) throw getErr;
-        const updatedPaths = [...(job.photo_paths || []), path];
-        const { error: updateErr } = await supabase.from("freshride_jobs").update({ photo_paths: updatedPaths }).eq("id", jobId);
+        const updatedPaths = [...(job[column] || []), path];
+        const { error: updateErr } = await supabase.from("freshride_jobs").update({ [column]: updatedPaths }).eq("id", jobId);
         if (updateErr) throw updateErr;
 
         return res.status(200).json({ ok: true });
@@ -208,11 +212,17 @@ async function handleJobs(req, res, supabase) {
       if (!jobId || !path) return res.status(400).json({ error: "Missing jobId or path" });
       try {
         await supabase.storage.from("job-photos").remove([path]);
-        const { data: job, error: getErr } = await supabase.from("freshride_jobs").select("photo_paths").eq("id", jobId).single();
+        const { data: job, error: getErr } = await supabase.from("freshride_jobs")
+          .select("photo_paths, photo_paths_before, photo_paths_after").eq("id", jobId).single();
         if (getErr) throw getErr;
-        const updatedPaths = (job.photo_paths || []).filter(p => p !== path);
-        const { error: updateErr } = await supabase.from("freshride_jobs").update({ photo_paths: updatedPaths }).eq("id", jobId);
-        if (updateErr) throw updateErr;
+        const updates = {};
+        if ((job.photo_paths || []).includes(path)) updates.photo_paths = job.photo_paths.filter(p => p !== path);
+        if ((job.photo_paths_before || []).includes(path)) updates.photo_paths_before = job.photo_paths_before.filter(p => p !== path);
+        if ((job.photo_paths_after || []).includes(path)) updates.photo_paths_after = job.photo_paths_after.filter(p => p !== path);
+        if (Object.keys(updates).length) {
+          const { error: updateErr } = await supabase.from("freshride_jobs").update(updates).eq("id", jobId);
+          if (updateErr) throw updateErr;
+        }
         return res.status(200).json({ ok: true });
       } catch (err) {
         console.error("delete-photo error:", err);
@@ -235,7 +245,7 @@ async function handleJobs(req, res, supabase) {
   }
 
   if (req.method === "PATCH") {
-    const { id, customer_name, customer_number, customer_phone, car_type, services, price_paid, notes, job_size, time_spent_minutes, job_date, campaign_price, status } = req.body || {};
+    const { id, customer_name, customer_number, customer_phone, car_type, services, price_paid, notes, job_size, time_spent_minutes, job_date, campaign_price, status, reference_product_name, show_as_reference } = req.body || {};
     if (!id) return res.status(400).json({ error: "Missing id" });
     const updates = {};
     if (customer_name !== undefined) updates.customer_name = customer_name;
@@ -250,6 +260,21 @@ async function handleJobs(req, res, supabase) {
     if (job_date !== undefined) updates.job_date = job_date;
     if (campaign_price !== undefined) updates.campaign_price = campaign_price;
     if (status !== undefined) updates.status = status;
+    if (reference_product_name !== undefined) updates.reference_product_name = reference_product_name;
+
+    if (show_as_reference !== undefined) {
+      if (show_as_reference) {
+        const { data: existingJob } = await supabase.from("freshride_jobs")
+          .select("photo_paths_before, photo_paths_after").eq("id", id).single();
+        const hasBefore = (existingJob?.photo_paths_before || []).length > 0;
+        const hasAfter = (existingJob?.photo_paths_after || []).length > 0;
+        if (!hasBefore || !hasAfter) {
+          return res.status(400).json({ error: "Trenger både før- og etterbilde for å vises som referanse" });
+        }
+      }
+      updates.show_as_reference = show_as_reference;
+    }
+
     const { error } = await supabase.from("freshride_jobs").update(updates).eq("id", id);
     if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å oppdatere jobb" }); }
     return res.status(200).json({ ok: true });
@@ -258,9 +283,11 @@ async function handleJobs(req, res, supabase) {
   if (req.method === "DELETE") {
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: "Missing id" });
-    const { data: job } = await supabase.from("freshride_jobs").select("photo_paths").eq("id", id).single();
-    if (job?.photo_paths?.length) {
-      await supabase.storage.from("job-photos").remove(job.photo_paths);
+    const { data: job } = await supabase.from("freshride_jobs")
+      .select("photo_paths, photo_paths_before, photo_paths_after").eq("id", id).single();
+    const allPaths = [...(job?.photo_paths || []), ...(job?.photo_paths_before || []), ...(job?.photo_paths_after || [])];
+    if (allPaths.length) {
+      await supabase.storage.from("job-photos").remove(allPaths);
     }
     const { error } = await supabase.from("freshride_jobs").delete().eq("id", id);
     if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å slette" }); }

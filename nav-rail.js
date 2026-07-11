@@ -8,6 +8,7 @@ const RAIL_ICONS = {
   star: '<path d="M11.05 2.6a1 1 0 0 1 1.9 0l2.1 4.6 5 .6a1 1 0 0 1 .57 1.73l-3.73 3.4.98 4.94a1 1 0 0 1-1.47 1.07L12 16.7l-4.4 2.24a1 1 0 0 1-1.47-1.07l.98-4.95-3.73-3.4A1 1 0 0 1 3.95 7.8l5-.6 2.1-4.6Z"/>',
   bag: '<path fill-rule="evenodd" d="M8 6a4 4 0 1 1 8 0v1h2.4a1 1 0 0 1 1 .9l1.1 12a2 2 0 0 1-2 2.1H5.5a2 2 0 0 1-2-2.1l1.1-12a1 1 0 0 1 1-.9H8V6Zm2 1h4V6a2 2 0 1 0-4 0v1Z" clip-rule="evenodd"/>',
   lock: '<path fill-rule="evenodd" d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V11a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5Zm-3 8V6a3 3 0 0 1 6 0v3H9Zm3 4a1.5 1.5 0 0 1 1.5 1.5c0 .6-.3 1.1-.8 1.4l.3 2.1h-2l.3-2.1c-.5-.3-.8-.8-.8-1.4A1.5 1.5 0 0 1 12 13Z" clip-rule="evenodd"/>',
+  image: '<path fill-rule="evenodd" d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4Zm0 2h16v7.5l-3.5-3.5a1 1 0 0 0-1.4 0L11 14.1l-2.3-2.3a1 1 0 0 0-1.4 0L4 15V6Zm3 3a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" clip-rule="evenodd"/>',
 };
 
 document.querySelectorAll('[data-rail-icon]').forEach(el => {
