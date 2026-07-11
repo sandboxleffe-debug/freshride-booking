@@ -1064,12 +1064,15 @@ function setupTimelineDrag(widthFrac) {
   if (!bar || !overlay || widthFrac <= 0) return;
 
   overlay.onpointerdown = (e) => {
+    e.preventDefault();
     const barRect = bar.getBoundingClientRect();
     const startLeftFrac = overlay.offsetLeft / barRect.width;
     const pointerStartX = e.clientX;
-    overlay.setPointerCapture(e.pointerId);
     overlay.classList.add('fr-tl-new-dragging');
 
+    // Listen on document (not the overlay itself) so the drag keeps tracking
+    // even if the pointer moves faster than layout and briefly leaves the
+    // block — no pointer capture needed, which is also flakier to rely on.
     const onMove = (ev) => {
       const deltaFrac = (ev.clientX - pointerStartX) / barRect.width;
       const newLeftFrac = Math.max(0, Math.min(1 - widthFrac, startLeftFrac + deltaFrac));
@@ -1079,16 +1082,16 @@ function setupTimelineDrag(widthFrac) {
 
     const onUp = () => {
       overlay.classList.remove('fr-tl-new-dragging');
-      overlay.removeEventListener('pointermove', onMove);
-      overlay.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
       const finalLeftFrac = overlay.offsetLeft / bar.getBoundingClientRect().width;
       const snappedTime = fracToTimeStr(finalLeftFrac);
       document.getElementById('createTime').value = snappedTime;
       positionTimelineOverlay(timeToFrac(snappedTime), widthFrac);
     };
 
-    overlay.addEventListener('pointermove', onMove);
-    overlay.addEventListener('pointerup', onUp);
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
   };
 }
 
