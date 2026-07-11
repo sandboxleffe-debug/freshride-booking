@@ -490,8 +490,12 @@
           <input id="promoTitle" class="form-control fr-input" placeholder="Sommersalg" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label">Rabattmerke (vises i banneret)</label>
-          <input id="promoDiscountLabel" class="form-control fr-input" placeholder="10%" />
+          <label class="fr-label">Rabatt</label>
+          <div class="fr-time-wheels">
+            <div class="fr-wheel" data-for="promoDiscountPct"></div>
+            <span class="fr-time-sep">%</span>
+          </div>
+          <select id="promoDiscountPct" class="d-none"></select>
         </div>
         <div class="fr-form-row">
           <label class="fr-label">Beskrivelse</label>
@@ -741,6 +745,7 @@ function enterAdmin() {
   loadPromoAdmin();
   populateTimeWheels('jobTimeHours', 'jobTimeMinutes');
   populateTimeWheels('editJobTimeHours', 'editJobTimeMinutes');
+  populatePromoWheel();
   loadJobServiceOptions();
   loadJobsAdmin();
   loadExpensesAdmin();
@@ -1428,14 +1433,15 @@ async function loadPromoAdmin() {
 
 async function createPromo() {
   const title = document.getElementById('promoTitle').value.trim();
-  const discount_label = document.getElementById('promoDiscountLabel').value.trim();
+  const discountPct = Number(document.getElementById('promoDiscountPct').value) || 0;
+  const discount_label = `${discountPct}%`;
   const description = document.getElementById('promoDescription').value.trim();
   const start_date = document.getElementById('promoStart').value;
   const end_date = document.getElementById('promoEnd').value;
   const msg = document.getElementById('promoMsg');
   msg.textContent = ''; msg.className = 'fr-save-msg';
-  if (!title || !discount_label || !start_date || !end_date) {
-    msg.textContent = 'Fyll ut tittel, rabattmerke og datoer.'; msg.classList.add('err'); return;
+  if (!title || !discountPct || !start_date || !end_date) {
+    msg.textContent = 'Fyll ut tittel, rabatt og datoer.'; msg.classList.add('err'); return;
   }
   try {
     const res = await fetch('/api/admin-data?resource=promotions', {
@@ -1446,7 +1452,7 @@ async function createPromo() {
     if (res.status === 401) return handleAuthExpired();
     msg.textContent = 'Kampanje opprettet ✓'; msg.classList.add('ok');
     document.getElementById('promoTitle').value = '';
-    document.getElementById('promoDiscountLabel').value = '';
+    if (frWheelInstances['promoDiscountPct']) frWheelInstances['promoDiscountPct'].setToValue(0);
     document.getElementById('promoDescription').value = '';
     document.getElementById('promoStart').value = '';
     document.getElementById('promoEnd').value = '';
@@ -1655,6 +1661,14 @@ function populateTimeWheels(hourSelectId, minuteSelectId) {
 function setWheelTime(hourSelectId, minuteSelectId, hours, minutes) {
   if (frWheelInstances[hourSelectId]) frWheelInstances[hourSelectId].setToValue(hours);
   if (frWheelInstances[minuteSelectId]) frWheelInstances[minuteSelectId].setToValue(minutes);
+}
+
+function populatePromoWheel() {
+  const sel = document.getElementById('promoDiscountPct');
+  const values = Array.from({ length: 101 }, (_, i) => i); // 0-100
+  sel.innerHTML = values.map(v => `<option value="${v}">${v}</option>`).join('');
+  const wheelEl = document.querySelector('.fr-wheel[data-for="promoDiscountPct"]');
+  frWheelInstances['promoDiscountPct'] = frCreateWheel(wheelEl, values, v => String(v), sel);
 }
 
 async function loadActivePromoDiscount() {

@@ -704,10 +704,23 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 
 /* Promo banner — flashy, stands out, sits above everything else */
 .fr-promo-banner {
-  background: linear-gradient(90deg, #1F8A3B, #2FA84C);
-  color: #fff;
+  background: linear-gradient(120deg, var(--fr-black) 0%, #3A2F0A 50%, var(--fr-black) 100%);
+  color: var(--fr-text-dark-zone);
   position: relative;
   z-index: 30;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(232,185,35,0.3);
+}
+.fr-promo-banner::before {
+  content: "";
+  position: absolute; top: 0; left: -50%; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(232,185,35,0.22), transparent);
+  animation: fr-promo-shimmer 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes fr-promo-shimmer {
+  0% { left: -50%; }
+  100% { left: 150%; }
 }
 .fr-promo-inner {
   display: flex;
@@ -715,21 +728,32 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   gap: 0.75rem;
   padding: 0.6rem 1rem;
   font-size: 0.88rem;
+  position: relative;
 }
 .fr-promo-badge {
-  background: rgba(255,255,255,0.22);
+  background: var(--fr-gold);
+  color: var(--fr-black);
   font-weight: 800;
-  padding: 0.2rem 0.6rem;
+  padding: 0.25rem 0.7rem;
   border-radius: 999px;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
+  box-shadow: 0 0 12px rgba(232,185,35,0.5);
+  animation: fr-promo-pulse 2s ease-in-out infinite;
   flex-shrink: 0;
 }
-.fr-promo-text { flex: 1; font-weight: 500; }
+@keyframes fr-promo-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+.fr-promo-text { flex: 1; font-weight: 600; color: var(--fr-text-dark-zone-soft); }
 .fr-promo-close {
-  background: none; border: none; color: #fff; opacity: 0.8;
+  background: none; border: none; color: var(--fr-text-dark-zone-faint); opacity: 0.8;
   font-size: 1rem; cursor: pointer; padding: 0 0.25rem; flex-shrink: 0;
 }
-.fr-promo-close:hover { opacity: 1; }
+.fr-promo-close:hover { opacity: 1; color: var(--fr-text-dark-zone); }
+@media (prefers-reduced-motion: reduce) {
+  .fr-promo-banner::before, .fr-promo-badge { animation: none; }
+}
 
 /* Service price display */
 .fr-service-option-body { display: flex; flex-direction: column; flex: 1; }

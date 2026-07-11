@@ -89,7 +89,7 @@
 <header class="fr-hero-copy">
   <div class="container">
     <p class="fr-eyebrow">FRESHRIDE — DETALJENE SOM UTGJØR FORSKJELLEN</p>
-    <h1 class="fr-hero-title">La proffene <span class="fr-highlight">gjøre jobben</span></h1>
+    <h1 class="fr-hero-title">Din bil fortjener <span class="fr-highlight">ekte omtanke</span></h1>
     <p class="fr-hero-text">Slik booker du:</p>
     <div class="fr-steps-grid">
       <a href="#step-date" class="fr-step-card fr-step-card-link">
@@ -274,7 +274,7 @@ async function loadPromo() {
     const res = await fetch('/api/content?type=promotion');
     const data = await res.json();
     if (!data.active) return;
-    document.getElementById('promoDiscount').textContent = data.discount_label;
+    document.getElementById('promoDiscount').textContent = `🔥 ${data.discount_label}`;
     document.getElementById('promoText').textContent = data.description || data.title;
     document.getElementById('promoBanner').classList.remove('d-none');
   } catch (e) { /* silent */ }
