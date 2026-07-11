@@ -15,10 +15,27 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Feil passord" });
   }
 
+  const { date } = req.query;
   const daysAhead = Math.min(Number(req.query.days) || 14, 60);
 
   try {
     const calendar = getCalendarClient();
+
+    // Single-day mode — used by the "Opprett tid" day timeline, since the
+    // picked date may fall outside the rolling window fetched below.
+    if (date) {
+      const timeMin = osloWallTimeToUtc(date, "00:00").toISOString();
+      const timeMax = osloWallTimeToUtc(date, "23:59:59").toISOString();
+      const { data } = await calendar.events.list({
+        calendarId: CALENDAR_ID, timeMin, timeMax, singleEvents: true, orderBy: "startTime",
+      });
+      const available = [], booked = [];
+      for (const e of data.items || []) {
+        if (e.summary === "Ledig") available.push({ id: e.id, start: e.start?.dateTime, end: e.end?.dateTime });
+        else booked.push({ id: e.id, start: e.start?.dateTime, end: e.end?.dateTime, name: (e.summary || "Ukjent").split(" - ")[0] });
+      }
+      return res.status(200).json({ date, available, booked });
+    }
 
     const today = getOsloParts(new Date());
     const pad = n => String(n).padStart(2, "0");

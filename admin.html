@@ -66,6 +66,26 @@
   .fr-notif-chip-bad { filter: grayscale(1); opacity: 0.35; }
   .fr-list-section-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fr-text-dark-zone-faint); margin: 1.2rem 0 0.5rem; }
 
+  /* Opprett tid: day timeline (09-21), shows existing slots + the one being created */
+  .fr-day-timeline { margin: 0.9rem 0 1.1rem; }
+  .fr-tl-bar { position: relative; display: flex; border: 1px solid var(--fr-panel-border); border-radius: 8px; overflow: hidden; height: 2.4rem; }
+  .fr-tl-hour { flex: 1; background: var(--fr-panel-bg-2); border-right: 1px solid var(--fr-panel-border); }
+  .fr-tl-hour:last-child { border-right: none; }
+  .fr-tl-hour.fr-tl-open { background: #BFE3C4; }
+  .fr-tl-hour.fr-tl-booked { background: #D8D2C4; }
+  .fr-tl-new {
+    position: absolute; top: -2px; bottom: -2px;
+    background: rgba(232,185,35,0.4); border: 2px solid var(--fr-gold); border-radius: 6px;
+    box-sizing: border-box;
+  }
+  .fr-tl-labels { position: relative; height: 1.1rem; margin-top: 0.15rem; }
+  .fr-tl-labels span { position: absolute; transform: translateX(-50%); font-size: 0.68rem; color: var(--fr-panel-text-faint); }
+  .fr-tl-legend { display: flex; gap: 0.9rem; margin-top: 0.5rem; font-size: 0.75rem; color: var(--fr-panel-text-soft); flex-wrap: wrap; }
+  .fr-tl-dot { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 3px; margin-right: 0.3rem; vertical-align: -0.05rem; }
+  .fr-tl-dot-open { background: #BFE3C4; }
+  .fr-tl-dot-booked { background: #D8D2C4; }
+  .fr-tl-dot-new { background: rgba(232,185,35,0.4); border: 1.5px solid var(--fr-gold); }
+
   .fr-login-input { width: 100%; margin-bottom: 0.9rem; }
   .fr-login-error { color: #FF8A7A; font-size: 0.85rem; margin-top: 0.6rem; min-height: 1.1rem; }
 </style>
@@ -186,18 +206,21 @@
         <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="plusCircle"></span> Opprett ny ledig tid</h2></div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
-          <input type="date" id="createDate" class="form-control fr-input" />
+          <input type="date" id="createDate" class="form-control fr-input" onchange="loadCreateDayTimeline()" />
         </div>
         <div class="fr-inline-fields fr-form-row">
           <div>
             <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Starttid</label>
-            <input type="time" id="createTime" class="form-control fr-input" value="15:00" />
+            <input type="time" id="createTime" class="form-control fr-input" value="15:00" oninput="renderCreateDayTimeline()" />
           </div>
           <div>
             <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Varighet (min)</label>
-            <input type="number" id="createDuration" class="form-control fr-input" value="180" step="15" min="15" />
+            <input type="number" id="createDuration" class="form-control fr-input" value="180" step="15" min="15" oninput="renderCreateDayTimeline()" />
           </div>
         </div>
+
+        <div id="createDayTimeline" class="fr-day-timeline"></div>
+
         <button class="btn fr-btn-primary w-100" onclick="createSlot()"><span class="fr-icon" data-fr-icon="checkCircle"></span> Opprett ledig tid</button>
         <div id="createMsg" class="fr-save-msg"></div>
       </div>
@@ -649,6 +672,7 @@ function enterAdmin() {
   loadAboutAdmin();
   loadNotifications();
   document.getElementById('createDate').valueAsDate = new Date();
+  loadCreateDayTimeline();
   document.getElementById('jobDate').valueAsDate = new Date();
   document.getElementById('expDate').valueAsDate = new Date();
 }
@@ -910,9 +934,83 @@ async function createSlot() {
     msg.textContent = 'Ledig tid opprettet ✓'; msg.classList.add('ok');
     fetchOverview();
     loadMonthCalendar();
+    loadCreateDayTimeline();
   } catch (e) {
     msg.textContent = e.message || 'Klarte ikke å opprette tiden.'; msg.classList.add('err');
   }
+}
+
+/* ---------------- Opprett tid: dags-tidslinje 09-21 ---------------- */
+const CREATE_TL_START_HOUR = 9;
+const CREATE_TL_END_HOUR = 21;
+
+async function loadCreateDayTimeline() {
+  const date = document.getElementById('createDate').value;
+  const box = document.getElementById('createDayTimeline');
+  if (!date) { box.innerHTML = ''; return; }
+  box.innerHTML = '<p class="fr-hint">Henter dagen …</p>';
+  try {
+    const res = await fetch(`/api/admin-overview?date=${date}`, { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    window._frCreateDayData = await res.json();
+    renderCreateDayTimeline();
+  } catch (e) {
+    box.innerHTML = '<p class="fr-hint">Klarte ikke å hente dagen.</p>';
+  }
+}
+
+function renderCreateDayTimeline() {
+  const box = document.getElementById('createDayTimeline');
+  const data = window._frCreateDayData;
+  if (!data) return;
+
+  const startHour = CREATE_TL_START_HOUR, endHour = CREATE_TL_END_HOUR;
+  const totalHours = endHour - startHour;
+  const hourStatus = new Array(totalHours).fill('empty');
+
+  const markRange = (startIso, endIso, kind) => {
+    const s = new Date(startIso), e = new Date(endIso);
+    const sH = s.getHours() + s.getMinutes() / 60;
+    const eH = e.getHours() + e.getMinutes() / 60;
+    for (let h = startHour; h < endHour; h++) {
+      if (eH > h && sH < h + 1) {
+        if (kind === 'booked') hourStatus[h - startHour] = 'booked';
+        else if (hourStatus[h - startHour] !== 'booked') hourStatus[h - startHour] = 'open';
+      }
+    }
+  };
+  (data.available || []).forEach(s => markRange(s.start, s.end, 'open'));
+  (data.booked || []).forEach(b => markRange(b.start, b.end, 'booked'));
+
+  const hoursHtml = hourStatus.map(s => `<div class="fr-tl-hour fr-tl-${s}"></div>`).join('');
+  const labels = [];
+  for (let h = startHour; h <= endHour; h++) {
+    labels.push(`<span style="left:${((h - startHour) / totalHours) * 100}%">${h}</span>`);
+  }
+
+  let overlayHtml = '';
+  const time = document.getElementById('createTime').value;
+  const duration = Number(document.getElementById('createDuration').value) || 0;
+  if (time && duration > 0) {
+    const [hh, mm] = time.split(':').map(Number);
+    const startFrac = (hh + mm / 60 - startHour) / totalHours;
+    const endFrac = (hh + mm / 60 + duration / 60 - startHour) / totalHours;
+    const left = Math.max(0, startFrac) * 100;
+    const width = (Math.min(1, endFrac) - Math.max(0, startFrac)) * 100;
+    if (width > 0) {
+      overlayHtml = `<div class="fr-tl-new" style="left:${left}%; width:${width}%;"></div>`;
+    }
+  }
+
+  box.innerHTML = `
+    <div class="fr-tl-bar">${hoursHtml}${overlayHtml}</div>
+    <div class="fr-tl-labels">${labels.join('')}</div>
+    <div class="fr-tl-legend">
+      <span><i class="fr-tl-dot fr-tl-dot-open"></i> Ledig</span>
+      <span><i class="fr-tl-dot fr-tl-dot-booked"></i> Booket</span>
+      <span><i class="fr-tl-dot fr-tl-dot-new"></i> Ny tid</span>
+    </div>
+  `;
 }
 
 /* ---------------- Tjenester ---------------- */
