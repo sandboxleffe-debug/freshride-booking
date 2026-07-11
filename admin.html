@@ -106,6 +106,11 @@
     transition: background 0.1s ease;
   }
   .fr-tl-booked-block:hover { background: rgba(0,0,0,0.12); }
+  .fr-tl-open-block {
+    position: absolute; top: 0; bottom: 0; cursor: pointer;
+    transition: background 0.1s ease;
+  }
+  .fr-tl-open-block:hover { background: rgba(0,0,0,0.1); }
   .fr-tl-booking-info {
     margin-top: 0.6rem; padding: 0.6rem 0.75rem;
     background: var(--fr-panel-bg-2); border: 1px solid var(--fr-panel-border); border-radius: 10px;
@@ -1074,6 +1079,7 @@ async function loadCreateDayTimeline() {
     const res = await fetch(`/api/admin-overview?date=${date}`, { headers: authHeaders() });
     if (res.status === 401) return handleAuthExpired();
     window._frCreateDayData = await res.json();
+    suggestBufferedStartTime();
     renderCreateDayTimeline();
   } catch (e) {
     box.innerHTML = '<p class="fr-hint">Klarte ikke å hente dagen.</p>';
@@ -1123,6 +1129,19 @@ function renderCreateDayTimeline() {
     return `<div class="fr-tl-booked-block" style="left:${left}%; width:${width}%;" onclick="showCreateTlBookingInfo(${i})" title="Vis hvem som har denne tiden"></div>`;
   }).join('');
 
+  // Same idea for open ("Ledig") slots — click to edit or delete them
+  // directly, same as clicking a booking, without opening Google Calendar.
+  window._frCreateTlOpenSlots = data.available || [];
+  const openBlocksHtml = (data.available || []).map((s, i) => {
+    const sD = new Date(s.start), eD = new Date(s.end);
+    const sFrac = (sD.getHours() + sD.getMinutes() / 60 - startHour) / totalHours;
+    const eFrac = (eD.getHours() + eD.getMinutes() / 60 - startHour) / totalHours;
+    const left = Math.max(0, sFrac) * 100;
+    const width = (Math.min(1, eFrac) - Math.max(0, sFrac)) * 100;
+    if (width <= 0) return '';
+    return `<div class="fr-tl-open-block" style="left:${left}%; width:${width}%;" onclick="showCreateTlOpenInfo(${i})" title="Rediger eller slett denne ledige tiden"></div>`;
+  }).join('');
+
   const time = document.getElementById('createTime').value;
   const duration = Number(document.getElementById('createDuration').value) || 0;
   let startFrac = 0, widthFrac = 0;
@@ -1133,14 +1152,15 @@ function renderCreateDayTimeline() {
   }
 
   box.innerHTML = `
-    <div class="fr-tl-bar">${hoursHtml}${bookedBlocksHtml}<div class="fr-tl-new" id="tlNewBlock"></div></div>
+    <div class="fr-tl-bar">${hoursHtml}${bookedBlocksHtml}${openBlocksHtml}<div class="fr-tl-new" id="tlNewBlock"></div></div>
     <div class="fr-tl-labels">${labels.join('')}</div>
     <div class="fr-tl-legend">
-      <span><i class="fr-tl-dot fr-tl-dot-open"></i> Ledig</span>
+      <span><i class="fr-tl-dot fr-tl-dot-open"></i> Ledig (trykk for å redigere/slette)</span>
       <span><i class="fr-tl-dot fr-tl-dot-booked"></i> Booket (trykk for info)</span>
       <span><i class="fr-tl-dot fr-tl-dot-new"></i> Ny tid</span>
     </div>
     <div id="createTlBookingInfo" class="fr-tl-booking-info d-none"></div>
+    <div id="createTlOpenInfo" class="fr-tl-booking-info d-none"></div>
   `;
 
   positionTimelineOverlay(startFrac, widthFrac);
@@ -1161,6 +1181,129 @@ function showCreateTlBookingInfo(index) {
     <div class="fr-tl-booking-info-meta">${fmtTime(b.start)} – ${fmtTime(b.end)}${b.phone ? ' · ' + b.phone : ''}</div>
     ${b.services ? `<div class="fr-tl-booking-info-meta">${b.services}</div>` : ''}
   `;
+}
+
+const TL_DURATION_OPTIONS = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300];
+function tlDurationLabel(min) {
+  if (min % 60 === 0) return `${min / 60} ${min === 60 ? 'time' : 'timer'}`;
+  return `${(min / 60).toString().replace('.', ',')} timer`;
+}
+
+let _frTlEditingOpenSlot = null;
+
+function showCreateTlOpenInfo(index) {
+  const s = (window._frCreateTlOpenSlots || [])[index];
+  const box = document.getElementById('createTlOpenInfo');
+  if (!s || !box) return;
+  _frTlEditingOpenSlot = s;
+  document.getElementById('createTlBookingInfo').classList.add('d-none');
+  const durationMin = Math.round((new Date(s.end) - new Date(s.start)) / 60000);
+  box.classList.remove('d-none');
+  box.innerHTML = `
+    <div class="fr-tl-booking-info-row"><strong>Ledig tid</strong></div>
+    <div class="fr-inline-fields fr-form-row mt-2">
+      <div>
+        <label class="fr-label">Starttid</label>
+        <input type="time" id="tlOpenEditTime" class="form-control fr-input" value="${fmtTime(s.start)}" />
+      </div>
+      <div>
+        <label class="fr-label">Varighet</label>
+        <select id="tlOpenEditDuration" class="form-control fr-input">
+          ${TL_DURATION_OPTIONS.map(m => `<option value="${m}"${m === durationMin ? ' selected' : ''}>${tlDurationLabel(m)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-2">
+      <button class="btn fr-btn-primary flex-fill" onclick="saveCreateTlOpenSlot()"><span class="fr-icon" data-fr-icon="save"></span> Lagre</button>
+      <button class="btn flex-fill" style="background:#F4D8D3; border:1px solid #E0AFA6; color:#8A2E20;" onclick="deleteCreateTlOpenSlot()"><span class="fr-icon" data-fr-icon="trash"></span> Slett</button>
+    </div>
+    <div id="tlOpenEditMsg" class="fr-save-msg"></div>
+  `;
+}
+
+async function saveCreateTlOpenSlot() {
+  const s = _frTlEditingOpenSlot;
+  if (!s) return;
+  const msg = document.getElementById('tlOpenEditMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  try {
+    const res = await fetch('/api/admin-bookings', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        eventId: s.id,
+        date: document.getElementById('createDate').value,
+        startTime: document.getElementById('tlOpenEditTime').value,
+        durationMinutes: Number(document.getElementById('tlOpenEditDuration').value),
+      })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    if (!res.ok) throw new Error('failed');
+    loadCreateDayTimeline();
+    fetchOverview();
+    loadMonthCalendar();
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+  }
+}
+
+async function deleteCreateTlOpenSlot() {
+  const s = _frTlEditingOpenSlot;
+  if (!s) return;
+  if (!confirm('Slette denne ledige tiden?')) return;
+  try {
+    const res = await fetch('/api/admin-bookings', {
+      method: 'DELETE',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId: s.id })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    loadCreateDayTimeline();
+    fetchOverview();
+    loadMonthCalendar();
+  } catch (e) {
+    alert('Klarte ikke å slette.');
+  }
+}
+
+// Soft rule (not enforced): a new slot shouldn't start less than 30 min
+// after an existing open/booked one ends that day — nudges the default
+// start time forward when it would, but the admin can still override it
+// back to anything, including flush against the existing time.
+function suggestBufferedStartTime() {
+  const data = window._frCreateDayData;
+  const timeInput = document.getElementById('createTime');
+  if (!data || !timeInput || !timeInput.value) return;
+
+  const BUFFER_MIN = 30;
+  const toMin = iso => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes(); };
+  const ranges = [...(data.available || []), ...(data.booked || [])]
+    .map(x => [toMin(x.start), toMin(x.end)])
+    .sort((a, b) => a[0] - b[0]);
+  if (!ranges.length) return;
+
+  const duration = Number(document.getElementById('createDuration').value) || 180;
+  const [hh, mm] = timeInput.value.split(':').map(Number);
+  let start = hh * 60 + mm;
+  const original = start;
+
+  let changed = true, iterations = 0;
+  while (changed && iterations < 10) {
+    changed = false;
+    iterations++;
+    for (const [s, e] of ranges) {
+      const end = start + duration;
+      if (end + BUFFER_MIN > s && start < e + BUFFER_MIN) {
+        const suggested = e + BUFFER_MIN;
+        if (suggested > start) { start = suggested; changed = true; }
+      }
+    }
+  }
+
+  if (start !== original) {
+    const newHH = Math.floor(start / 60), newMM = start % 60;
+    timeInput.value = `${String(newHH).padStart(2, '0')}:${String(newMM).padStart(2, '0')}`;
+  }
 }
 
 function timeToFrac(timeStr) {
