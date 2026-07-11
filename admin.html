@@ -72,7 +72,10 @@
   .fr-tl-hour { flex: 1; background: var(--fr-panel-bg-2); border-right: 1px solid var(--fr-panel-border); }
   .fr-tl-hour:last-child { border-right: none; }
   .fr-tl-hour.fr-tl-open { background: #BFE3C4; }
-  .fr-tl-hour.fr-tl-booked { background: #D8D2C4; }
+  .fr-tl-hour.fr-tl-booked {
+    background-color: #B58A6B;
+    background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.3) 0px, rgba(255,255,255,0.3) 3px, transparent 3px, transparent 8px);
+  }
   .fr-tl-new {
     position: absolute; top: -2px; bottom: -2px;
     background: rgba(232,185,35,0.4); border: 2px solid var(--fr-gold); border-radius: 6px;
@@ -86,8 +89,12 @@
   .fr-tl-legend { display: flex; gap: 0.9rem; margin-top: 0.5rem; font-size: 0.75rem; color: var(--fr-panel-text-soft); flex-wrap: wrap; }
   .fr-tl-dot { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 3px; margin-right: 0.3rem; vertical-align: -0.05rem; }
   .fr-tl-dot-open { background: #BFE3C4; }
-  .fr-tl-dot-booked { background: #D8D2C4; }
+  .fr-tl-dot-booked {
+    background-color: #B58A6B;
+    background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.3) 0px, rgba(255,255,255,0.3) 2px, transparent 2px, transparent 5px);
+  }
   .fr-tl-dot-new { background: rgba(232,185,35,0.4); border: 1.5px solid var(--fr-gold); }
+  .fr-tl-weekday { font-size: 0.85rem; font-weight: 600; color: var(--fr-panel-text-soft); margin-top: 0.35rem; }
 
   .fr-login-input { width: 100%; margin-bottom: 0.9rem; }
   .fr-login-error { color: #FF8A7A; font-size: 0.85rem; margin-top: 0.6rem; min-height: 1.1rem; }
@@ -206,10 +213,11 @@
     <!-- Tab: Opprett tid -->
     <div id="tab-create" class="fr-tab-panel d-none">
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="plusCircle"></span> Opprett ny ledig tid</h2></div>
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="plusCircle"></span> Opprett ledige tidspunkt for kalender</h2></div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
           <input type="date" id="createDate" class="form-control fr-input" onchange="loadCreateDayTimeline()" />
+          <div id="createDateWeekday" class="fr-tl-weekday"></div>
         </div>
         <div class="fr-inline-fields fr-form-row">
           <div>
@@ -217,8 +225,19 @@
             <input type="time" id="createTime" class="form-control fr-input" value="15:00" oninput="renderCreateDayTimeline()" />
           </div>
           <div>
-            <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Varighet (min)</label>
-            <input type="number" id="createDuration" class="form-control fr-input" value="180" step="15" min="15" oninput="renderCreateDayTimeline()" />
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Varighet</label>
+            <select id="createDuration" class="form-control fr-input" onchange="renderCreateDayTimeline()">
+              <option value="30">30 min</option>
+              <option value="60">1 time</option>
+              <option value="90">1,5 time</option>
+              <option value="120">2 timer</option>
+              <option value="150">2,5 timer</option>
+              <option value="180" selected>3 timer</option>
+              <option value="210">3,5 timer</option>
+              <option value="240">4 timer</option>
+              <option value="270">4,5 timer</option>
+              <option value="300">5 timer</option>
+            </select>
           </div>
         </div>
 
@@ -946,10 +965,22 @@ async function createSlot() {
 /* ---------------- Opprett tid: dags-tidslinje 09-21 ---------------- */
 const CREATE_TL_START_HOUR = 9;
 const CREATE_TL_END_HOUR = 21;
+const CREATE_TL_WEEKDAYS = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"];
+
+function updateCreateDateWeekday() {
+  const date = document.getElementById('createDate').value;
+  const label = document.getElementById('createDateWeekday');
+  if (!date) { label.textContent = ''; return; }
+  const d = new Date(date + 'T00:00:00');
+  const weekday = CREATE_TL_WEEKDAYS[d.getDay()];
+  const cap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  label.textContent = `${cap} ${d.getDate()}. ${MONTH_LABELS[d.getMonth()]}`;
+}
 
 async function loadCreateDayTimeline() {
   const date = document.getElementById('createDate').value;
   const box = document.getElementById('createDayTimeline');
+  updateCreateDateWeekday();
   if (!date) { box.innerHTML = ''; return; }
   box.innerHTML = '<p class="fr-hint">Henter dagen …</p>';
   try {
@@ -1076,8 +1107,13 @@ function setupTimelineDrag(widthFrac) {
     const onMove = (ev) => {
       const deltaFrac = (ev.clientX - pointerStartX) / barRect.width;
       const newLeftFrac = Math.max(0, Math.min(1 - widthFrac, startLeftFrac + deltaFrac));
-      overlay.style.left = `${newLeftFrac * 100}%`;
-      overlay.classList.toggle('fr-tl-new-conflict', timelineOverlapsBooking(newLeftFrac, widthFrac));
+      // Snap live (not just on drop) so the block, the highlighted hour cells,
+      // and the time field all stay in sync while dragging.
+      const snappedTime = fracToTimeStr(newLeftFrac);
+      const snappedFrac = timeToFrac(snappedTime);
+      overlay.style.left = `${snappedFrac * 100}%`;
+      overlay.classList.toggle('fr-tl-new-conflict', timelineOverlapsBooking(snappedFrac, widthFrac));
+      document.getElementById('createTime').value = snappedTime;
     };
 
     const onUp = () => {
