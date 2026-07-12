@@ -3,6 +3,7 @@
 // GET /api/content?type=services   -> { services: [{ id, label, description, price_nok }] }
 // GET /api/content?type=promotion  -> { active: bool, title?, discount_label?, description? }
 // GET /api/content?type=customer-cars&phone=91234567 -> { cars: string[] } (rate-limited)
+// GET /api/content?type=gallery      -> { images: [{ path, alt }] }
 //
 // Merged endpoint to stay within Vercel's function count limit (Hobby: 12).
 
@@ -135,6 +136,20 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error("content references error:", err);
       return res.status(500).json({ error: "Klarte ikke å hente referanser" });
+    }
+  }
+
+  if (type === "gallery") {
+    try {
+      const { data, error } = await supabase
+        .from("freshride_gallery")
+        .select("path, alt")
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return res.status(200).json({ images: data || [] });
+    } catch (err) {
+      console.error("content gallery error:", err);
+      return res.status(200).json({ images: [] });
     }
   }
 

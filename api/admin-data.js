@@ -1,6 +1,6 @@
 // api/admin-data.js — admin only (x-admin-password header)
 // All content-management CRUD, routed by ?resource=
-//   about | services | reviews | promotions | prices | jobs | customer-cars | expenses | accounting
+//   about | services | reviews | promotions | prices | jobs | customer-cars | expenses | accounting | gallery
 //
 // Merged into one file to stay within Vercel's function count limit
 // (Hobby plan: 12 functions per deployment).
@@ -380,6 +380,74 @@ async function handleAnalytics(req, res) {
   }
 }
 
+/* ---------------- Gallery ("Se oss i aksjon" carousel on forsiden) ---------------- */
+async function handleGallery(req, res, supabase) {
+  if (req.method === "GET") {
+    const { data, error } = await supabase.from("freshride_gallery").select("*").order("sort_order", { ascending: true });
+    if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å hente galleri" }); }
+    return res.status(200).json({ images: data || [] });
+  }
+
+  if (req.method === "POST") {
+    const { imageBase64, mimeType, alt } = req.body || {};
+    if (!imageBase64) return res.status(400).json({ error: "Missing imageBase64" });
+    try {
+      const buffer = Buffer.from(imageBase64, "base64");
+      const ext = (mimeType || "image/jpeg").split("/")[1] || "jpg";
+      const path = `${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("gallery").upload(path, buffer, { contentType: mimeType || "image/jpeg" });
+      if (uploadErr) throw uploadErr;
+      const { data: pub } = supabase.storage.from("gallery").getPublicUrl(path);
+
+      const { data: maxRows } = await supabase.from("freshride_gallery").select("sort_order").order("sort_order", { ascending: false }).limit(1);
+      const nextSort = (maxRows && maxRows[0] ? maxRows[0].sort_order : -1) + 1;
+
+      const { data, error } = await supabase.from("freshride_gallery")
+        .insert({ path: pub.publicUrl, alt: alt || null, sort_order: nextSort }).select().single();
+      if (error) throw error;
+      return res.status(200).json({ ok: true, image: data });
+    } catch (err) {
+      console.error("gallery upload error:", err);
+      return res.status(500).json({ error: "Klarte ikke å laste opp bilde" });
+    }
+  }
+
+  if (req.method === "PATCH") {
+    const { id, alt, reorder } = req.body || {};
+    // Bulk reorder: client sends the full ordered list of ids after a drag/move,
+    // server just re-numbers sort_order to match.
+    if (Array.isArray(reorder)) {
+      const results = await Promise.all(
+        reorder.map((imgId, i) => supabase.from("freshride_gallery").update({ sort_order: i }).eq("id", imgId))
+      );
+      const failed = results.find(r => r.error);
+      if (failed) { console.error(failed.error); return res.status(500).json({ error: "Klarte ikke å lagre rekkefølge" }); }
+      return res.status(200).json({ ok: true });
+    }
+    if (!id) return res.status(400).json({ error: "Missing id" });
+    const { error } = await supabase.from("freshride_gallery").update({ alt: alt || null }).eq("id", id);
+    if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å oppdatere" }); }
+    return res.status(200).json({ ok: true });
+  }
+
+  if (req.method === "DELETE") {
+    const { id } = req.body || {};
+    if (!id) return res.status(400).json({ error: "Missing id" });
+    const { data: row } = await supabase.from("freshride_gallery").select("path").eq("id", id).single();
+    // Only clean up the storage object for images actually hosted in our "gallery"
+    // bucket — legacy rows pointing at static /assets files have nothing to remove.
+    if (row?.path && row.path.includes("/storage/v1/object/public/gallery/")) {
+      const objectPath = row.path.split("/storage/v1/object/public/gallery/")[1];
+      if (objectPath) await supabase.storage.from("gallery").remove([objectPath]);
+    }
+    const { error } = await supabase.from("freshride_gallery").delete().eq("id", id);
+    if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å slette" }); }
+    return res.status(200).json({ ok: true });
+  }
+
+  return res.status(405).json({ error: "Method not allowed" });
+}
+
 export default async function handler(req, res) {
   if (!checkAdminPassword(req)) {
     return res.status(401).json({ error: "Feil passord" });
@@ -398,6 +466,7 @@ export default async function handler(req, res) {
   if (resource === "accounting") return handleAccounting(req, res, supabase);
   if (resource === "notifications") return handleNotifications(req, res, supabase);
   if (resource === "analytics") return handleAnalytics(req, res);
+  if (resource === "gallery") return handleGallery(req, res, supabase);
 
   return res.status(400).json({ error: "Missing or invalid 'resource'" });
 }

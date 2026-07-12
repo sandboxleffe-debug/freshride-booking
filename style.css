@@ -373,10 +373,14 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-footer-version { display: block; margin-top: 0.4rem; font-size: 0.68rem; opacity: 0.35; letter-spacing: 0.02em; }
 
 /* Hero booking steps — three equal blocks side by side */
+.fr-steps-label {
+  font-family: var(--font-display); font-weight: 700; font-size: 1.15rem;
+  color: var(--fr-text-dark-zone); margin: 0 0 0.85rem;
+}
 .fr-steps-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
+  gap: 0.9rem;
   margin: 0 0 0.5rem;
 }
 .fr-step-card {
@@ -384,44 +388,50 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.5rem;
-  background: rgba(246,242,231,0.08);
-  border: 1px solid var(--fr-line-dark-zone);
-  border-radius: 12px;
-  padding: 0.9rem 0.6rem;
-  font-size: 0.82rem;
-  font-weight: 600;
+  gap: 0.7rem;
+  background: linear-gradient(155deg, rgba(246,242,231,0.1), rgba(232,185,35,0.1));
+  border: 1.5px solid rgba(232,185,35,0.4);
+  border-radius: 16px;
+  padding: 1.3rem 0.7rem;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--fr-text-dark-zone);
+  box-shadow: 0 10px 26px -18px rgba(232,185,35,0.5);
 }
 .fr-step-num {
   flex-shrink: 0;
-  width: 1.9rem;
-  height: 1.9rem;
+  width: 2.6rem;
+  height: 2.6rem;
   border-radius: 50%;
-  background: var(--fr-gold);
+  background: linear-gradient(135deg, var(--fr-gold-bright), var(--fr-gold-deep));
   color: var(--fr-black);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.35rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 14px -3px rgba(232,185,35,0.65);
 }
+.fr-step-label { font-size: 0.92rem; line-height: 1.3; }
 .fr-step-card-link {
   text-decoration: none;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 .fr-step-card-link:hover {
   border-color: var(--fr-gold);
-  background: rgba(232,185,35,0.14);
-  transform: translateY(-2px);
+  background: linear-gradient(155deg, rgba(246,242,231,0.12), rgba(232,185,35,0.2));
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px -16px rgba(232,185,35,0.65);
 }
 
 @media (max-width: 480px) {
-  .fr-steps-grid { gap: 0.45rem; }
-  .fr-step-card { font-size: 0.7rem; padding: 0.65rem 0.4rem; gap: 0.35rem; }
-  .fr-step-num { width: 1.6rem; height: 1.6rem; font-size: 0.85rem; }
+  .fr-steps-label { font-size: 1.02rem; }
+  .fr-steps-grid { gap: 0.5rem; }
+  .fr-step-card { font-size: 0.82rem; padding: 0.85rem 0.4rem; gap: 0.45rem; }
+  .fr-step-num { width: 2.1rem; height: 2.1rem; font-size: 1.05rem; }
+  .fr-step-label { font-size: 0.78rem; }
 }
 
 @media (max-width: 576px) {
@@ -619,6 +629,18 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-save-msg.ok { color: #2E7D32; }
 .fr-save-msg.err { color: #C0392B; }
 
+.fr-gallery-admin-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.fr-gallery-admin-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: var(--fr-panel-bg-2); border: 1px solid var(--fr-panel-border); border-radius: 10px;
+  padding: 0.5rem 0.6rem;
+}
+.fr-gallery-admin-thumb { width: 2.8rem; height: 2.8rem; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+.fr-gallery-admin-alt { flex: 1; min-width: 0; }
+.fr-gallery-admin-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
+.fr-gallery-admin-actions .fr-icon-btn:disabled { opacity: 0.3; cursor: default; }
+.fr-gallery-admin-actions .fr-icon-btn:disabled:hover { border-color: var(--fr-panel-border); }
+
 /* Gallery: lively, self-looping strip of real work photos */
 .fr-gallery-section { margin-bottom: 2.5rem; }
 .fr-gallery-track-wrap {
@@ -662,18 +684,18 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  gap: 0.6rem;
+  gap: 1rem;
   flex-wrap: wrap;
   transition: opacity 0.3s ease;
 }
 .fr-reviews-track.fr-fade-out { opacity: 0; }
 .fr-review-card {
   flex: 0 0 auto;
-  width: 160px;
+  width: min(280px, 44vw);
   background: rgba(246, 242, 231, 0.06);
   border: 1px solid var(--fr-line-dark-zone);
   border-radius: 12px;
-  padding: 0.6rem 0.7rem;
+  padding: 0.85rem 1rem;
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease, width 0.2s ease;
 }
@@ -681,15 +703,15 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   background: rgba(246, 242, 231, 0.1);
   border-color: rgba(232, 185, 35, 0.4);
 }
-.fr-review-stars { font-size: 1.15rem; letter-spacing: 0.06em; margin-bottom: 0.3rem; line-height: 1; }
+.fr-review-stars { font-size: 1.25rem; letter-spacing: 0.06em; margin-bottom: 0.35rem; line-height: 1; }
 .fr-stars-filled { color: var(--fr-gold); }
 .fr-stars-empty { color: rgba(246, 242, 231, 0.2); }
-.fr-review-name { font-size: 0.68rem; color: var(--fr-text-dark-zone-faint); font-weight: 600; margin: 0; }
+.fr-review-name { font-size: 0.74rem; color: var(--fr-text-dark-zone-faint); font-weight: 600; margin: 0; }
 .fr-review-preview {
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--fr-text-dark-zone-soft);
-  line-height: 1.4;
-  margin: 0.35rem 0 0;
+  line-height: 1.45;
+  margin: 0.4rem 0 0;
   /* Fixed 3-line clamp — without this, cards with longer text ran to 4
      lines, changing the whole row's height and nudging the calendar below
      it up/down every time such a review scrolled into view. */
@@ -699,10 +721,10 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   overflow: hidden;
 }
 .fr-review-full {
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--fr-text-dark-zone-soft);
-  line-height: 1.45;
-  margin: 0.3rem 0 0;
+  line-height: 1.5;
+  margin: 0.35rem 0 0;
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.25s ease;
@@ -710,14 +732,14 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-review-card.fr-review-open {
   z-index: 2;
   position: relative;
-  width: 240px;
+  width: min(420px, 92vw);
 }
 .fr-review-card.fr-review-open .fr-review-preview { display: none; }
 .fr-review-card.fr-review-open .fr-review-full { max-height: none; }
 
 @media (max-width: 576px) {
-  .fr-review-card { width: 140px; }
-  .fr-review-card.fr-review-open { width: 220px; }
+  .fr-review-card { width: min(220px, 46vw); }
+  .fr-review-card.fr-review-open { width: min(320px, 90vw); }
 }
 
 /* Step 2 (slots) living inside the same panel as the calendar */

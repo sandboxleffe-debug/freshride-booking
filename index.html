@@ -94,7 +94,7 @@
   <div class="container">
     <p class="fr-eyebrow">FRESHRIDE — DETALJENE SOM UTGJØR FORSKJELLEN</p>
     <h1 class="fr-hero-title">Din bil fortjener <span class="fr-highlight">ekte omtanke</span></h1>
-    <p class="fr-hero-text">Slik booker du:</p>
+    <p class="fr-steps-label">✨ Slik booker du:</p>
     <div class="fr-steps-grid">
       <a href="#step-date" class="fr-step-card fr-step-card-link">
         <span class="fr-step-num">1</span>
@@ -115,32 +115,12 @@
 
 <main class="container fr-main">
 
-  <!-- Gallery: real work in action -->
-  <section class="fr-gallery-section">
+  <!-- Gallery: real work in action — images managed from admin (Innstillinger) -->
+  <section class="fr-gallery-section" id="gallerySection" style="display:none;">
     <p class="fr-eyebrow">📸 SE OSS I AKSJON</p>
     <div class="fr-gallery-track-wrap">
-      <div class="fr-gallery-track">
-        <img src="assets/gallery/gallery-1.jpg" alt="Forvask med skum" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-2.jpg" alt="Skumvask av bil" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-3.jpg" alt="Håndvask av lakk" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-4.jpg" alt="Innvendig rens" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-5.jpg" alt="Grundig interiørvask" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-6.jpg" alt="Utvendig høytrykksspyling" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-7.jpg" alt="Skumvask av SUV" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-8.jpg" alt="Skumbehandling ovenfra" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-9.jpg" alt="Rengjort gulvteppe" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-10.jpg" alt="Rent interiør bak" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-1.jpg" alt="Forvask med skum" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-2.jpg" alt="Skumvask av bil" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-3.jpg" alt="Håndvask av lakk" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-4.jpg" alt="Innvendig rens" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-5.jpg" alt="Grundig interiørvask" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-6.jpg" alt="Utvendig høytrykksspyling" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-7.jpg" alt="Skumvask av SUV" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-8.jpg" alt="Skumbehandling ovenfra" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-9.jpg" alt="Rengjort gulvteppe" class="fr-gallery-img" loading="lazy">
-        <img src="assets/gallery/gallery-10.jpg" alt="Rent interiør bak" class="fr-gallery-img" loading="lazy">
-      </div>
+      <div class="fr-gallery-track" id="galleryTrack"></div>
+    </div>
     </div>
   </section>
 
@@ -296,6 +276,22 @@ function dismissPromo() {
   sessionStorage.setItem('fr_promo_dismissed', '1');
 }
 loadPromo();
+
+/* ---------------- Gallery ("Se oss i aksjon") — images managed from admin ---------------- */
+async function loadGallery() {
+  try {
+    const res = await fetch('/api/content?type=gallery');
+    const data = await res.json();
+    const images = data.images || [];
+    if (!images.length) return;
+    const track = document.getElementById('galleryTrack');
+    // Doubled so the CSS marquee (translateX -50%) loops seamlessly.
+    const imgHtml = images.map(img => `<img src="${img.path}" alt="${(img.alt || '').replace(/"/g, '&quot;')}" class="fr-gallery-img" loading="lazy">`).join('');
+    track.innerHTML = imgHtml + imgHtml;
+    document.getElementById('gallerySection').style.display = '';
+  } catch (e) { /* silently skip — no gallery section shown */ }
+}
+loadGallery();
 
 /* ---------------- Reviews rotator ---------------- */
 async function loadReviews() {

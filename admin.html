@@ -507,6 +507,18 @@
       </div>
 
       <div class="fr-panel">
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="image"></span> Galleri ("Se oss i aksjon")</h2></div>
+        <p class="fr-hint">Bildene som roterer på forsiden. Bruk pilene for å endre rekkefølge.</p>
+        <div id="galleryList" class="fr-gallery-admin-list"></div>
+        <hr class="my-3" style="border-color: var(--fr-panel-border);">
+        <label class="fr-label"><span class="fr-icon" data-fr-icon="plusCircle"></span> Legg til bilde</label>
+        <input type="file" id="newGalleryFile" class="form-control fr-input mb-2" accept="image/*" />
+        <input id="newGalleryAlt" class="form-control fr-input mb-2" placeholder="Beskrivelse (valgfritt)" />
+        <button class="btn fr-btn-primary w-100" onclick="uploadGalleryImage()">Last opp bilde</button>
+        <div id="galleryMsg" class="fr-save-msg"></div>
+      </div>
+
+      <div class="fr-panel">
         <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="phone"></span> SMS-varsel til deg selv</h2></div>
         <p class="fr-hint">Send en ekstra SMS til deg selv (i tillegg til kunden) hver gang noen booker.</p>
         <div class="form-check form-switch fr-hero-switch">
@@ -908,6 +920,7 @@ function enterAdmin() {
   loadReviewsAdmin();
   loadPromoAdmin();
   loadCustomerCars();
+  loadGalleryAdmin();
   initJobFormGauges();
   initPromoGauge();
   loadJobServiceOptions();
@@ -2830,6 +2843,93 @@ async function toggleHeroVideo(checked) {
     msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
   } catch (e) {
     msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+  }
+}
+
+/* ---------------- Galleri ("Se oss i aksjon") ---------------- */
+async function loadGalleryAdmin() {
+  const list = document.getElementById('galleryList');
+  try {
+    const res = await fetch('/api/admin-data?resource=gallery', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    window._frGalleryImages = data.images || [];
+    renderGalleryList();
+  } catch (e) {
+    list.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente galleri.</p>';
+  }
+}
+
+function renderGalleryList() {
+  const list = document.getElementById('galleryList');
+  const images = window._frGalleryImages || [];
+  if (!images.length) { list.innerHTML = '<p class="fr-empty-day">Ingen bilder ennå.</p>'; return; }
+  list.innerHTML = images.map((img, i) => `
+    <div class="fr-gallery-admin-row">
+      <img src="${img.path}" class="fr-gallery-admin-thumb" alt="">
+      <input class="form-control form-control-sm fr-input fr-gallery-admin-alt" value="${(img.alt || '').replace(/"/g, '&quot;')}" placeholder="Beskrivelse" onchange="updateGalleryAlt('${img.id}', this.value)">
+      <div class="fr-gallery-admin-actions">
+        <button class="fr-icon-btn" title="Flytt opp" ${i === 0 ? 'disabled' : ''} onclick="moveGalleryImage(${i}, -1)">${frIcon('trendingUp')}</button>
+        <button class="fr-icon-btn" title="Flytt ned" ${i === images.length - 1 ? 'disabled' : ''} onclick="moveGalleryImage(${i}, 1)">${frIcon('trendingDown')}</button>
+        <button class="fr-icon-btn" title="Slett" onclick="deleteGalleryImage('${img.id}')">${frIcon('trash')}</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function updateGalleryAlt(id, alt) {
+  await fetch('/api/admin-data?resource=gallery', {
+    method: 'PATCH',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, alt })
+  });
+}
+
+async function moveGalleryImage(index, dir) {
+  const images = window._frGalleryImages || [];
+  const target = index + dir;
+  if (target < 0 || target >= images.length) return;
+  [images[index], images[target]] = [images[target], images[index]];
+  renderGalleryList();
+  await fetch('/api/admin-data?resource=gallery', {
+    method: 'PATCH',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reorder: images.map(i => i.id) })
+  });
+}
+
+async function deleteGalleryImage(id) {
+  if (!confirm('Slette dette bildet?')) return;
+  await fetch('/api/admin-data?resource=gallery', {
+    method: 'DELETE',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  loadGalleryAdmin();
+}
+
+async function uploadGalleryImage() {
+  const fileInput = document.getElementById('newGalleryFile');
+  const altInput = document.getElementById('newGalleryAlt');
+  const msg = document.getElementById('galleryMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  const file = fileInput.files[0];
+  if (!file) { msg.textContent = 'Velg et bilde.'; msg.classList.add('err'); return; }
+  try {
+    const base64 = await compressImageFile(file);
+    const res = await fetch('/api/admin-data?resource=gallery', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg', alt: altInput.value.trim() || null })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    if (!res.ok) throw new Error();
+    fileInput.value = '';
+    altInput.value = '';
+    msg.textContent = 'Lastet opp ✓'; msg.classList.add('ok');
+    loadGalleryAdmin();
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å laste opp.'; msg.classList.add('err');
   }
 }
 
