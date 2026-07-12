@@ -216,6 +216,14 @@
           <label for="phone" class="form-label fr-label">📞 Mobilnummer</label>
           <input id="phone" class="form-control fr-input" placeholder="" inputmode="numeric" />
         </div>
+        <div class="mb-3" id="carSuggestWrap" style="display:none;">
+          <p class="fr-hint mb-1">Velg bilen din (valgfritt):</p>
+          <div id="carSuggestChips" class="fr-car-chips"></div>
+        </div>
+        <div class="mb-2">
+          <label for="carInput" class="form-label fr-label">🚗 Bil (valgfritt)</label>
+          <input id="carInput" class="form-control fr-input" placeholder="F.eks. VW Golf" />
+        </div>
         <div id="formError" class="fr-form-error d-none">Fyll inn navn og mobilnummer for å fortsette.</div>
       </div>
       <div class="modal-footer border-0">
@@ -621,10 +629,49 @@ function getSelectedServices() {
   return services;
 }
 
+/* ---------------- Car suggestion for returning customers ---------------- */
+let carSuggestTimer = null;
+let carSuggestLastPhone = '';
+
+function renderCarSuggestions(cars) {
+  const wrap = document.getElementById('carSuggestWrap');
+  const chipsEl = document.getElementById('carSuggestChips');
+  if (!cars || !cars.length) {
+    wrap.style.display = 'none';
+    chipsEl.innerHTML = '';
+    return;
+  }
+  chipsEl.innerHTML = cars.map(c => `<button type="button" class="fr-car-chip" data-car="${c.replace(/"/g, '&quot;')}">🚗 ${c}</button>`).join('');
+  chipsEl.querySelectorAll('.fr-car-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.getElementById('carInput').value = chip.dataset.car;
+      chipsEl.querySelectorAll('.fr-car-chip').forEach(c => c.classList.toggle('active', c === chip));
+    });
+  });
+  wrap.style.display = '';
+}
+
+function onPhoneInputForCarSuggest() {
+  const digits = document.getElementById('phone').value.replace(/\D/g, '');
+  clearTimeout(carSuggestTimer);
+  if (digits.length < 8) { renderCarSuggestions([]); return; }
+  carSuggestTimer = setTimeout(async () => {
+    if (digits === carSuggestLastPhone) return;
+    carSuggestLastPhone = digits;
+    try {
+      const res = await fetch(`/api/content?type=customer-cars&phone=${encodeURIComponent(digits)}`);
+      const data = await res.json();
+      renderCarSuggestions(data.cars || []);
+    } catch (e) { renderCarSuggestions([]); }
+  }, 500);
+}
+document.getElementById('phone').addEventListener('input', onPhoneInputForCarSuggest);
+
 /* ---------------- Booking ---------------- */
 async function book() {
   const name = document.getElementById("name").value.trim();
   const phone = document.getElementById("phone").value.replace(/\D/g, '');
+  const car = document.getElementById("carInput").value.trim();
   const errorEl = document.getElementById("formError");
   const serviceErrorEl = document.getElementById("serviceError");
   const bookBtn = document.getElementById("bookBtn");
@@ -656,6 +703,7 @@ async function book() {
         eventId: selected.id,
         name,
         phone,
+        car: car || undefined,
         services,
         start: selected.start,
         end: selected.end
@@ -671,6 +719,9 @@ async function book() {
 
     document.getElementById("name").value = "";
     document.getElementById("phone").value = "";
+    document.getElementById("carInput").value = "";
+    carSuggestLastPhone = '';
+    renderCarSuggestions([]);
     loadSlotsForDate(selected.start.slice(0, 10));
     loadMonthCalendar();
   } catch (err) {

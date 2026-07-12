@@ -1,12 +1,13 @@
 // api/admin-data.js — admin only (x-admin-password header)
 // All content-management CRUD, routed by ?resource=
-//   about | services | reviews | promotions | prices | jobs | expenses | accounting
+//   about | services | reviews | promotions | prices | jobs | customer-cars | expenses | accounting
 //
 // Merged into one file to stay within Vercel's function count limit
 // (Hobby plan: 12 functions per deployment).
 
 import { getSupabaseAdmin, checkAdminPassword } from "./_lib/supabase.js";
 import { getVisitorSummary } from "./_lib/analytics.js";
+import { upsertCustomerCars } from "./_lib/customers.js";
 
 /* ---------------- About ---------------- */
 async function handleAbout(req, res, supabase) {
@@ -297,6 +298,26 @@ async function handleJobs(req, res, supabase) {
   return res.status(405).json({ error: "Method not allowed" });
 }
 
+/* ---------------- Customer cars ---------------- */
+// Cars per customer, keyed by customer_number — not tied to any one job.
+async function handleCustomerCars(req, res, supabase) {
+  if (req.method === "GET") {
+    const { data, error } = await supabase.from("freshride_customers").select("customer_number, cars");
+    if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å hente biler" }); }
+    const cars = {};
+    (data || []).forEach(row => { cars[row.customer_number] = row.cars || []; });
+    return res.status(200).json({ cars });
+  }
+  if (req.method === "PATCH") {
+    const { customer_number, cars } = req.body || {};
+    if (!customer_number) return res.status(400).json({ error: "Missing customer_number" });
+    const ok = await upsertCustomerCars(supabase, customer_number, cars);
+    if (!ok) return res.status(500).json({ error: "Klarte ikke å lagre biler" });
+    return res.status(200).json({ ok: true });
+  }
+  return res.status(405).json({ error: "Method not allowed" });
+}
+
 /* ---------------- Expenses ---------------- */
 async function handleExpenses(req, res, supabase) {
   if (req.method === "GET") {
@@ -371,6 +392,7 @@ export default async function handler(req, res) {
   if (resource === "reviews") return handleReviews(req, res, supabase);
   if (resource === "promotions") return handlePromotions(req, res, supabase);
   if (resource === "jobs") return handleJobs(req, res, supabase);
+  if (resource === "customer-cars") return handleCustomerCars(req, res, supabase);
   if (resource === "expenses") return handleExpenses(req, res, supabase);
   if (resource === "accounting") return handleAccounting(req, res, supabase);
   if (resource === "notifications") return handleNotifications(req, res, supabase);

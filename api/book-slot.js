@@ -162,13 +162,13 @@ async function sendOwnerReminderEmail({ name, phone, services, start, end, code 
 
 // Best-effort wrapper — never blocks the booking itself if the draft
 // job log creation fails for some reason.
-async function createDraftJobLogForBooking({ name, phone, services, start, code }) {
+async function createDraftJobLogForBooking({ name, phone, services, start, code, car }) {
   try {
     const supabase = getSupabaseAdmin();
     const p = getOsloParts(start);
     const pad = n => String(n).padStart(2, "0");
     const jobDate = `${p.year}-${pad(p.month)}-${pad(p.day)}`;
-    await createDraftJobLog(supabase, { name, phone, services, jobDate, code });
+    await createDraftJobLog(supabase, { name, phone, services, jobDate, code, car });
   } catch (err) {
     console.error("createDraftJobLogForBooking error:", err);
   }
@@ -179,7 +179,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { eventId, name, phone, services, start, end } = req.body || {};
+  const { eventId, name, phone, services, start, end, car } = req.body || {};
   if (!eventId || !name || !phone || !Array.isArray(services) || services.length === 0) {
     return res.status(400).json({ error: "Missing eventId, name, phone, or services" });
   }
@@ -222,7 +222,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Klarte ikke å bekrefte booking" });
   }
 
-  await createDraftJobLogForBooking({ name, phone, services, start, code });
+  await createDraftJobLogForBooking({ name, phone, services, start, code, car });
 
   let smsSent = false;
   try {

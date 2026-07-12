@@ -325,6 +325,16 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-form-error { color: #C0392B; font-size: 0.86rem; }
 
+/* Car suggestion chips — booking form, returning customers */
+.fr-car-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.fr-car-chip {
+  border: 1.5px solid var(--fr-gold); background: var(--fr-gold-soft); color: var(--fr-gold-deep);
+  font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 999px; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.fr-car-chip:hover { background: var(--fr-gold); color: var(--fr-black); }
+.fr-car-chip.active { background: var(--fr-gold); color: var(--fr-black); }
+
 /* Service selection */
 .fr-service-grid { display: grid; grid-template-columns: 1fr; gap: 0.55rem; margin-bottom: 0.5rem; }
 .fr-service-option {
@@ -973,3 +983,28 @@ input.fr-range-gradient::-moz-range-thumb {
 .fr-customer-row-meta { font-size: 0.78rem; color: var(--fr-panel-text-faint); }
 .fr-customer-chevron { flex-shrink: 0; color: var(--fr-panel-text-faint); display: flex; }
 .fr-customer-chevron svg { width: 1.1em; height: 1.1em; }
+
+/* Cars + job history — customer edit modal */
+.fr-cust-car-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.fr-cust-car-row .fr-cust-car-input { flex: 1; }
+.fr-cust-car-remove {
+  flex-shrink: 0; width: 2.1rem; height: 2.1rem; display: flex; align-items: center; justify-content: center;
+  background: none; border: 1.5px solid var(--fr-panel-border); border-radius: 8px;
+  color: var(--fr-panel-text-faint); cursor: pointer;
+}
+.fr-cust-car-remove svg { width: 1em; height: 1em; }
+.fr-cust-car-remove:hover { border-color: #B5453A; color: #B5453A; }
+.fr-add-car-btn {
+  border: 1.5px dashed var(--fr-panel-border); background: none; color: var(--fr-panel-text-soft);
+  font-size: 0.82rem; font-weight: 600; padding: 0.45rem 0.9rem; border-radius: 8px; cursor: pointer; width: 100%;
+}
+.fr-add-car-btn:hover { border-color: var(--fr-gold); color: var(--fr-panel-text); }
+.fr-cust-history { max-height: 12rem; overflow-y: auto; border: 1px solid var(--fr-panel-border); border-radius: 10px; }
+.fr-cust-history-row {
+  display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--fr-panel-border); font-size: 0.8rem;
+}
+.fr-cust-history-row:last-child { border-bottom: none; }
+.fr-cust-history-date { flex-shrink: 0; color: var(--fr-panel-text-faint); font-family: var(--font-display); font-size: 0.75rem; width: 4.6rem; }
+.fr-cust-history-service { flex: 1; min-width: 0; color: var(--fr-panel-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fr-cust-history-price { flex-shrink: 0; font-weight: 700; color: var(--fr-gold-bright); }

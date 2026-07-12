@@ -426,7 +426,7 @@
           </div>
         </div>
         <p class="fr-hint">Før- og etterbilder brukes på Resultater-siden hvis jobben merkes som referanse.</p>
-        <button class="btn fr-btn-primary w-100" onclick="createJob()"><span class="fr-icon" data-fr-icon="save"></span> Lagre jobb</button>
+        <button class="btn fr-btn-primary w-100" id="createJobBtn" onclick="createJob()"><span class="fr-icon" data-fr-icon="save"></span> Lagre jobb</button>
         <div id="jobMsg" class="fr-save-msg"></div>
       </div>
 
@@ -711,7 +711,7 @@
 
 <!-- Edit customer modal -->
 <div class="modal fade" id="customerEditModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content fr-modal">
       <div class="modal-header border-0">
         <h5 class="modal-title"><span class="fr-icon" data-fr-icon="user"></span> Rediger kunde</h5>
@@ -730,9 +730,18 @@
           <label class="fr-label"><span class="fr-icon" data-fr-icon="phone"></span> Mobilnummer</label>
           <input id="custEditPhone" class="form-control fr-input" placeholder="92133900" />
         </div>
+        <div class="fr-form-row">
+          <label class="fr-label">🚗 Biler</label>
+          <div id="custEditCarsList"></div>
+          <button type="button" class="fr-add-car-btn" onclick="addCustomerCarRow()">+ Legg til bil</button>
+        </div>
         <div class="fr-accounting-summary">
           <div><span class="fr-acc-label">Jobber</span><span class="fr-acc-value" id="custEditJobCount">–</span></div>
           <div><span class="fr-acc-label">Totalt brukt</span><span class="fr-acc-value" id="custEditTotalSpent">–</span></div>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Jobbhistorikk</label>
+          <div id="custEditHistory" class="fr-cust-history"></div>
         </div>
         <div id="custEditMsg" class="fr-save-msg"></div>
       </div>
@@ -826,6 +835,7 @@ function enterAdmin() {
   loadServicesAdmin();
   loadReviewsAdmin();
   loadPromoAdmin();
+  loadCustomerCars();
   populateTimeWheels('jobTimeHours', 'jobTimeMinutes');
   populateTimeWheels('editJobTimeHours', 'editJobTimeMinutes');
   initPromoGauge();
@@ -2067,14 +2077,64 @@ function renderCustomersAdmin() {
     list.innerHTML = '<p class="fr-empty-day">Ingen kunder registrert ennå.</p>';
     return;
   }
-  list.innerHTML = customers.map(c => `
+  list.innerHTML = customers.map(c => {
+    const cars = _frCustomerCarsMap[String(c.number)] || [];
+    const carsMeta = cars.length ? ` · 🚗 ${cars.join(', ')}` : '';
+    return `
     <div class="fr-customer-row" onclick="openCustomerEdit('${c.number}')">
       <div class="fr-customer-avatar" style="background:${customerAvatarColor(c.number)}">${customerInitials(c.name)}</div>
       <div class="fr-customer-row-body">
         <div class="fr-customer-row-name">${(c.name || '').replace(/</g, '&lt;')} <span class="fr-list-row-code fr-list-row-customer">${formatCustomerId(c.number)}</span></div>
-        <div class="fr-customer-row-meta">${c.jobCount} jobb${c.jobCount === 1 ? '' : 'er'}${c.phone ? ' · ' + c.phone : ''}</div>
+        <div class="fr-customer-row-meta">${c.jobCount} jobb${c.jobCount === 1 ? '' : 'er'}${c.phone ? ' · ' + c.phone : ''}${carsMeta}</div>
       </div>
       <span class="fr-customer-chevron">${frIcon('edit')}</span>
+    </div>
+  `;
+  }).join('');
+}
+
+let _frCustomerCarsMap = {};
+async function loadCustomerCars() {
+  try {
+    const res = await fetch('/api/admin-data?resource=customer-cars', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    _frCustomerCarsMap = data.cars || {};
+    renderCustomersAdmin();
+  } catch (e) { /* silent */ }
+}
+
+function customerCarRowHtml(value) {
+  return `
+    <div class="fr-cust-car-row">
+      <input class="form-control fr-input fr-cust-car-input" value="${(value || '').replace(/"/g, '&quot;')}" placeholder="F.eks. VW Golf, hvit" />
+      <button type="button" class="fr-cust-car-remove" onclick="this.closest('.fr-cust-car-row').remove()" aria-label="Fjern bil">${frIcon('x')}</button>
+    </div>`;
+}
+function renderCustomerCarRows(cars) {
+  document.getElementById('custEditCarsList').innerHTML = (cars || []).map(customerCarRowHtml).join('');
+}
+function addCustomerCarRow() {
+  document.getElementById('custEditCarsList').insertAdjacentHTML('beforeend', customerCarRowHtml(''));
+}
+function collectCustomerCarValues() {
+  return Array.from(document.querySelectorAll('#custEditCarsList .fr-cust-car-input')).map(i => i.value.trim()).filter(Boolean);
+}
+
+function renderCustomerHistory(number) {
+  const box = document.getElementById('custEditHistory');
+  const jobs = (window._frJobs || [])
+    .filter(j => String(j.customer_number) === String(number) && j.status !== 'draft')
+    .sort((a, b) => (b.job_date || '').localeCompare(a.job_date || ''));
+  if (!jobs.length) {
+    box.innerHTML = '<p class="fr-hint">Ingen fullførte jobber ennå.</p>';
+    return;
+  }
+  box.innerHTML = jobs.map(j => `
+    <div class="fr-cust-history-row">
+      <span class="fr-cust-history-date">${fmtDateShort(j.job_date)}</span>
+      <span class="fr-cust-history-service">${(j.services || '–').replace(/</g, '&lt;')}</span>
+      <span class="fr-cust-history-price">kr ${Number(j.price_paid || 0).toLocaleString('no-NO')}</span>
     </div>
   `).join('');
 }
@@ -2088,6 +2148,8 @@ function openCustomerEdit(number) {
   document.getElementById('custEditPhone').value = c.phone || '';
   document.getElementById('custEditJobCount').textContent = c.jobCount;
   document.getElementById('custEditTotalSpent').textContent = `kr ${c.totalSpent.toLocaleString('no-NO')}`;
+  renderCustomerCarRows(_frCustomerCarsMap[String(c.number)] || []);
+  renderCustomerHistory(c.number);
   document.getElementById('custEditMsg').textContent = ''; document.getElementById('custEditMsg').className = 'fr-save-msg';
   customerEditModal.show();
 }
@@ -2099,6 +2161,7 @@ async function saveCustomerEditModal() {
   const newName = document.getElementById('custEditName').value.trim();
   const newPhone = document.getElementById('custEditPhone').value.trim();
   if (!newNumber || !newName) { msg.textContent = 'Fyll ut navn og kundenummer.'; msg.classList.add('err'); return; }
+  const cars = collectCustomerCarValues();
 
   const jobsToUpdate = (window._frJobs || []).filter(j => String(j.customer_number) === String(editingCustomerNumber));
   try {
@@ -2107,6 +2170,12 @@ async function saveCustomerEditModal() {
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: j.id, customer_name: newName, customer_number: newNumber, customer_phone: newPhone || null })
     })));
+    await fetch('/api/admin-data?resource=customer-cars', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_number: newNumber, cars })
+    });
+    _frCustomerCarsMap[String(newNumber)] = cars;
     await loadJobsAdmin();
     customerEditModal.hide();
   } catch (e) {
@@ -2250,10 +2319,13 @@ async function createJob() {
   const beforeFiles = document.getElementById('jobPhotosBefore').files;
   const afterFiles = document.getElementById('jobPhotosAfter').files;
   const msg = document.getElementById('jobMsg');
+  const saveBtn = document.getElementById('createJobBtn');
+  if (saveBtn.disabled) return; // already saving — ignore a double-click/tap
   msg.textContent = ''; msg.className = 'fr-save-msg';
 
   if (!customer_name || !price_paid) { msg.textContent = 'Fyll ut kundenavn og pris.'; msg.classList.add('err'); return; }
 
+  saveBtn.disabled = true;
   try {
     const res = await fetch('/api/admin-data?resource=jobs', {
       method: 'POST',
@@ -2301,6 +2373,8 @@ async function createJob() {
     loadAccountingSummary();
   } catch (e) {
     msg.textContent = 'Noe gikk galt.'; msg.classList.add('err');
+  } finally {
+    saveBtn.disabled = false;
   }
 }
 
@@ -2406,6 +2480,8 @@ async function uploadJobPhotos(files, jobId, category) {
 
 async function saveJobEdit() {
   const msg = document.getElementById('editJobMsg');
+  const saveBtn = document.getElementById('saveJobEditBtn');
+  if (saveBtn.disabled) return; // already saving — ignore a double-click/tap
   msg.textContent = ''; msg.className = 'fr-save-msg';
   const newPhotoFiles = document.getElementById('editJobNewPhotos').files;
   const newBeforeFiles = document.getElementById('editJobNewPhotosBefore').files;
@@ -2413,6 +2489,7 @@ async function saveJobEdit() {
   const hours = Number(document.getElementById('editJobTimeHours').value) || 0;
   const minutes = Number(document.getElementById('editJobTimeMinutes').value) || 0;
 
+  saveBtn.disabled = true;
   try {
     // Upload any new photos first — the reference-toggle PATCH below checks
     // for before/after photos server-side, so they need to exist already if
@@ -2448,12 +2525,20 @@ async function saveJobEdit() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'Klarte ikke å lagre.');
 
+    // Clear the file inputs now that the photos are uploaded — otherwise a
+    // second save (e.g. an impatient re-click) would re-upload the same files.
+    document.getElementById('editJobNewPhotos').value = '';
+    document.getElementById('editJobNewPhotosBefore').value = '';
+    document.getElementById('editJobNewPhotosAfter').value = '';
+
     msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
     loadJobsAdmin();
     loadAccountingSummary();
     setTimeout(() => jobEditModal.hide(), 600);
   } catch (e) {
     msg.textContent = e.message || 'Klarte ikke å lagre.'; msg.classList.add('err');
+  } finally {
+    saveBtn.disabled = false;
   }
 }
 

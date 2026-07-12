@@ -2,10 +2,13 @@
 // GET /api/content?type=about      -> { heading, body }
 // GET /api/content?type=services   -> { services: [{ id, label, description, price_nok }] }
 // GET /api/content?type=promotion  -> { active: bool, title?, discount_label?, description? }
+// GET /api/content?type=customer-cars&phone=91234567 -> { cars: string[] } (rate-limited)
 //
 // Merged endpoint to stay within Vercel's function count limit (Hobby: 12).
 
 import { getSupabaseAdmin } from "./_lib/supabase.js";
+import { getCarsByPhone } from "./_lib/customers.js";
+import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 
 function isPromoActive(promo, todayStr) {
   if (promo.status === "forced_on") return true;
@@ -132,6 +135,24 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error("content references error:", err);
       return res.status(500).json({ error: "Klarte ikke å hente referanser" });
+    }
+  }
+
+  if (type === "customer-cars") {
+    // Used by the booking form to suggest a returning customer's saved
+    // car(s) once they've typed their phone number — rate-limited since
+    // it's an unauthenticated lookup keyed by arbitrary phone input.
+    const { phone } = req.query;
+    if (!phone) return res.status(200).json({ cars: [] });
+    try {
+      const ip = getClientIp(req);
+      const allowed = await checkRateLimit({ key: `customer-cars:${ip}`, maxRequests: 20, windowSeconds: 600 });
+      if (!allowed) return res.status(200).json({ cars: [] });
+      const cars = await getCarsByPhone(supabase, phone);
+      return res.status(200).json({ cars });
+    } catch (err) {
+      console.error("content customer-cars error:", err);
+      return res.status(200).json({ cars: [] });
     }
   }
 

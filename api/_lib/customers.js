@@ -53,6 +53,27 @@ export function lookupCustomerNumber(map, phone) {
   return map.get(normalizePhone(phone)) || null;
 }
 
+// Cars are stored separately (freshride_customers) since they're a
+// per-customer attribute, not tied to any one job.
+export async function getCarsByPhone(supabase, phone) {
+  const match = await findCustomerByPhone(supabase, phone);
+  if (!match) return [];
+  const { data } = await supabase
+    .from("freshride_customers")
+    .select("cars")
+    .eq("customer_number", String(match.customer_number))
+    .maybeSingle();
+  return data?.cars || [];
+}
+
+export async function upsertCustomerCars(supabase, customerNumber, cars) {
+  const cleaned = (cars || []).map(c => String(c).trim()).filter(Boolean);
+  const { error } = await supabase
+    .from("freshride_customers")
+    .upsert({ customer_number: String(customerNumber), cars: cleaned, updated_at: new Date().toISOString() });
+  return !error;
+}
+
 export async function getNextCustomerNumber(supabase) {
   const { data } = await supabase.from("freshride_jobs").select("customer_number").not("customer_number", "is", null);
   const nums = (data || []).map(r => Number(r.customer_number)).filter(n => !isNaN(n));
@@ -64,7 +85,7 @@ export async function getNextCustomerNumber(supabase) {
 // the moment a customer books) and manually (admin-bookings.js, for
 // bookings made before this existed, or one the admin wants to log ahead
 // of time). Skips if a job for this booking_code already exists.
-export async function createDraftJobLog(supabase, { name, phone, services, jobDate, code }) {
+export async function createDraftJobLog(supabase, { name, phone, services, jobDate, code, car }) {
   if (code) {
     const { data: existing } = await supabase.from("freshride_jobs").select("id").eq("booking_code", code).limit(1);
     if (existing && existing.length) return { ok: false, reason: "exists" };
@@ -77,6 +98,7 @@ export async function createDraftJobLog(supabase, { name, phone, services, jobDa
     customer_name: name,
     customer_phone: phone,
     customer_number,
+    car_type: car || null,
     services: Array.isArray(services) ? services.join(", ") : (services || ""),
     price_paid: 0,
     status: "draft",
