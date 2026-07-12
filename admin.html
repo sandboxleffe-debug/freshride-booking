@@ -429,7 +429,7 @@
                 <div class="fr-gauge-dim" id="jobTimeGaugeDim"></div>
                 <div class="fr-gauge-handle" id="jobTimeGaugeHandle"></div>
               </div>
-              <div class="fr-gauge-ticks"><span>0</span><span>4t</span><span>8t</span></div>
+              <div class="fr-gauge-ticks"><span>0</span><span>2t</span><span>4t</span></div>
             </div>
             <div class="fr-gauge-value" id="jobTimeGaugeValueText">0 min</div>
           </div>
@@ -703,7 +703,7 @@
                 <div class="fr-gauge-dim" id="editJobTimeGaugeDim"></div>
                 <div class="fr-gauge-handle" id="editJobTimeGaugeHandle"></div>
               </div>
-              <div class="fr-gauge-ticks"><span>0</span><span>4t</span><span>8t</span></div>
+              <div class="fr-gauge-ticks"><span>0</span><span>2t</span><span>4t</span></div>
             </div>
             <div class="fr-gauge-value" id="editJobTimeGaugeValueText">0 min</div>
           </div>
@@ -1987,7 +1987,7 @@ function initJobFormGauges() {
     onChange: v => { document.getElementById('jobSize').value = v; },
   });
   createGauge('jobTime', {
-    min: 0, max: 480, step: 15, initial: 0,
+    min: 0, max: 240, step: 30, initial: 0,
     formatValue: formatDurationHM,
     onChange: v => { document.getElementById('jobTimeSpentMinutes').value = v; },
   });
@@ -1996,7 +1996,7 @@ function initJobFormGauges() {
     onChange: v => { document.getElementById('editJobSize').value = v; },
   });
   createGauge('editJobTime', {
-    min: 0, max: 480, step: 15, initial: 0,
+    min: 0, max: 240, step: 30, initial: 0,
     formatValue: formatDurationHM,
     onChange: v => { document.getElementById('editJobTimeSpentMinutes').value = v; },
   });
