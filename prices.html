@@ -31,76 +31,112 @@
      the price cards and intro text run edge-to-edge on mobile with no side margin at all. */
   .fr-main { padding: 1.25rem 0.75rem 4rem; }
   .fr-prices-intro { text-align: center; color: var(--fr-text-dark-zone-faint); font-size: 0.9rem; max-width: 32rem; margin: 0 auto 1.25rem; }
-  .fr-price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem; margin-bottom: 1.5rem; }
-  /* Two layers: the outer .fr-price-card is the badge's positioning context and is
-     NOT clipped, so the "EKSKLUSIV" badge can poke up above the card without being cut
-     off. The inner wrapper holds the actual surface (background, padding, rounded
-     corners) and clips only the decorative background icon to those corners. */
+  .fr-price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+
+  /* Flip cards — tap anywhere to flip, like turning over a playing card. The
+     badge sits on the outer (unclipped, non-rotating) .fr-price-card so it
+     stays put and never gets cut off by either face's rounded-corner clip,
+     regardless of flip state. */
   .fr-price-card {
     position: relative;
-    border-radius: var(--fr-radius);
-    transition: transform 0.2s ease;
+    perspective: 1400px;
+    cursor: pointer;
   }
-  .fr-price-card:hover { transform: translateY(-3px); }
-  .fr-price-card-inner {
-    background: var(--fr-panel-bg);
-    border: 1px solid var(--fr-panel-border);
-    border-radius: var(--fr-radius);
-    padding: 1.05rem 1rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 0.15rem;
+  .fr-price-card-flipper {
     position: relative;
-    overflow: hidden;
-    transition: border-color 0.2s ease;
+    height: 258px;
+    transition: transform 0.65s cubic-bezier(0.4, 0.15, 0.15, 1);
+    transform-style: preserve-3d;
   }
-  .fr-price-card:hover .fr-price-card-inner { border-color: var(--fr-gold); }
-  .fr-price-card-inner > * { position: relative; z-index: 1; }
+  .fr-price-card.is-flipped .fr-price-card-flipper { transform: rotateY(180deg); }
+  .fr-price-card-face {
+    position: absolute; inset: 0;
+    border-radius: var(--fr-radius);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: 1.3rem 1.1rem 1rem;
+  }
+  .fr-price-card-face > * { position: relative; z-index: 1; }
+
+  /* Front — light surface, warm gold wash bleeding from the corner */
+  .fr-price-card-front {
+    background: linear-gradient(155deg, var(--fr-panel-bg) 55%, var(--fr-gold-soft) 150%);
+    border: 1px solid var(--fr-panel-border);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .fr-price-card:hover .fr-price-card-front { border-color: var(--fr-gold); box-shadow: 0 14px 30px -18px rgba(232,185,35,0.5); }
   .fr-price-card-bgicon {
-    position: absolute; top: -1rem; right: -1.3rem; z-index: 0;
-    width: 6rem; height: 6rem;
+    position: absolute; top: -1.1rem; right: -1.4rem; z-index: 0;
+    width: 6.5rem; height: 6.5rem;
     color: var(--fr-gold);
-    opacity: 0.08;
+    opacity: 0.1;
     pointer-events: none;
   }
   .fr-price-card-icon {
-    width: 46px; height: 46px; flex-shrink: 0;
+    width: 68px; height: 68px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     background: var(--fr-gold-soft);
     border-radius: 50%;
     color: var(--fr-gold-deep);
-    margin-bottom: 0.3rem;
+    box-shadow: 0 6px 16px -6px rgba(232,185,35,0.55);
+    margin-bottom: 0.6rem;
   }
-  .fr-price-card-icon svg { width: 22px; height: 22px; }
-  .fr-price-card-title { font-family: var(--font-display); font-weight: 700; font-size: 1rem; color: var(--fr-panel-text); margin: 0; }
-  .fr-price-card-desc { font-size: 0.8rem; color: var(--fr-panel-text-faint); margin: 0.15rem 0 0; line-height: 1.35; }
-  .fr-price-card-value { margin-top: 0.55rem; padding-top: 0.55rem; width: 100%; border-top: 1px solid var(--fr-panel-border); font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; color: var(--fr-gold-deep); }
-  .fr-price-card-value.fr-price-tba { font-size: 0.8rem; font-family: var(--font-body); font-weight: 600; color: var(--fr-panel-text-faint); }
+  .fr-price-card-icon svg { width: 32px; height: 32px; }
+  .fr-price-card-title { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--fr-panel-text); margin: 0; }
+  .fr-price-card-value { margin-top: 0.7rem; font-family: var(--font-display); font-weight: 700; font-size: 1.55rem; color: var(--fr-gold-deep); }
+  .fr-price-card-value.fr-price-tba { font-size: 0.95rem; font-family: var(--font-body); font-weight: 600; color: var(--fr-panel-text-faint); }
+  .fr-price-card-flip-hint {
+    margin-top: auto; padding-top: 0.6rem;
+    font-size: 0.72rem; font-weight: 600; color: var(--fr-panel-text-faint);
+    display: flex; align-items: center; gap: 0.3rem;
+  }
+
+  /* Back — colors flipped: dark surface, gold text, gold-filled icon */
+  .fr-price-card-back {
+    background: linear-gradient(155deg, var(--fr-black) 55%, #241d10 150%);
+    border: 1px solid rgba(232,185,35,0.35);
+    transform: rotateY(180deg);
+    justify-content: center;
+  }
+  .fr-price-card-back .fr-price-card-icon {
+    width: 52px; height: 52px;
+    background: var(--fr-gold);
+    color: var(--fr-black);
+    box-shadow: none;
+    margin-bottom: 0.5rem;
+  }
+  .fr-price-card-back .fr-price-card-icon svg { width: 24px; height: 24px; }
+  .fr-price-card-back .fr-price-card-title { color: var(--fr-text-dark-zone); font-size: 1.05rem; }
+  .fr-price-card-desc--back { font-size: 0.86rem; color: var(--fr-text-dark-zone-soft); margin: 0.5rem 0 0; line-height: 1.5; }
+  .fr-price-card-back .fr-price-card-value { color: var(--fr-gold-bright); font-size: 1.25rem; margin-top: 0.7rem; }
+  .fr-price-card-back .fr-price-card-flip-hint { color: var(--fr-text-dark-zone-faint); }
 
   /* Premium tier — a touch more exclusive: gold-gradient icon, subtle glow border, small badge.
      margin-top on the outer card gives the badge (which pokes up above it) guaranteed
      clearance from whatever card sits above it in the grid. */
   .fr-price-card--premium { margin-top: 0.9rem; }
-  .fr-price-card--premium .fr-price-card-inner {
+  .fr-price-card--premium .fr-price-card-front {
     border: 1px solid var(--fr-gold);
     box-shadow: 0 0 0 1px var(--fr-gold-soft), 0 10px 28px -10px rgba(232, 185, 35, 0.45);
   }
-  .fr-price-card--premium .fr-price-card-icon {
+  .fr-price-card--premium .fr-price-card-front .fr-price-card-icon {
     background: linear-gradient(135deg, var(--fr-gold-bright), var(--fr-gold-deep));
     color: var(--fr-black);
     box-shadow: 0 0 0 3px var(--fr-gold-soft);
   }
-  .fr-price-card--premium .fr-price-card-value { border-top-color: var(--fr-gold-soft); font-size: 1.3rem; }
+  .fr-price-card--premium .fr-price-card-back { border-color: var(--fr-gold); }
+  .fr-price-card--premium .fr-price-card-back .fr-price-card-icon { background: linear-gradient(135deg, var(--fr-gold-bright), var(--fr-gold-deep)); }
   .fr-price-card--premium-badge {
-    position: absolute; top: -0.6rem; left: 50%; transform: translateX(-50%); z-index: 2;
+    position: absolute; top: -0.6rem; left: 50%; transform: translateX(-50%); z-index: 3;
     background: linear-gradient(135deg, var(--fr-gold-bright), var(--fr-gold-deep));
     color: var(--fr-black);
     font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
     padding: 0.25rem 0.7rem; border-radius: 999px;
     box-shadow: 0 2px 8px -2px rgba(0,0,0,0.4);
     white-space: nowrap;
+    pointer-events: none;
   }
   .fr-price-updated { font-size: 0.85rem; color: var(--fr-text-dark-zone-faint); text-align: center; margin: 0; }
   .fr-price-state { text-align: center; color: var(--fr-text-dark-zone-faint); }
@@ -214,18 +250,29 @@ async function loadPrices() {
 
     grid.innerHTML = services.map(s => {
       const isPremium = (s.label || "").toLowerCase().includes("premium");
+      const priceText = s.price_nok != null ? `kr ${Number(s.price_nok).toLocaleString('no-NO')}` : 'Ta kontakt';
+      const priceClass = s.price_nok == null ? ' fr-price-tba' : '';
       return `
-      <div class="fr-price-card${isPremium ? ' fr-price-card--premium' : ''}">
+      <div class="fr-price-card${isPremium ? ' fr-price-card--premium' : ''}" onclick="this.classList.toggle('is-flipped')">
         ${isPremium ? '<span class="fr-price-card--premium-badge">Eksklusiv</span>' : ''}
-        <div class="fr-price-card-inner">
-          <svg class="fr-price-card-bgicon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${iconForLabel(s.label)}</svg>
-          <div class="fr-price-card-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">${iconForLabel(s.label)}</svg>
+        <div class="fr-price-card-flipper">
+          <div class="fr-price-card-face fr-price-card-front">
+            <svg class="fr-price-card-bgicon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${iconForLabel(s.label)}</svg>
+            <div class="fr-price-card-icon">
+              <svg viewBox="0 0 24 24" fill="currentColor">${iconForLabel(s.label)}</svg>
+            </div>
+            <h3 class="fr-price-card-title">${s.label}</h3>
+            <div class="fr-price-card-value${priceClass}">${priceText}</div>
+            <div class="fr-price-card-flip-hint">↻ Trykk for mer info</div>
           </div>
-          <h3 class="fr-price-card-title">${s.label}</h3>
-          ${s.description ? `<p class="fr-price-card-desc">${s.description}</p>` : ''}
-          <div class="fr-price-card-value ${s.price_nok == null ? 'fr-price-tba' : ''}">
-            ${s.price_nok != null ? `kr ${Number(s.price_nok).toLocaleString('no-NO')}` : 'Ta kontakt'}
+          <div class="fr-price-card-face fr-price-card-back">
+            <div class="fr-price-card-icon">
+              <svg viewBox="0 0 24 24" fill="currentColor">${iconForLabel(s.label)}</svg>
+            </div>
+            <h3 class="fr-price-card-title">${s.label}</h3>
+            ${s.description ? `<p class="fr-price-card-desc--back">${s.description}</p>` : ''}
+            <div class="fr-price-card-value${priceClass}">${priceText}</div>
+            <div class="fr-price-card-flip-hint">↻ Trykk for å snu tilbake</div>
           </div>
         </div>
       </div>
