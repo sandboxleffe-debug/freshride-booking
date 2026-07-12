@@ -31,68 +31,76 @@
      the price cards and intro text run edge-to-edge on mobile with no side margin at all. */
   .fr-main { padding: 1.25rem 0.75rem 4rem; }
   .fr-prices-intro { text-align: center; color: var(--fr-text-dark-zone-faint); font-size: 0.9rem; max-width: 32rem; margin: 0 auto 1.25rem; }
-  .fr-price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.1rem; margin-bottom: 1.5rem; }
+  .fr-price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem; margin-bottom: 1.5rem; }
+  /* Two layers: the outer .fr-price-card is the badge's positioning context and is
+     NOT clipped, so the "EKSKLUSIV" badge can poke up above the card without being cut
+     off. The inner wrapper holds the actual surface (background, padding, rounded
+     corners) and clips only the decorative background icon to those corners. */
   .fr-price-card {
+    position: relative;
+    border-radius: var(--fr-radius);
+    transition: transform 0.2s ease;
+  }
+  .fr-price-card:hover { transform: translateY(-3px); }
+  .fr-price-card-inner {
     background: var(--fr-panel-bg);
     border: 1px solid var(--fr-panel-border);
     border-radius: var(--fr-radius);
-    padding: 1.6rem 1.3rem;
+    padding: 1.05rem 1rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 0.3rem;
+    gap: 0.15rem;
     position: relative;
     overflow: hidden;
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    transition: border-color 0.2s ease;
   }
-  .fr-price-card:hover { border-color: var(--fr-gold); transform: translateY(-3px); }
-  .fr-price-card > * { position: relative; z-index: 1; }
+  .fr-price-card:hover .fr-price-card-inner { border-color: var(--fr-gold); }
+  .fr-price-card-inner > * { position: relative; z-index: 1; }
   .fr-price-card-bgicon {
-    position: absolute; top: -1.4rem; right: -1.8rem; z-index: 0;
-    width: 8rem; height: 8rem;
+    position: absolute; top: -1rem; right: -1.3rem; z-index: 0;
+    width: 6rem; height: 6rem;
     color: var(--fr-gold);
     opacity: 0.08;
     pointer-events: none;
   }
   .fr-price-card-icon {
-    width: 64px; height: 64px; flex-shrink: 0;
+    width: 46px; height: 46px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     background: var(--fr-gold-soft);
     border-radius: 50%;
     color: var(--fr-gold-deep);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
   }
-  .fr-price-card-icon svg { width: 30px; height: 30px; }
-  .fr-price-card-title { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: var(--fr-panel-text); margin: 0; }
-  .fr-price-card-desc { font-size: 0.85rem; color: var(--fr-panel-text-faint); margin: 0.2rem 0 0; line-height: 1.4; }
-  .fr-price-card-value { margin-top: 0.9rem; padding-top: 0.9rem; width: 100%; border-top: 1px solid var(--fr-panel-border); font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; color: var(--fr-gold-deep); }
-  .fr-price-card-value.fr-price-tba { font-size: 0.82rem; font-family: var(--font-body); font-weight: 600; color: var(--fr-panel-text-faint); }
+  .fr-price-card-icon svg { width: 22px; height: 22px; }
+  .fr-price-card-title { font-family: var(--font-display); font-weight: 700; font-size: 1rem; color: var(--fr-panel-text); margin: 0; }
+  .fr-price-card-desc { font-size: 0.8rem; color: var(--fr-panel-text-faint); margin: 0.15rem 0 0; line-height: 1.35; }
+  .fr-price-card-value { margin-top: 0.55rem; padding-top: 0.55rem; width: 100%; border-top: 1px solid var(--fr-panel-border); font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; color: var(--fr-gold-deep); }
+  .fr-price-card-value.fr-price-tba { font-size: 0.8rem; font-family: var(--font-body); font-weight: 600; color: var(--fr-panel-text-faint); }
 
   /* Premium tier — a touch more exclusive: gold-gradient icon, subtle glow border, small badge.
-     margin-top gives the badge (which pokes up above the card) guaranteed clearance from
-     whatever card sits above it in the grid — the shared row gap alone was too tight and let
-     the badge visually collide with the previous card's price on some devices. */
-  .fr-price-card--premium {
+     margin-top on the outer card gives the badge (which pokes up above it) guaranteed
+     clearance from whatever card sits above it in the grid. */
+  .fr-price-card--premium { margin-top: 0.9rem; }
+  .fr-price-card--premium .fr-price-card-inner {
     border: 1px solid var(--fr-gold);
     box-shadow: 0 0 0 1px var(--fr-gold-soft), 0 10px 28px -10px rgba(232, 185, 35, 0.45);
-    position: relative;
-    margin-top: 0.9rem;
   }
-  .fr-price-card--premium:hover { transform: translateY(-4px); }
   .fr-price-card--premium .fr-price-card-icon {
     background: linear-gradient(135deg, var(--fr-gold-bright), var(--fr-gold-deep));
     color: var(--fr-black);
     box-shadow: 0 0 0 3px var(--fr-gold-soft);
   }
-  .fr-price-card--premium .fr-price-card-value { border-top-color: var(--fr-gold-soft); font-size: 1.4rem; }
+  .fr-price-card--premium .fr-price-card-value { border-top-color: var(--fr-gold-soft); font-size: 1.3rem; }
   .fr-price-card--premium-badge {
-    position: absolute; top: -0.6rem; left: 50%; transform: translateX(-50%);
+    position: absolute; top: -0.6rem; left: 50%; transform: translateX(-50%); z-index: 2;
     background: linear-gradient(135deg, var(--fr-gold-bright), var(--fr-gold-deep));
     color: var(--fr-black);
     font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
     padding: 0.25rem 0.7rem; border-radius: 999px;
     box-shadow: 0 2px 8px -2px rgba(0,0,0,0.4);
+    white-space: nowrap;
   }
   .fr-price-updated { font-size: 0.85rem; color: var(--fr-text-dark-zone-faint); text-align: center; margin: 0; }
   .fr-price-state { text-align: center; color: var(--fr-text-dark-zone-faint); }
@@ -208,15 +216,17 @@ async function loadPrices() {
       const isPremium = (s.label || "").toLowerCase().includes("premium");
       return `
       <div class="fr-price-card${isPremium ? ' fr-price-card--premium' : ''}">
-        <svg class="fr-price-card-bgicon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${iconForLabel(s.label)}</svg>
         ${isPremium ? '<span class="fr-price-card--premium-badge">Eksklusiv</span>' : ''}
-        <div class="fr-price-card-icon">
-          <svg viewBox="0 0 24 24" fill="currentColor">${iconForLabel(s.label)}</svg>
-        </div>
-        <h3 class="fr-price-card-title">${s.label}</h3>
-        ${s.description ? `<p class="fr-price-card-desc">${s.description}</p>` : ''}
-        <div class="fr-price-card-value ${s.price_nok == null ? 'fr-price-tba' : ''}">
-          ${s.price_nok != null ? `kr ${Number(s.price_nok).toLocaleString('no-NO')}` : 'Ta kontakt'}
+        <div class="fr-price-card-inner">
+          <svg class="fr-price-card-bgicon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${iconForLabel(s.label)}</svg>
+          <div class="fr-price-card-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor">${iconForLabel(s.label)}</svg>
+          </div>
+          <h3 class="fr-price-card-title">${s.label}</h3>
+          ${s.description ? `<p class="fr-price-card-desc">${s.description}</p>` : ''}
+          <div class="fr-price-card-value ${s.price_nok == null ? 'fr-price-tba' : ''}">
+            ${s.price_nok != null ? `kr ${Number(s.price_nok).toLocaleString('no-NO')}` : 'Ta kontakt'}
+          </div>
         </div>
       </div>
     `;
