@@ -801,63 +801,8 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 999px; margin-left: 0.4rem;
 }
 
-/* Time wheels — iOS-style inertial spin picker for hour/minute selection */
-.fr-time-wheels { display: flex; align-items: center; gap: 0.6rem; }
-.fr-time-sep { font-size: 0.85rem; color: var(--fr-panel-text-faint); }
 
-.fr-wheel {
-  position: relative;
-  width: 76px;
-  height: 180px; /* 5 rows x 36px */
-  overflow: hidden;
-  perspective: 600px;
-  border-radius: 12px;
-  background: var(--fr-panel-bg-2);
-  border: 1.5px solid var(--fr-panel-border);
-}
-.fr-wheel-scroll {
-  height: 100%;
-  overflow-y: scroll;
-  overflow-x: hidden;
-  scroll-snap-type: y mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  transform-style: preserve-3d;
-  mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.2) 20%, #000 42%, #000 58%, rgba(0,0,0,0.2) 80%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.2) 20%, #000 42%, #000 58%, rgba(0,0,0,0.2) 80%, transparent 100%);
-}
-.fr-wheel-scroll::-webkit-scrollbar { display: none; }
-.fr-wheel-item {
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  scroll-snap-align: center;
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: var(--fr-panel-text-faint);
-  user-select: none;
-  cursor: pointer;
-  will-change: transform, opacity;
-  backface-visibility: hidden;
-}
-.fr-wheel-item.fr-wheel-item-active { color: var(--fr-panel-text); font-weight: 700; }
-.fr-wheel-highlight {
-  position: absolute;
-  left: 4px; right: 4px;
-  top: 50%;
-  height: 36px;
-  transform: translateY(-50%);
-  border-top: 1.5px solid var(--fr-gold);
-  border-bottom: 1.5px solid var(--fr-gold);
-  background: var(--fr-gold-soft);
-  border-radius: 8px;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Discount gauge — horizontal speedometer-style picker, graded in 3 gold depths */
+/* Horizontal barometer gauge — shared by discount %, job size, and time spent, graded in 3 gold depths */
 .fr-gauge-row { display: flex; align-items: center; gap: 0.75rem; }
 .fr-gauge-col { flex: 1; min-width: 0; }
 .fr-gauge-value {
@@ -932,38 +877,6 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   cursor: pointer;
 }
 .fr-show-more-btn:hover { background: var(--fr-gold-soft); }
-
-/* Job-size range slider — graded green-to-red track */
-input.fr-range-gradient {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 8px;
-  border-radius: 999px;
-  outline: none;
-}
-input.fr-range-gradient::-webkit-slider-runnable-track {
-  height: 8px;
-  border-radius: 999px;
-  background: linear-gradient(to right, #3EA246, var(--fr-gold), #C0392B);
-}
-input.fr-range-gradient::-moz-range-track {
-  height: 8px;
-  border-radius: 999px;
-  background: linear-gradient(to right, #3EA246, var(--fr-gold), #C0392B);
-}
-input.fr-range-gradient::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  margin-top: -6px;
-  width: 20px; height: 20px; border-radius: 50%;
-  background: #fff; border: 2px solid var(--fr-panel-text);
-  cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-}
-input.fr-range-gradient::-moz-range-thumb {
-  width: 20px; height: 20px; border-radius: 50%;
-  background: #fff; border: 2px solid var(--fr-panel-text);
-  cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-}
 
 /* Customer registry — mobile-friendly row list instead of a scrolling table.
    Editing happens in a modal (customerEditModal), not inline, so nothing

@@ -403,19 +403,37 @@
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="sliders"></span> Hvor omfattende var jobben? Velg på skala fra 1–10</label>
-          <input type="range" id="jobSize" class="form-range fr-range-gradient" min="1" max="10" value="5" oninput="document.getElementById('jobSizeVal').textContent = this.value">
-          <span id="jobSizeVal" class="fr-hint">5</span>
+          <div class="fr-gauge-row">
+            <div class="fr-gauge-col">
+              <div class="fr-gauge-track" id="jobSizeGaugeTrack">
+                <div class="fr-gauge-band fr-gauge-band-low"></div>
+                <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                <div class="fr-gauge-band fr-gauge-band-high"></div>
+                <div class="fr-gauge-dim" id="jobSizeGaugeDim"></div>
+                <div class="fr-gauge-handle" id="jobSizeGaugeHandle"></div>
+              </div>
+              <div class="fr-gauge-ticks"><span>1</span><span>5</span><span>10</span></div>
+            </div>
+            <div class="fr-gauge-value" id="jobSizeGaugeValueText">5</div>
+          </div>
+          <input type="hidden" id="jobSize" value="5" />
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Tid brukt</label>
-          <div class="fr-time-wheels">
-            <div class="fr-wheel" data-for="jobTimeHours"></div>
-            <span class="fr-time-sep">t</span>
-            <div class="fr-wheel" data-for="jobTimeMinutes"></div>
-            <span class="fr-time-sep">min</span>
+          <div class="fr-gauge-row">
+            <div class="fr-gauge-col">
+              <div class="fr-gauge-track" id="jobTimeGaugeTrack">
+                <div class="fr-gauge-band fr-gauge-band-low"></div>
+                <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                <div class="fr-gauge-band fr-gauge-band-high"></div>
+                <div class="fr-gauge-dim" id="jobTimeGaugeDim"></div>
+                <div class="fr-gauge-handle" id="jobTimeGaugeHandle"></div>
+              </div>
+              <div class="fr-gauge-ticks"><span>0</span><span>4t</span><span>8t</span></div>
+            </div>
+            <div class="fr-gauge-value" id="jobTimeGaugeValueText">0 min</div>
           </div>
-          <select id="jobTimeHours" class="d-none"></select>
-          <select id="jobTimeMinutes" class="d-none"></select>
+          <input type="hidden" id="jobTimeSpentMinutes" value="0" />
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="fileText"></span> Notater</label>
@@ -659,19 +677,37 @@
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="sliders"></span> Hvor omfattende var jobben? Velg på skala fra 1–10</label>
-          <input type="range" id="editJobSize" class="form-range fr-range-gradient" min="1" max="10" oninput="document.getElementById('editJobSizeVal').textContent = this.value">
-          <span id="editJobSizeVal" class="fr-hint"></span>
+          <div class="fr-gauge-row">
+            <div class="fr-gauge-col">
+              <div class="fr-gauge-track" id="editJobSizeGaugeTrack">
+                <div class="fr-gauge-band fr-gauge-band-low"></div>
+                <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                <div class="fr-gauge-band fr-gauge-band-high"></div>
+                <div class="fr-gauge-dim" id="editJobSizeGaugeDim"></div>
+                <div class="fr-gauge-handle" id="editJobSizeGaugeHandle"></div>
+              </div>
+              <div class="fr-gauge-ticks"><span>1</span><span>5</span><span>10</span></div>
+            </div>
+            <div class="fr-gauge-value" id="editJobSizeGaugeValueText">5</div>
+          </div>
+          <input type="hidden" id="editJobSize" value="5" />
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Tid brukt</label>
-          <div class="fr-time-wheels">
-            <div class="fr-wheel" data-for="editJobTimeHours"></div>
-            <span class="fr-time-sep">t</span>
-            <div class="fr-wheel" data-for="editJobTimeMinutes"></div>
-            <span class="fr-time-sep">min</span>
+          <div class="fr-gauge-row">
+            <div class="fr-gauge-col">
+              <div class="fr-gauge-track" id="editJobTimeGaugeTrack">
+                <div class="fr-gauge-band fr-gauge-band-low"></div>
+                <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                <div class="fr-gauge-band fr-gauge-band-high"></div>
+                <div class="fr-gauge-dim" id="editJobTimeGaugeDim"></div>
+                <div class="fr-gauge-handle" id="editJobTimeGaugeHandle"></div>
+              </div>
+              <div class="fr-gauge-ticks"><span>0</span><span>4t</span><span>8t</span></div>
+            </div>
+            <div class="fr-gauge-value" id="editJobTimeGaugeValueText">0 min</div>
           </div>
-          <select id="editJobTimeHours" class="d-none"></select>
-          <select id="editJobTimeMinutes" class="d-none"></select>
+          <input type="hidden" id="editJobTimeSpentMinutes" value="0" />
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="fileText"></span> Notater</label>
@@ -842,8 +878,7 @@ function enterAdmin() {
   loadReviewsAdmin();
   loadPromoAdmin();
   loadCustomerCars();
-  populateTimeWheels('jobTimeHours', 'jobTimeMinutes');
-  populateTimeWheels('editJobTimeHours', 'editJobTimeMinutes');
+  initJobFormGauges();
   initPromoGauge();
   loadJobServiceOptions();
   loadJobsAdmin();
@@ -1868,127 +1903,103 @@ function formatDateNO(dateStr) {
   return `${d.getDate()} ${NO_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-/* ---------------- iOS-style wheel picker (time spent) ---------------- */
-const FR_WHEEL_ITEM_H = 36;   // px height per row — must match style.css .fr-wheel-item
-const FR_WHEEL_PAD_ROWS = 2;  // rows of empty padding above/below so first/last item can center
-const FR_WHEEL_TILT_DEG = 14; // subtle per-row 3D tilt, echoes the iOS cylinder look
-const frWheelInstances = {};
+/* ---------------- Horizontal barometer gauge (discount %, job size, time spent) ---------------- */
+const frGauges = {};
 
-function frCreateWheel(containerEl, values, formatter, hiddenSelect) {
-  const H = FR_WHEEL_ITEM_H;
-  const padH = FR_WHEEL_PAD_ROWS * H;
-  containerEl.innerHTML = `
-    <div class="fr-wheel-highlight"></div>
-    <div class="fr-wheel-scroll">
-      <div class="fr-wheel-pad" style="height:${padH}px"></div>
-      ${values.map((v, i) => `<div class="fr-wheel-item" data-index="${i}" style="height:${H}px">${formatter(v)}</div>`).join('')}
-      <div class="fr-wheel-pad" style="height:${padH}px"></div>
-    </div>`;
-  const scrollEl = containerEl.querySelector('.fr-wheel-scroll');
-  const items = Array.from(containerEl.querySelectorAll('.fr-wheel-item'));
+function createGauge(prefix, { min, max, step = 1, initial = min, formatValue = String, onChange } = {}) {
+  const track = document.getElementById(`${prefix}GaugeTrack`);
+  if (!track) return null;
+  const handle = document.getElementById(`${prefix}GaugeHandle`);
+  const dim = document.getElementById(`${prefix}GaugeDim`);
+  const valueEl = document.getElementById(`${prefix}GaugeValueText`);
 
-  function render() {
-    const centerPos = scrollEl.scrollTop / H;
-    items.forEach((item, i) => {
-      const offset = Math.max(-2.6, Math.min(2.6, i - centerPos));
-      const abs = Math.abs(offset);
-      item.style.opacity = Math.max(0.1, 1 - abs * 0.4).toFixed(2);
-      item.style.transform = `rotateX(${(-offset * FR_WHEEL_TILT_DEG).toFixed(1)}deg) scale(${(1 - abs * 0.12).toFixed(2)})`;
-      item.classList.toggle('fr-wheel-item-active', Math.round(centerPos) === i);
-    });
+  const toPct = v => ((v - min) / (max - min)) * 100;
+  const clampSnap = v => {
+    const snapped = Math.round((v - min) / step) * step + min;
+    return Math.max(min, Math.min(max, snapped));
+  };
+
+  let current = initial;
+  function apply(v, silent) {
+    current = clampSnap(v);
+    const pct = toPct(current);
+    handle.style.left = pct + '%';
+    dim.style.left = pct + '%';
+    dim.style.width = (100 - pct) + '%';
+    valueEl.textContent = formatValue(current);
+    if (!silent && onChange) onChange(current);
   }
 
-  let rafPending = false;
-  function requestRender() {
-    if (rafPending) return;
-    rafPending = true;
-    requestAnimationFrame(() => { rafPending = false; render(); });
-  }
-
-  function commit(idx) {
-    idx = Math.max(0, Math.min(values.length - 1, idx));
-    hiddenSelect.value = values[idx];
-  }
-
-  let settleTimer = null;
-  scrollEl.addEventListener('scroll', () => {
-    requestRender();
-    clearTimeout(settleTimer);
-    settleTimer = setTimeout(() => {
-      commit(Math.round(scrollEl.scrollTop / H));
-    }, 100);
-  }, { passive: true });
-
-  items.forEach((item, i) => {
-    item.addEventListener('click', () => scrollEl.scrollTo({ top: i * H, behavior: 'smooth' }));
-  });
-
-  function setToValue(v) {
-    const idx = Math.max(0, values.indexOf(Number(v)));
-    scrollEl.scrollTop = idx * H;
-    commit(idx);
-    render();
-  }
-
-  render();
-  return { setToValue };
-}
-
-function populateTimeWheels(hourSelectId, minuteSelectId) {
-  const hourSel = document.getElementById(hourSelectId);
-  const minSel = document.getElementById(minuteSelectId);
-  const hourValues = Array.from({ length: 9 }, (_, h) => h);
-  const minuteValues = [0, 15, 30, 45];
-  hourSel.innerHTML = hourValues.map(h => `<option value="${h}">${h}</option>`).join('');
-  minSel.innerHTML = minuteValues.map(m => `<option value="${m}">${String(m).padStart(2, '0')}</option>`).join('');
-
-  const hourWheelEl = document.querySelector(`.fr-wheel[data-for="${hourSelectId}"]`);
-  const minWheelEl = document.querySelector(`.fr-wheel[data-for="${minuteSelectId}"]`);
-  frWheelInstances[hourSelectId] = frCreateWheel(hourWheelEl, hourValues, v => String(v), hourSel);
-  frWheelInstances[minuteSelectId] = frCreateWheel(minWheelEl, minuteValues, v => String(v).padStart(2, '0'), minSel);
-}
-
-function setWheelTime(hourSelectId, minuteSelectId, hours, minutes) {
-  if (frWheelInstances[hourSelectId]) frWheelInstances[hourSelectId].setToValue(hours);
-  if (frWheelInstances[minuteSelectId]) frWheelInstances[minuteSelectId].setToValue(minutes);
-}
-
-function setPromoGaugeValue(v) {
-  v = Math.max(0, Math.min(100, Math.round(v)));
-  const track = document.getElementById('promoGaugeTrack');
-  const handle = document.getElementById('promoGaugeHandle');
-  const dim = document.getElementById('promoGaugeDim');
-  const valueEl = document.getElementById('promoGaugeValueText');
-  const hidden = document.getElementById('promoDiscountPct');
-  if (!track) return;
-  handle.style.left = v + '%';
-  dim.style.left = v + '%';
-  dim.style.width = (100 - v) + '%';
-  valueEl.textContent = v + '%';
-  hidden.value = v;
-}
-
-function initPromoGauge() {
-  const track = document.getElementById('promoGaugeTrack');
-  if (!track) return;
   const valueFromClientX = clientX => {
     const rect = track.getBoundingClientRect();
     const frac = (clientX - rect.left) / rect.width;
-    return frac * 100;
+    return min + frac * (max - min);
   };
+
   let dragging = false;
   track.addEventListener('pointerdown', e => {
     dragging = true;
-    setPromoGaugeValue(valueFromClientX(e.clientX));
+    apply(valueFromClientX(e.clientX));
     try { track.setPointerCapture(e.pointerId); } catch (err) { /* no active pointer to capture — value already set */ }
   });
-  track.addEventListener('pointermove', e => {
-    if (!dragging) return;
-    setPromoGaugeValue(valueFromClientX(e.clientX));
-  });
+  track.addEventListener('pointermove', e => { if (dragging) apply(valueFromClientX(e.clientX)); });
   track.addEventListener('pointerup', () => { dragging = false; });
   track.addEventListener('pointercancel', () => { dragging = false; });
-  setPromoGaugeValue(0);
+
+  apply(initial, true);
+
+  const api = { setValue: v => apply(v, true), getValue: () => current };
+  frGauges[prefix] = api;
+  return api;
+}
+
+// Programmatic set (reset-to-default, populating from saved data) — updates
+// both the gauge and its paired hidden input, since apply() runs silent here.
+function setGaugeValue(prefix, hiddenId, value) {
+  if (frGauges[prefix]) frGauges[prefix].setValue(value);
+  const hidden = document.getElementById(hiddenId);
+  if (hidden) hidden.value = value;
+}
+
+function formatDurationHM(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h}t`;
+  return `${h}t ${m}min`;
+}
+
+function setPromoGaugeValue(v) {
+  setGaugeValue('promo', 'promoDiscountPct', v);
+}
+
+function initPromoGauge() {
+  createGauge('promo', {
+    min: 0, max: 100, step: 1, initial: 0,
+    formatValue: v => v + '%',
+    onChange: v => { document.getElementById('promoDiscountPct').value = v; },
+  });
+}
+
+function initJobFormGauges() {
+  createGauge('jobSize', {
+    min: 1, max: 10, step: 1, initial: 5,
+    onChange: v => { document.getElementById('jobSize').value = v; },
+  });
+  createGauge('jobTime', {
+    min: 0, max: 480, step: 15, initial: 0,
+    formatValue: formatDurationHM,
+    onChange: v => { document.getElementById('jobTimeSpentMinutes').value = v; },
+  });
+  createGauge('editJobSize', {
+    min: 1, max: 10, step: 1, initial: 5,
+    onChange: v => { document.getElementById('editJobSize').value = v; },
+  });
+  createGauge('editJobTime', {
+    min: 0, max: 480, step: 15, initial: 0,
+    formatValue: formatDurationHM,
+    onChange: v => { document.getElementById('editJobTimeSpentMinutes').value = v; },
+  });
 }
 
 async function loadActivePromoDiscount() {
@@ -2339,9 +2350,7 @@ async function createJob() {
   const services = getCheckedJobServices('#jobServicesGrid').join(', ');
   const price_paid = Number(document.getElementById('jobPrice').value);
   const job_size = Number(document.getElementById('jobSize').value);
-  const hours = Number(document.getElementById('jobTimeHours').value) || 0;
-  const minutes = Number(document.getElementById('jobTimeMinutes').value) || 0;
-  const time_spent_minutes = (hours * 60 + minutes) || null;
+  const time_spent_minutes = Number(document.getElementById('jobTimeSpentMinutes').value) || null;
   const notes = document.getElementById('jobNotes').value.trim();
   const campaign_price = !document.getElementById('jobCampaignBadge').classList.contains('d-none');
   const beforeFiles = document.getElementById('jobPhotosBefore').files;
@@ -2391,9 +2400,8 @@ async function createJob() {
     document.querySelectorAll('#jobServicesGrid .fr-job-service-checkbox').forEach(cb => { cb.checked = false; cb.closest('.fr-service-option').classList.remove('fr-service-checked'); });
     document.getElementById('jobPrice').value = '';
     document.getElementById('jobCampaignBadge').classList.add('d-none');
-    document.getElementById('jobSize').value = 5;
-    document.getElementById('jobSizeVal').textContent = '5';
-    setWheelTime('jobTimeHours', 'jobTimeMinutes', 0, 0);
+    setGaugeValue('jobSize', 'jobSize', 5);
+    setGaugeValue('jobTime', 'jobTimeSpentMinutes', 0);
     document.getElementById('jobNotes').value = '';
     document.getElementById('jobPhotosBefore').value = '';
     document.getElementById('jobPhotosAfter').value = '';
@@ -2458,9 +2466,8 @@ function openJobEdit(id) {
   document.getElementById('editJobCarType').value = job.car_type || '';
   document.getElementById('editJobServices').value = job.services || '';
   document.getElementById('editJobPrice').value = job.price_paid ?? '';
-  document.getElementById('editJobSize').value = job.job_size || 5;
-  document.getElementById('editJobSizeVal').textContent = job.job_size || 5;
-  const totalMin = job.time_spent_minutes || 0;
+  setGaugeValue('editJobSize', 'editJobSize', job.job_size || 5);
+  setGaugeValue('editJobTime', 'editJobTimeSpentMinutes', job.time_spent_minutes || 0);
   document.getElementById('editJobNotes').value = job.notes || '';
   document.getElementById('editJobReferenceProductName').value = job.reference_product_name || '';
   document.getElementById('editJobShowReference').checked = !!job.show_as_reference;
@@ -2471,16 +2478,6 @@ function openJobEdit(id) {
   document.getElementById('editJobPhotosAfter').innerHTML = renderJobPhotoThumbs(job.photosAfter, job.id);
   updateJobReferenceCheckboxState(job);
 
-  const editHours = Math.floor(totalMin / 60);
-  const editMinutes = totalMin % 60;
-  const jobEditModalEl = document.getElementById('jobEditModal');
-  if (jobEditModalEl.classList.contains('show')) {
-    setWheelTime('editJobTimeHours', 'editJobTimeMinutes', editHours, editMinutes);
-  } else {
-    jobEditModalEl.addEventListener('shown.bs.modal', () => {
-      setWheelTime('editJobTimeHours', 'editJobTimeMinutes', editHours, editMinutes);
-    }, { once: true });
-  }
   jobEditModal.show();
 }
 
@@ -2514,8 +2511,6 @@ async function saveJobEdit() {
   const newPhotoFiles = document.getElementById('editJobNewPhotos').files;
   const newBeforeFiles = document.getElementById('editJobNewPhotosBefore').files;
   const newAfterFiles = document.getElementById('editJobNewPhotosAfter').files;
-  const hours = Number(document.getElementById('editJobTimeHours').value) || 0;
-  const minutes = Number(document.getElementById('editJobTimeMinutes').value) || 0;
 
   saveBtn.disabled = true;
   try {
@@ -2539,7 +2534,7 @@ async function saveJobEdit() {
         services: document.getElementById('editJobServices').value.trim(),
         price_paid: Number(document.getElementById('editJobPrice').value),
         job_size: Number(document.getElementById('editJobSize').value),
-        time_spent_minutes: (hours * 60 + minutes) || null,
+        time_spent_minutes: Number(document.getElementById('editJobTimeSpentMinutes').value) || null,
         notes: document.getElementById('editJobNotes').value.trim(),
         reference_product_name: document.getElementById('editJobReferenceProductName').value.trim() || null,
         show_as_reference: document.getElementById('editJobShowReference').checked,
