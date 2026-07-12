@@ -195,13 +195,13 @@
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Lukk"></button>
   </div>
   <div class="offcanvas-body">
-    <a href="index.html" class="fr-nav-link">🏠 Forside</a>
-    <a href="about.html" class="fr-nav-link">ℹ️ Om oss</a>
-    <a href="prices.html" class="fr-nav-link">💰 Priser</a>
-    <a href="feedback.html" class="fr-nav-link">⭐ Gi tilbakemelding</a>
-    <a href="resultater.html" class="fr-nav-link">🖼️ Resultater</a>
-    <a href="https://willydeals.myspreadshop.no/" target="_blank" rel="noopener" class="fr-nav-link">🛍️ Merchandise</a>
-    <a href="admin.html" class="fr-nav-link fr-nav-link-admin">🔒 Admin</a>
+    <a href="index.html" class="fr-nav-link"><span class="fr-icon" data-fr-icon="home"></span> Forside</a>
+    <a href="about.html" class="fr-nav-link"><span class="fr-icon" data-fr-icon="info"></span> Om oss</a>
+    <a href="prices.html" class="fr-nav-link"><span class="fr-icon" data-fr-icon="dollarSign"></span> Priser</a>
+    <a href="feedback.html" class="fr-nav-link"><span class="fr-icon" data-fr-icon="star"></span> Gi tilbakemelding</a>
+    <a href="resultater.html" class="fr-nav-link"><span class="fr-icon" data-fr-icon="image"></span> Resultater</a>
+    <a href="https://willydeals.myspreadshop.no/" target="_blank" rel="noopener" class="fr-nav-link"><span class="fr-icon" data-fr-icon="bag"></span> Merchandise</a>
+    <a href="admin.html" class="fr-nav-link fr-nav-link-admin"><span class="fr-icon" data-fr-icon="lock"></span> Admin</a>
   </div>
 </div>
 
@@ -289,7 +289,7 @@
     <!-- Tab: Opprett tid -->
     <div id="tab-create" class="fr-tab-panel d-none">
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="plusCircle"></span> Opprett ledige tidspunkt for kalender</h2></div>
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="plusCircle"></span> Opprett ledig tid</h2></div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
           <div id="createWeekStrip" class="fr-tl-week-strip"></div>
@@ -358,6 +358,7 @@
           <div><span class="fr-acc-label">Sidevisninger</span><span class="fr-acc-value" id="gaPageViews">–</span></div>
         </div>
         <p class="fr-hint" id="gaTrendHint"></p>
+        <div id="gaWeekChart" class="fr-ga-chart"></div>
       </div>
 
       <div class="fr-panel">
@@ -838,6 +839,9 @@ const FR_ICON_PATHS = {
   trendingDown: '<path d="M2.3 6.4 9 13.1l4-4L21.6 18H16v2h9v-9h-2v6.6L13 6l-4 4-6.3-6.3-1.4 1.4Z"/>',
   barChart: '<path d="M4 10h4v10H4V10Zm6-6h4v16h-4V4Zm6 3h4v13h-4V7Z"/>',
   bell: '<path d="M12 1a1 1 0 0 1 1 1v1.1a7 7 0 0 1 6 6.9v4.5l1.7 2.6a1 1 0 0 1-.8 1.5H4.1a1 1 0 0 1-.8-1.5L5 14.5V10a7 7 0 0 1 6-6.9V2a1 1 0 0 1 1-1Zm0 20a2.5 2.5 0 0 1-2.4-1.8h4.8A2.5 2.5 0 0 1 12 21Z"/>',
+  home: '<path d="M12 2.3 2 10.8h3V21h6v-6h2v6h6V10.8h3Z"/>',
+  image: '<path fill-rule="evenodd" d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4Zm0 2h16v7.5l-3.5-3.5a1 1 0 0 0-1.4 0L11 14.1l-2.3-2.3a1 1 0 0 0-1.4 0L4 15V6Zm3 3a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" clip-rule="evenodd"/>',
+  bag: '<path fill-rule="evenodd" d="M8 6a4 4 0 1 1 8 0v1h2.4a1 1 0 0 1 1 .9l1.1 12a2 2 0 0 1-2 2.1H5.5a2 2 0 0 1-2-2.1l1.1-12a1 1 0 0 1 1-.9H8V6Zm2 1h4V6a2 2 0 1 0-4 0v1Z" clip-rule="evenodd"/>',
 };
 function frIcon(name) {
   return `<svg viewBox="0 0 24 24" fill="currentColor">${FR_ICON_PATHS[name] || ''}</svg>`;
@@ -1872,9 +1876,29 @@ async function loadAnalyticsSummary() {
     } else {
       hint.textContent = 'Ingen besøkende registrert ennå i dag';
     }
+
+    if (data.last7Days && data.last7Days.length) renderGaWeekChart(data.last7Days);
   } catch (e) {
     document.getElementById('gaTrendHint').textContent = `Klarte ikke å hente besøksstatistikk: ${e.message}`;
   }
+}
+
+const GA_DOW_SHORT = ["Sø", "Ma", "Ti", "On", "To", "Fr", "Lø"];
+function renderGaWeekChart(days) {
+  const box = document.getElementById('gaWeekChart');
+  if (!box) return;
+  const max = Math.max(1, ...days.map(d => d.visitors));
+  box.innerHTML = days.map(d => {
+    const pct = Math.max(4, Math.round((d.visitors / max) * 100));
+    const y = Number(d.date.slice(0, 4)), m = Number(d.date.slice(4, 6)) - 1, day = Number(d.date.slice(6, 8));
+    const dow = new Date(y, m, day).getDay();
+    return `
+      <div class="fr-ga-bar-col" title="${d.visitors} besøkende">
+        <div class="fr-ga-bar" style="height:${pct}%"></div>
+        <span class="fr-ga-bar-label">${GA_DOW_SHORT[dow]}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 async function loadAccountingSummary() {

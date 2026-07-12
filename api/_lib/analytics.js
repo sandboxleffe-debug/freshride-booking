@@ -41,22 +41,38 @@ async function runReport(body) {
 // response (dimensionValues[0]) with that name — it must not be requested
 // in `dimensions` itself, GA4 rejects that as an invalid field.
 export async function getVisitorSummary() {
-  const data = await runReport({
-    dateRanges: [
-      { startDate: "today", endDate: "today", name: "today" },
-      { startDate: "yesterday", endDate: "yesterday", name: "yesterday" },
-    ],
-    metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }],
-  });
+  const [data, daily] = await Promise.all([
+    runReport({
+      dateRanges: [
+        { startDate: "today", endDate: "today", name: "today" },
+        { startDate: "yesterday", endDate: "yesterday", name: "yesterday" },
+      ],
+      metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }],
+    }),
+    // Last 7 days as a daily series (separate report — a plain `date`
+    // dimension can't be combined with the named-dateRange trick above).
+    runReport({
+      dateRanges: [{ startDate: "6daysAgo", endDate: "today" }],
+      dimensions: [{ name: "date" }],
+      metrics: [{ name: "activeUsers" }],
+      orderBys: [{ dimension: { dimensionName: "date" } }],
+    }),
+  ]);
 
   const rowFor = (name) => (data.rows || []).find(r => r.dimensionValues?.[0]?.value === name);
   const today = rowFor("today");
   const yesterday = rowFor("yesterday");
+
+  const last7Days = (daily.rows || []).map(r => ({
+    date: r.dimensionValues?.[0]?.value || "", // YYYYMMDD
+    visitors: Number(r.metricValues?.[0]?.value || 0),
+  }));
 
   return {
     todayVisitors: Number(today?.metricValues?.[0]?.value || 0),
     todayPageViews: Number(today?.metricValues?.[1]?.value || 0),
     yesterdayVisitors: Number(yesterday?.metricValues?.[0]?.value || 0),
     yesterdayPageViews: Number(yesterday?.metricValues?.[1]?.value || 0),
+    last7Days,
   };
 }

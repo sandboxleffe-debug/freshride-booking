@@ -31,6 +31,13 @@
   .fr-star-btn:hover { transform: scale(1.12); }
   .fr-feedback-success { text-align: center; padding: 2rem 1rem; }
   .fr-feedback-success .emoji { font-size: 3rem; margin-bottom: 0.75rem; }
+  .fr-emoji-picker { display: flex; gap: 0.4rem; margin-bottom: 0.5rem; }
+  .fr-emoji-btn {
+    border: 1.5px solid var(--fr-panel-border); background: var(--fr-panel-bg-2);
+    border-radius: 10px; font-size: 1.3rem; line-height: 1; padding: 0.4rem 0.6rem; cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.1s ease;
+  }
+  .fr-emoji-btn:hover { border-color: var(--fr-gold); transform: scale(1.08); }
 </style>
 </head>
 <body>
@@ -106,6 +113,13 @@
       <input id="fbName" class="form-control fr-input mb-3" placeholder="Ola Nordmann" />
 
       <label for="fbComment" class="form-label fr-label">💬 Kommentar</label>
+      <div class="fr-emoji-picker" id="fbEmojiPicker">
+        <button type="button" class="fr-emoji-btn" data-emoji="👍" title="Tommel opp">👍</button>
+        <button type="button" class="fr-emoji-btn" data-emoji="👌" title="OK">👌</button>
+        <button type="button" class="fr-emoji-btn" data-emoji="🙌" title="Hurra">🙌</button>
+        <button type="button" class="fr-emoji-btn" data-emoji="👏" title="Klapp">👏</button>
+        <button type="button" class="fr-emoji-btn" data-emoji="❤️" title="Hjerte">❤️</button>
+      </div>
       <textarea id="fbComment" class="form-control fr-input mb-3" rows="4" placeholder="Fortell om opplevelsen din …"></textarea>
 
       <div id="fbError" class="fr-form-error mb-2 d-none"></div>
@@ -134,6 +148,19 @@
 <script src="nav-rail.js"></script>
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
+
+document.querySelectorAll('.fr-emoji-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const ta = document.getElementById('fbComment');
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? ta.value.length;
+    const emoji = btn.dataset.emoji;
+    ta.value = ta.value.slice(0, start) + emoji + ta.value.slice(end);
+    const newPos = start + emoji.length;
+    ta.focus();
+    ta.setSelectionRange(newPos, newPos);
+  });
+});
 
 let selectedRating = 0;
 document.querySelectorAll('.fr-star-btn').forEach(btn => {

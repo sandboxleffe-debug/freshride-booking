@@ -472,6 +472,8 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-nav-link:hover { color: var(--fr-gold); background: rgba(232, 185, 35, 0.08); }
 .fr-nav-link-admin { color: var(--fr-text-dark-zone-faint); font-weight: 500; font-size: 0.88rem; margin-top: 0.75rem; border-bottom: none; }
+.fr-nav-link .fr-icon { flex-shrink: 0; }
+.fr-nav-link .fr-icon svg { width: 1.2rem; height: 1.2rem; }
 
 /* Expandable icon nav dropdown — anchored to the gold .fr-hamburger button in the
    navbar itself (same row as the logo), so it can never drift over the brand. */
@@ -527,6 +529,14 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   color: var(--fr-text-dark-zone-soft); border-radius: 10px; padding: 0.5rem 0.9rem; font-size: 0.85rem; cursor: pointer;
 }
 .fr-tab-btn.active { background: var(--fr-gold); color: var(--fr-black); border-color: var(--fr-gold); font-weight: 700; }
+.fr-tab-btn .fr-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.3rem; height: 1.3rem; border-radius: 50%; vertical-align: middle;
+  margin-right: 0.1rem; transition: all 0.15s ease;
+}
+.fr-tab-btn .fr-icon svg { width: 15px; height: 15px; }
+.fr-tab-btn.active .fr-icon { width: 1.7rem; height: 1.7rem; background: rgba(8,7,10,0.15); }
+.fr-tab-btn.active .fr-icon svg { width: 17px; height: 17px; }
 
 /* Mobile bottom icon nav — hidden on desktop, replaces the wrapping tab-button row on small screens */
 .fr-bnav { display: none; }
@@ -561,9 +571,10 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
     cursor: pointer;
     white-space: nowrap;
   }
-  .fr-bnav-icon { display: flex; align-items: center; justify-content: center; color: var(--fr-gold); }
+  .fr-bnav-icon { display: flex; align-items: center; justify-content: center; color: var(--fr-gold); border-radius: 50%; transition: all 0.15s ease; }
   #adminView .fr-bnav-icon svg { width: 27px; height: 27px; }
-  .fr-bnav-btn.active { color: var(--fr-gold); background: rgba(232,185,35,0.12); }
+  .fr-bnav-btn.active { color: var(--fr-gold); }
+  .fr-bnav-btn.active:not(.fr-bnav-btn-main) .fr-bnav-icon { width: 2.5rem; height: 2.5rem; background: rgba(232,185,35,0.18); }
 
   /* Center "Innstillinger" button — bigger, raised, always in focus */
   .fr-bnav-btn-main { overflow: visible; }
@@ -780,6 +791,12 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-acc-value { display: block; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--fr-panel-text); }
 .fr-acc-income { color: #2E7D32; }
 .fr-acc-expense { color: #B0392C; }
+
+/* Small 7-day visitor bar chart under the GA summary */
+.fr-ga-chart { display: flex; align-items: flex-end; gap: 0.4rem; height: 4.2rem; margin-top: 0.85rem; }
+.fr-ga-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 0.3rem; }
+.fr-ga-bar { width: 100%; max-width: 1.4rem; background: var(--fr-gold); border-radius: 4px 4px 2px 2px; min-height: 3px; transition: height 0.3s ease; }
+.fr-ga-bar-label { font-size: 0.62rem; color: var(--fr-panel-text-faint); }
 
 /* Admin: job log rows + photo thumbnails */
 .fr-job-row { align-items: flex-start; }
