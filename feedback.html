@@ -38,6 +38,24 @@
     transition: border-color 0.15s ease, transform 0.1s ease;
   }
   .fr-emoji-btn:hover { border-color: var(--fr-gold); transform: scale(1.08); }
+  .fr-star-toast {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.92);
+    background: var(--fr-black); color: var(--fr-text-dark-zone);
+    border: 1.5px solid var(--fr-gold); border-radius: 16px;
+    padding: 1.1rem 1.6rem; font-weight: 700; font-size: 1.05rem; text-align: center; max-width: 20rem;
+    box-shadow: 0 24px 60px -18px rgba(0,0,0,0.6);
+    z-index: 2000; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .fr-star-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  @keyframes fr-star-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+  .fr-star-picker-shake { animation: fr-star-shake 0.4s ease; }
 </style>
 </head>
 <body>
@@ -60,9 +78,9 @@
     <span class="fr-nav-rail-icon" data-rail-icon="home"></span>
     <span class="fr-nav-rail-label">Forside</span>
   </a>
-  <a href="about.html" class="fr-nav-rail-item" title="Om oss">
+  <a href="about.html" class="fr-nav-rail-item" title="Om meg">
     <span class="fr-nav-rail-icon" data-rail-icon="info"></span>
-    <span class="fr-nav-rail-label">Om oss</span>
+    <span class="fr-nav-rail-label">Om meg</span>
   </a>
   <a href="prices.html" class="fr-nav-rail-item" title="Priser">
     <span class="fr-nav-rail-icon" data-rail-icon="dollarSign"></span>
@@ -92,10 +110,12 @@
 <header class="fr-hero-copy">
   <div class="container">
     <p class="fr-eyebrow">⭐ DIN OPPLEVELSE</p>
-    <h1 class="fr-hero-title">Hvordan gikk det? <span class="fr-highlight">Fortell oss</span></h1>
-    <p class="fr-hero-text">Vi setter stor pris på tilbakemeldinger — det hjelper oss å bli enda bedre.</p>
+    <h1 class="fr-hero-title">Hvordan gikk det? <span class="fr-highlight">Fortell meg</span></h1>
+    <p class="fr-hero-text">Jeg setter stor pris på tilbakemeldinger — det hjelper meg å bli enda bedre.</p>
   </div>
 </header>
+
+<div id="starToast" class="fr-star-toast">⭐ Fint om du kan gi en vurdering i antall stjerner</div>
 
 <main class="container fr-main">
   <section class="fr-panel" style="max-width: 480px; margin: 0 auto;">
@@ -110,7 +130,7 @@
       </div>
 
       <label for="fbName" class="form-label fr-label">🙋 Navn (valgfritt)</label>
-      <input id="fbName" class="form-control fr-input mb-3" placeholder="Ola Nordmann" />
+      <input id="fbName" class="form-control fr-input mb-3" placeholder="" />
 
       <label for="fbComment" class="form-label fr-label">💬 Kommentar</label>
       <div class="fr-emoji-picker" id="fbEmojiPicker">
@@ -129,7 +149,7 @@
     <div id="successView" class="fr-feedback-success d-none">
       <div class="emoji">🎉</div>
       <h2 style="font-family:var(--font-display); font-weight:700;">Takk for tilbakemeldingen!</h2>
-      <p class="fr-hint">Den blir gjennomgått og kan dukke opp på forsiden vår.</p>
+      <p class="fr-hint">Jeg setter stor pris på den — det hjelper meg å bli bedre. Var du fornøyd? Spre gjerne ordet til venner og bekjente. Mvh William 🙌</p>
     </div>
   </section>
 </main>
@@ -163,12 +183,25 @@ document.querySelectorAll('.fr-emoji-btn').forEach(btn => {
 });
 
 let selectedRating = 0;
+let starToastTimer = null;
+function showStarToast() {
+  const toast = document.getElementById('starToast');
+  const picker = document.getElementById('starPicker');
+  clearTimeout(starToastTimer);
+  toast.classList.add('show');
+  picker.classList.remove('fr-star-picker-shake');
+  void picker.offsetWidth; // restart the shake animation
+  picker.classList.add('fr-star-picker-shake');
+  starToastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+}
+
 document.querySelectorAll('.fr-star-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     selectedRating = Number(btn.dataset.value);
     document.querySelectorAll('.fr-star-btn').forEach(b => {
       b.classList.toggle('filled', Number(b.dataset.value) <= selectedRating);
     });
+    document.getElementById('starToast').classList.remove('show');
   });
 });
 
@@ -180,8 +213,7 @@ async function submitFeedback() {
   errEl.classList.add('d-none');
 
   if (!selectedRating) {
-    errEl.textContent = 'Velg antall stjerner.';
-    errEl.classList.remove('d-none');
+    showStarToast();
     return;
   }
   if (!comment) {

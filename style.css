@@ -542,7 +542,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-bnav { display: none; }
 @media (max-width: 720px) {
   .fr-admin-tabs { display: none; }
-  .fr-admin-wrap { padding-bottom: 5.5rem; }
+  .fr-admin-wrap { padding-bottom: 7.5rem; }
   .fr-bnav {
     display: flex;
     position: fixed;
@@ -574,7 +574,12 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   .fr-bnav-icon { display: flex; align-items: center; justify-content: center; color: var(--fr-gold); border-radius: 50%; transition: all 0.15s ease; }
   #adminView .fr-bnav-icon svg { width: 27px; height: 27px; }
   .fr-bnav-btn.active { color: var(--fr-gold); }
-  .fr-bnav-btn.active:not(.fr-bnav-btn-main) .fr-bnav-icon { width: 2.5rem; height: 2.5rem; background: rgba(232,185,35,0.18); }
+  .fr-bnav-btn.active:not(.fr-bnav-btn-main) .fr-bnav-icon {
+    width: 2.5rem; height: 2.5rem;
+    background: rgba(232,185,35,0.18);
+    border: 1.5px solid rgba(232,185,35,0.65);
+    box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), 0 2px 6px rgba(232,185,35,0.3);
+  }
 
   /* Center "Innstillinger" button — bigger, raised, always in focus */
   .fr-bnav-btn-main { overflow: visible; }

@@ -25,7 +25,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-  .fr-prices-intro { text-align: center; color: var(--fr-text-dark-zone-faint); font-size: 0.9rem; max-width: 32rem; margin: 0 auto 2rem; }
+  .fr-main { padding-top: 1.25rem; }
+  .fr-prices-intro { text-align: center; color: var(--fr-text-dark-zone-faint); font-size: 0.9rem; max-width: 32rem; margin: 0 auto 1.25rem; }
   .fr-price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.1rem; margin-bottom: 1.5rem; }
   .fr-price-card {
     background: var(--fr-panel-bg);
@@ -37,18 +38,28 @@
     align-items: center;
     text-align: center;
     gap: 0.3rem;
+    position: relative;
+    overflow: hidden;
     transition: border-color 0.2s ease, transform 0.2s ease;
   }
   .fr-price-card:hover { border-color: var(--fr-gold); transform: translateY(-3px); }
+  .fr-price-card > * { position: relative; z-index: 1; }
+  .fr-price-card-bgicon {
+    position: absolute; top: -1.4rem; right: -1.8rem; z-index: 0;
+    width: 8rem; height: 8rem;
+    color: var(--fr-gold);
+    opacity: 0.08;
+    pointer-events: none;
+  }
   .fr-price-card-icon {
-    width: 46px; height: 46px; flex-shrink: 0;
+    width: 64px; height: 64px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     background: var(--fr-gold-soft);
     border-radius: 50%;
     color: var(--fr-gold-deep);
     margin-bottom: 0.5rem;
   }
-  .fr-price-card-icon svg { width: 22px; height: 22px; }
+  .fr-price-card-icon svg { width: 30px; height: 30px; }
   .fr-price-card-title { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: var(--fr-panel-text); margin: 0; }
   .fr-price-card-desc { font-size: 0.85rem; color: var(--fr-panel-text-faint); margin: 0.2rem 0 0; line-height: 1.4; }
   .fr-price-card-value { margin-top: 0.9rem; padding-top: 0.9rem; width: 100%; border-top: 1px solid var(--fr-panel-border); font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; color: var(--fr-gold-deep); }
@@ -100,9 +111,9 @@
     <span class="fr-nav-rail-icon" data-rail-icon="home"></span>
     <span class="fr-nav-rail-label">Forside</span>
   </a>
-  <a href="about.html" class="fr-nav-rail-item" title="Om oss">
+  <a href="about.html" class="fr-nav-rail-item" title="Om meg">
     <span class="fr-nav-rail-icon" data-rail-icon="info"></span>
-    <span class="fr-nav-rail-label">Om oss</span>
+    <span class="fr-nav-rail-label">Om meg</span>
   </a>
   <a href="prices.html" class="fr-nav-rail-item" title="Priser">
     <span class="fr-nav-rail-icon" data-rail-icon="dollarSign"></span>
@@ -137,7 +148,7 @@
 </header>
 
 <main class="container fr-main">
-  <p class="fr-prices-intro">En oversikt over hva vi tilbyr. Book direkte fra forsiden når du har funnet pakken som passer.</p>
+  <p class="fr-prices-intro">En oversikt over hva jeg tilbyr. Book direkte fra forsiden når du har funnet pakken som passer.</p>
   <div class="fr-price-grid" id="pricesGrid">
     <div class="fr-price-state"><div class="spinner-border fr-spinner" role="status"></div></div>
   </div>
@@ -189,6 +200,7 @@ async function loadPrices() {
       const isPremium = (s.label || "").toLowerCase().includes("premium");
       return `
       <div class="fr-price-card${isPremium ? ' fr-price-card--premium' : ''}">
+        <svg class="fr-price-card-bgicon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${iconForLabel(s.label)}</svg>
         ${isPremium ? '<span class="fr-price-card--premium-badge">Eksklusiv</span>' : ''}
         <div class="fr-price-card-icon">
           <svg viewBox="0 0 24 24" fill="currentColor">${iconForLabel(s.label)}</svg>

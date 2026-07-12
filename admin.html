@@ -18,6 +18,12 @@
 <style>
   body { background: var(--fr-black) url("assets/admin-bg.jpg") center center / cover no-repeat fixed; }
   .fr-admin-wrap { max-width: 640px; margin: 0 auto; padding: 1.5rem 1rem 3rem; position: relative; z-index: 1; }
+  /* Clear the fixed bottom nav (and its raised center button) on mobile — this
+     overrides the padding-bottom above, which otherwise wins the cascade since
+     it loads after style.css and would leave the last list row/button hidden. */
+  @media (max-width: 720px) {
+    .fr-admin-wrap { padding-bottom: 7.5rem; }
+  }
   .fr-admin-login { max-width: 360px; margin: 3.5rem auto; }
   .fr-admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
   .fr-admin-identity { display: flex; align-items: center; gap: 0.75rem; }
@@ -40,6 +46,14 @@
   /* Neutral single-color SVG icons, sized relative to surrounding text so they drop into labels/buttons/headings uniformly */
   #adminView svg, #loginView svg { width: 1.35em; height: 1.35em; vertical-align: -0.28em; flex-shrink: 0; }
   .fr-icon { display: inline-flex; }
+  /* Before/after symbolism — muted grey for the "before" shot, warm gold for the "after" result */
+  .fr-badge-before, .fr-badge-after {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.5rem; height: 1.5rem; border-radius: 50%; margin-right: 0.25rem; vertical-align: -0.4rem;
+  }
+  .fr-badge-before svg, .fr-badge-after svg { width: 14px; height: 14px; }
+  .fr-badge-before { background: rgba(120,120,120,0.16); color: #6b6b6b; }
+  .fr-badge-after { background: var(--fr-gold-soft); color: var(--fr-gold-deep); }
   .fr-panel-head-flex { display: flex; align-items: center; justify-content: space-between; }
   .fr-reveal-btn {
     background: none; border: 1.5px solid var(--fr-panel-border); border-radius: 8px;
@@ -177,33 +191,14 @@
 </head>
 <body>
 
-<!-- Navbar -->
+<!-- Navbar — no hamburger menu here: every admin destination is already one tap away via the bottom nav -->
 <nav class="navbar navbar-expand fr-navbar">
   <div class="container">
     <a class="navbar-brand fr-brand" href="index.html">
       <span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span>
     </a>
-    <button class="fr-hamburger ms-auto" type="button" data-bs-toggle="offcanvas" data-bs-target="#navMenu" aria-controls="navMenu" aria-label="Meny">
-      <span></span><span></span><span></span>
-    </button>
   </div>
 </nav>
-
-<div class="offcanvas offcanvas-end fr-offcanvas" tabindex="-1" id="navMenu">
-  <div class="offcanvas-header">
-    <span class="fr-offcanvas-brand"><span class="fr-brand-fresh">Fresh</span><span class="fr-brand-ride">Ride</span></span>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Lukk"></button>
-  </div>
-  <div class="offcanvas-body">
-    <a href="index.html" class="fr-nav-link"><span class="fr-icon" data-fr-icon="home"></span> Forside</a>
-    <a href="about.html" class="fr-nav-link"><span class="fr-icon" data-fr-icon="info"></span> Om oss</a>
-    <a href="prices.html" class="fr-nav-link"><span class="fr-icon" data-fr-icon="dollarSign"></span> Priser</a>
-    <a href="feedback.html" class="fr-nav-link"><span class="fr-icon" data-fr-icon="star"></span> Gi tilbakemelding</a>
-    <a href="resultater.html" class="fr-nav-link"><span class="fr-icon" data-fr-icon="image"></span> Resultater</a>
-    <a href="https://willydeals.myspreadshop.no/" target="_blank" rel="noopener" class="fr-nav-link"><span class="fr-icon" data-fr-icon="bag"></span> Merchandise</a>
-    <a href="admin.html" class="fr-nav-link fr-nav-link-admin"><span class="fr-icon" data-fr-icon="lock"></span> Admin</a>
-  </div>
-</div>
 
 <div class="fr-admin-wrap">
 
@@ -230,10 +225,10 @@
     <div class="fr-admin-tabs">
       <button class="fr-tab-btn active" data-tab="overview" onclick="showTab('overview')"><span class="fr-icon" data-fr-icon="calendar"></span> Oversikt</button>
       <button class="fr-tab-btn" data-tab="create" onclick="showTab('create')"><span class="fr-icon" data-fr-icon="plusCircle"></span> Opprett tid</button>
-      <button class="fr-tab-btn" data-tab="services" onclick="showTab('services')"><span class="fr-icon" data-fr-icon="droplet"></span> Tjenester</button>
+      <button class="fr-tab-btn" data-tab="services" onclick="showTab('services')"><span class="fr-icon" data-fr-icon="wrench"></span> Tjenester</button>
       <button class="fr-tab-btn" data-tab="about" onclick="showTab('about')"><span class="fr-icon" data-fr-icon="sliders"></span> Innstillinger</button>
       <button class="fr-tab-btn" data-tab="reviews" onclick="showTab('reviews')"><span class="fr-icon" data-fr-icon="star"></span> Anmeldelser</button>
-      <button class="fr-tab-btn" data-tab="accounting" onclick="showTab('accounting')"><span class="fr-icon" data-fr-icon="wrench"></span> Drift</button>
+      <button class="fr-tab-btn" data-tab="accounting" onclick="showTab('accounting')"><span class="fr-icon" data-fr-icon="barChart"></span> Drift</button>
       <button class="fr-tab-btn" data-tab="customers" onclick="showTab('customers')"><span class="fr-icon" data-fr-icon="users"></span> Kunderegister</button>
     </div>
 
@@ -248,7 +243,7 @@
         <span class="fr-bnav-label">Ny tid</span>
       </button>
       <button class="fr-bnav-btn" data-tab="services" onclick="showTab('services')">
-        <span class="fr-bnav-icon" data-fr-icon="droplet"></span>
+        <span class="fr-bnav-icon" data-fr-icon="wrench"></span>
         <span class="fr-bnav-label">Tjenester</span>
       </button>
       <button class="fr-bnav-btn fr-bnav-btn-main" data-tab="about" onclick="showTab('about')">
@@ -260,7 +255,7 @@
         <span class="fr-bnav-label">Anmeld.</span>
       </button>
       <button class="fr-bnav-btn" data-tab="accounting" onclick="showTab('accounting')">
-        <span class="fr-bnav-icon" data-fr-icon="wrench"></span>
+        <span class="fr-bnav-icon" data-fr-icon="barChart"></span>
         <span class="fr-bnav-label">Drift</span>
       </button>
       <button class="fr-bnav-btn" data-tab="customers" onclick="showTab('customers')">
@@ -440,15 +435,13 @@
           <label class="fr-label"><span class="fr-icon" data-fr-icon="fileText"></span> Notater</label>
           <textarea id="jobNotes" class="form-control fr-input" rows="2" placeholder="Valgfritt"></textarea>
         </div>
-        <div class="fr-inline-fields fr-form-row">
-          <div>
-            <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Førbilder</label>
-            <input type="file" id="jobPhotosBefore" class="form-control fr-input" accept="image/*" multiple />
-          </div>
-          <div>
-            <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Etterbilder</label>
-            <input type="file" id="jobPhotosAfter" class="form-control fr-input" accept="image/*" multiple />
-          </div>
+        <div class="fr-form-row">
+          <label class="fr-label"><span class="fr-badge-before" data-fr-icon="camera"></span> Førbilder</label>
+          <input type="file" id="jobPhotosBefore" class="form-control fr-input" accept="image/*" multiple />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label"><span class="fr-badge-after" data-fr-icon="star"></span> Etterbilder</label>
+          <input type="file" id="jobPhotosAfter" class="form-control fr-input" accept="image/*" multiple />
         </div>
         <p class="fr-hint">Før- og etterbilder brukes på Resultater-siden hvis jobben merkes som referanse.</p>
         <button class="btn fr-btn-primary w-100" id="createJobBtn" onclick="createJob()"><span class="fr-icon" data-fr-icon="save"></span> Lagre jobb</button>
@@ -721,12 +714,12 @@
         </div>
 
         <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Førbilder (Resultater-siden)</label>
+          <label class="fr-label"><span class="fr-badge-before" data-fr-icon="camera"></span> Førbilder (Resultater-siden)</label>
           <div id="editJobPhotosBefore" class="fr-job-photos"></div>
           <input type="file" id="editJobNewPhotosBefore" class="form-control fr-input mt-2" accept="image/*" multiple />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Etterbilder (Resultater-siden)</label>
+          <label class="fr-label"><span class="fr-badge-after" data-fr-icon="star"></span> Etterbilder (Resultater-siden)</label>
           <div id="editJobPhotosAfter" class="fr-job-photos"></div>
           <input type="file" id="editJobNewPhotosAfter" class="form-control fr-input mt-2" accept="image/*" multiple />
         </div>
