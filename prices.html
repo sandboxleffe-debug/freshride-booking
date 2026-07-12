@@ -297,7 +297,7 @@ async function loadPrices() {
               <svg viewBox="0 0 24 24" fill="currentColor">${iconForLabel(s.label)}</svg>
             </div>
             <h3 class="fr-price-card-title">${s.label}</h3>
-            ${s.description ? `<p class="fr-price-card-desc--back">${s.description}</p>` : ''}
+            ${(s.long_description || s.description) ? `<p class="fr-price-card-desc--back">${s.long_description || s.description}</p>` : ''}
             <div class="fr-price-card-value${priceClass}">${priceText}</div>
             <a href="index.html#step-date" class="fr-price-card-book-btn" onclick="event.stopPropagation()">📅 Book denne</a>
             <div class="fr-price-card-flip-hint">↻ Trykk for å snu tilbake</div>

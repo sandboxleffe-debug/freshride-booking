@@ -788,6 +788,39 @@
   </div>
 </div>
 
+<div class="modal fade" id="serviceEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content fr-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title"><span class="fr-icon" data-fr-icon="droplet"></span> Rediger tjeneste</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
+      </div>
+      <div class="modal-body">
+        <div class="fr-form-row">
+          <label class="fr-label">Navn</label>
+          <input id="svcEditLabel" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Kort beskrivelse <span class="fr-hint">(forsiden av pris-kortet)</span></label>
+          <input id="svcEditDesc" class="form-control fr-input" placeholder="F.eks. Utvendig vask" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Lang beskrivelse <span class="fr-hint">(baksiden av pris-kortet — valgfritt, faller tilbake på kort beskrivelse hvis tom)</span></label>
+          <textarea id="svcEditLongDesc" class="form-control fr-input" rows="3" placeholder="Mer detaljert forklaring av hva som er inkludert …"></textarea>
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Pris (kr)</label>
+          <input id="svcEditPrice" type="number" class="form-control fr-input" placeholder="—" />
+        </div>
+        <div id="svcEditMsg" class="fr-save-msg"></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn fr-btn-primary w-100" onclick="saveServiceEdit()"><span class="fr-icon" data-fr-icon="save"></span> Lagre</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Photo lightbox -->
 <div class="modal fade" id="lightboxModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -1578,6 +1611,7 @@ async function loadServicesAdmin() {
     if (res.status === 401) return handleAuthExpired();
     const data = await res.json();
     list.innerHTML = '';
+    window._frServices = data.services || [];
     (data.services || []).forEach(s => {
       const row = document.createElement('div');
       row.className = 'fr-service-row';
@@ -1591,6 +1625,7 @@ async function loadServicesAdmin() {
           </div>
         </div>
         <div class="fr-service-row-actions">
+          <button class="fr-icon-btn" title="Rediger" onclick="openServiceEdit('${s.id}')">${frIcon('edit')}</button>
           <button class="fr-icon-btn" title="${s.active ? 'Skjul' : 'Vis'}" onclick="toggleService('${s.id}', ${!s.active})">${frIcon(s.active ? 'eye' : 'eyeOff')}</button>
           <button class="fr-icon-btn" title="Slett" onclick="deleteService('${s.id}')">${frIcon('trash')}</button>
         </div>
@@ -1609,6 +1644,47 @@ async function updateServicePrice(id, value) {
     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, price_nok })
   });
+}
+
+function openServiceEdit(id) {
+  const s = (window._frServices || []).find(x => x.id === id);
+  if (!s) return;
+  editingServiceId = id;
+  document.getElementById('svcEditLabel').value = s.label || '';
+  document.getElementById('svcEditDesc').value = s.description || '';
+  document.getElementById('svcEditLongDesc').value = s.long_description || '';
+  document.getElementById('svcEditPrice').value = s.price_nok ?? '';
+  document.getElementById('svcEditMsg').textContent = ''; document.getElementById('svcEditMsg').className = 'fr-save-msg';
+  serviceEditModal.show();
+}
+
+async function saveServiceEdit() {
+  const msg = document.getElementById('svcEditMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  const label = document.getElementById('svcEditLabel').value.trim();
+  const description = document.getElementById('svcEditDesc').value.trim();
+  const long_description = document.getElementById('svcEditLongDesc').value.trim();
+  const priceVal = document.getElementById('svcEditPrice').value;
+  if (!label) { msg.textContent = 'Skriv inn et navn.'; msg.classList.add('err'); return; }
+  try {
+    const res = await fetch('/api/admin-data?resource=services', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: editingServiceId,
+        label,
+        description: description || null,
+        long_description: long_description || null,
+        price_nok: priceVal === '' ? null : Number(priceVal),
+      })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    if (!res.ok) throw new Error('failed');
+    loadServicesAdmin();
+    serviceEditModal.hide();
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+  }
 }
 
 async function toggleService(id, active) {
@@ -1912,6 +1988,8 @@ const JOBS_PAGE_SIZE = 8;
 const jobEditModal = new bootstrap.Modal(document.getElementById('jobEditModal'));
 const lightboxModal = new bootstrap.Modal(document.getElementById('lightboxModal'));
 const customerEditModal = new bootstrap.Modal(document.getElementById('customerEditModal'));
+const serviceEditModal = new bootstrap.Modal(document.getElementById('serviceEditModal'));
+let editingServiceId = null;
 
 const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
 function formatDateNO(dateStr) {

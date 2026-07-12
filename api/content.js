@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     try {
       const { data: services, error } = await supabase
         .from("freshride_services")
-        .select("id, label, description")
+        .select("id, label, description, long_description")
         .eq("active", true)
         .order("sort_order", { ascending: true });
       if (error) throw error;

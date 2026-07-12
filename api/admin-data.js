@@ -52,19 +52,20 @@ async function handleServices(req, res, supabase) {
     return res.status(200).json({ services: (services || []).map(s => ({ ...s, price_nok: priceById[s.id] ?? null })) });
   }
   if (req.method === "POST") {
-    const { label, description, sortOrder } = req.body || {};
+    const { label, description, long_description, sortOrder } = req.body || {};
     if (!label) return res.status(400).json({ error: "Missing label" });
     const { data, error } = await supabase.from("freshride_services")
-      .insert({ label, description: description || null, sort_order: sortOrder ?? 99 }).select().single();
+      .insert({ label, description: description || null, long_description: long_description || null, sort_order: sortOrder ?? 99 }).select().single();
     if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å opprette tjeneste" }); }
     return res.status(200).json({ ok: true, service: data });
   }
   if (req.method === "PATCH") {
-    const { id, label, description, sortOrder, active, price_nok } = req.body || {};
+    const { id, label, description, long_description, sortOrder, active, price_nok } = req.body || {};
     if (!id) return res.status(400).json({ error: "Missing id" });
     const updates = {};
     if (label !== undefined) updates.label = label;
     if (description !== undefined) updates.description = description;
+    if (long_description !== undefined) updates.long_description = long_description;
     if (sortOrder !== undefined) updates.sort_order = sortOrder;
     if (active !== undefined) updates.active = active;
     if (Object.keys(updates).length) {
