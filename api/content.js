@@ -107,22 +107,25 @@ export default async function handler(req, res) {
         .order("job_date", { ascending: false });
       if (error) throw error;
 
+      const signAll = async paths => {
+        if (!paths?.length) return [];
+        const { data: signed } = await supabase.storage.from("job-photos").createSignedUrls(paths, 3600);
+        return (signed || []).map(s => s.signedUrl).filter(Boolean);
+      };
+
       const references = [];
       for (const j of jobs || []) {
-        const beforePath = (j.photo_paths_before || [])[0];
-        const afterPath = (j.photo_paths_after || [])[0];
-        if (!beforePath || !afterPath) continue;
-        const [{ data: signedBefore }, { data: signedAfter }] = await Promise.all([
-          supabase.storage.from("job-photos").createSignedUrl(beforePath, 3600),
-          supabase.storage.from("job-photos").createSignedUrl(afterPath, 3600),
-        ]);
-        if (!signedBefore?.signedUrl || !signedAfter?.signedUrl) continue;
+        const beforePaths = j.photo_paths_before || [];
+        const afterPaths = j.photo_paths_after || [];
+        if (!beforePaths.length || !afterPaths.length) continue;
+        const [before, after] = await Promise.all([signAll(beforePaths), signAll(afterPaths)]);
+        if (!before.length || !after.length) continue;
         references.push({
           id: j.id,
           carType: j.car_type || "",
           productName: j.reference_product_name || j.services || "",
-          before: signedBefore.signedUrl,
-          after: signedAfter.signedUrl,
+          before, // array — may hold multiple angles, not paired 1:1 with `after`
+          after,
         });
       }
       return res.status(200).json({ references });

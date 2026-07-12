@@ -61,11 +61,11 @@
     overflow: hidden;
     background: #0c0b0e;
   }
-  .fr-results-img {
+  .fr-results-main-img {
     position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-    opacity: 0; transition: opacity 0.45s ease;
   }
-  .fr-results-img.active { opacity: 1; }
+  @keyframes fr-results-fade-in { from { opacity: 0.25; } to { opacity: 1; } }
+  .fr-results-main-img.fr-results-fade-in { animation: fr-results-fade-in 0.3s ease; }
   .fr-results-frame::after {
     content: "";
     position: absolute; inset: 0; pointer-events: none;
@@ -83,6 +83,18 @@
     transition: background 0.15s ease, color 0.15s ease;
   }
   .fr-results-toggle button.active { background: var(--fr-gold); color: var(--fr-black); }
+  .fr-results-thumbs {
+    display: flex; gap: 0.45rem; margin-top: 0.65rem;
+    overflow-x: auto; scrollbar-width: none; padding-bottom: 0.15rem;
+  }
+  .fr-results-thumbs::-webkit-scrollbar { display: none; }
+  .fr-results-thumb {
+    width: 3.4rem; height: 3.4rem; flex-shrink: 0; object-fit: cover;
+    border-radius: 9px; border: 2px solid transparent; opacity: 0.5; cursor: pointer;
+    transition: opacity 0.15s ease, border-color 0.15s ease;
+  }
+  .fr-results-thumb:hover { opacity: 0.85; }
+  .fr-results-thumb.active { opacity: 1; border-color: var(--fr-gold); }
   .fr-results-info { text-align: center; margin-top: 1rem; }
   .fr-results-info h2 {
     font-family: var(--font-display); font-weight: 700; font-size: 1.25rem;
@@ -203,32 +215,66 @@ async function loadResults() {
       return;
     }
 
-    track.innerHTML = refs.map((r, i) => `
-      <div class="fr-results-slide" data-index="${i}">
+    // Before/after photos aren't necessarily shot from the same angle, so
+    // each side is browsed independently — toggle Før/Etter, then (if that
+    // side has more than one photo) tap a thumbnail to swap the main image.
+    function buildSlide(r, i) {
+      const wrap = document.createElement('div');
+      wrap.className = 'fr-results-slide';
+      wrap.dataset.index = i;
+      wrap.innerHTML = `
         <div class="fr-results-frame">
-          <img src="${r.before}" class="fr-results-img fr-results-img-before active" loading="lazy" alt="Før">
-          <img src="${r.after}" class="fr-results-img fr-results-img-after" loading="lazy" alt="Etter">
+          <img class="fr-results-main-img" loading="lazy" alt="${r.carType || 'FreshRide'}">
           <div class="fr-results-toggle">
-            <button type="button" class="active" data-state="before">Før</button>
-            <button type="button" data-state="after">Etter</button>
+            <button type="button" data-state="before">Før${r.before.length > 1 ? ` (${r.before.length})` : ''}</button>
+            <button type="button" data-state="after">Etter${r.after.length > 1 ? ` (${r.after.length})` : ''}</button>
           </div>
         </div>
+        <div class="fr-results-thumbs d-none"></div>
         <div class="fr-results-info">
           <h2>${r.carType || 'FreshRide'}</h2>
           ${r.productName ? `<span class="fr-results-product">${r.productName}</span>` : ''}
         </div>
-      </div>
-    `).join('');
+      `;
 
-    track.querySelectorAll('.fr-results-toggle button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const frame = btn.closest('.fr-results-frame');
-        const state = btn.dataset.state;
-        frame.querySelectorAll('.fr-results-toggle button').forEach(b => b.classList.toggle('active', b === btn));
-        frame.querySelector('.fr-results-img-before').classList.toggle('active', state === 'before');
-        frame.querySelector('.fr-results-img-after').classList.toggle('active', state === 'after');
-      });
-    });
+      const mainImg = wrap.querySelector('.fr-results-main-img');
+      const thumbsEl = wrap.querySelector('.fr-results-thumbs');
+      const toggleBtns = wrap.querySelectorAll('.fr-results-toggle button');
+      let state = 'before';
+      let idx = 0;
+
+      function render() {
+        const set = state === 'before' ? r.before : r.after;
+        idx = Math.min(idx, set.length - 1);
+        mainImg.src = set[idx];
+        mainImg.classList.remove('fr-results-fade-in');
+        void mainImg.offsetWidth; // restart the fade animation
+        mainImg.classList.add('fr-results-fade-in');
+        toggleBtns.forEach(b => b.classList.toggle('active', b.dataset.state === state));
+
+        if (set.length > 1) {
+          thumbsEl.classList.remove('d-none');
+          thumbsEl.innerHTML = set.map((url, ti) => `<img src="${url}" class="fr-results-thumb${ti === idx ? ' active' : ''}" data-i="${ti}" loading="lazy">`).join('');
+          thumbsEl.querySelectorAll('.fr-results-thumb').forEach(t => {
+            t.addEventListener('click', () => { idx = Number(t.dataset.i); render(); });
+          });
+        } else {
+          thumbsEl.classList.add('d-none');
+          thumbsEl.innerHTML = '';
+        }
+      }
+
+      toggleBtns.forEach(b => b.addEventListener('click', () => {
+        if (b.dataset.state === state) return;
+        state = b.dataset.state; idx = 0; render();
+      }));
+
+      render();
+      return wrap;
+    }
+
+    track.innerHTML = '';
+    refs.forEach((r, i) => track.appendChild(buildSlide(r, i)));
 
     if (refs.length > 1) {
       dotsEl.innerHTML = refs.map((_, i) => `<span class="fr-results-dot${i === 0 ? ' active' : ''}"></span>`).join('');
