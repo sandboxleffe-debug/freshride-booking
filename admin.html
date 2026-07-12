@@ -70,6 +70,12 @@
      #jobsList sits inside a light .fr-panel, where the faint light-on-light
      color above is nearly invisible. Override when nested in a panel. */
   .fr-panel .fr-list-section-label { color: var(--fr-panel-text-soft); }
+  .fr-list-more-btn {
+    display: block; width: 100%; margin-top: 0.5rem;
+    border: 1.5px dashed var(--fr-line-dark-zone); background: none; color: var(--fr-text-dark-zone-soft);
+    font-size: 0.82rem; font-weight: 600; padding: 0.55rem 0.9rem; border-radius: 10px; cursor: pointer;
+  }
+  .fr-list-more-btn:hover { border-color: var(--fr-gold); color: var(--fr-text-dark-zone); }
 
   /* Opprett tid: day timeline (09-21), shows existing slots + the one being created */
   .fr-day-timeline { margin: 0.9rem 0 1.1rem; }
@@ -510,16 +516,16 @@
           <label class="fr-label">Rabatt</label>
           <div class="fr-gauge-row">
             <div class="fr-gauge-col">
-              <div class="fr-gauge-value" id="promoGaugeValueText">0%</div>
               <div class="fr-gauge-track" id="promoGaugeTrack">
-                <div class="fr-gauge-band fr-gauge-band-high"></div>
-                <div class="fr-gauge-band fr-gauge-band-mid"></div>
                 <div class="fr-gauge-band fr-gauge-band-low"></div>
+                <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                <div class="fr-gauge-band fr-gauge-band-high"></div>
                 <div class="fr-gauge-dim" id="promoGaugeDim"></div>
                 <div class="fr-gauge-handle" id="promoGaugeHandle"></div>
               </div>
+              <div class="fr-gauge-ticks"><span>0</span><span>50</span><span>100</span></div>
             </div>
-            <div class="fr-gauge-ticks"><span>100</span><span>50</span><span>0</span></div>
+            <div class="fr-gauge-value" id="promoGaugeValueText">0%</div>
           </div>
           <input type="hidden" id="promoDiscountPct" value="0" />
         </div>
@@ -850,6 +856,7 @@ function enterAdmin() {
   loadCreateDayTimeline();
   document.getElementById('jobDate').valueAsDate = new Date();
   document.getElementById('expDate').valueAsDate = new Date();
+  document.getElementById('promoStart').valueAsDate = new Date();
 }
 
 function showTab(name) {
@@ -958,9 +965,58 @@ function fmtDateShort(iso) {
   return `${FMT_WEEKDAYS_SHORT[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
 }
 
+const LIST_PAGE_SIZE = 5;
+let listBookedShown = LIST_PAGE_SIZE;
+let listOpenShown = LIST_PAGE_SIZE;
+
+function bookedRowHtml(b) {
+  return `
+    <div class="fr-list-row">
+      <div class="fr-list-row-when">${fmtDateShort(b.start)} · ${fmtTime(b.start)}</div>
+      <div class="fr-list-row-body">
+        <div class="fr-list-row-name">${b.name} ${b.code ? `<span class="fr-list-row-code">${b.code}</span>` : ''}${b.customerNumber ? ` <span class="fr-list-row-code fr-list-row-customer">${formatCustomerId(b.customerNumber)}</span>` : ''}</div>
+        <div class="fr-list-row-meta">${b.phone}${b.services ? ' · ' + b.services : ''}</div>
+      </div>
+    </div>
+  `;
+}
+
+function openRowHtml(s) {
+  return `
+    <div class="fr-list-row" style="cursor:default">
+      <div class="fr-list-row-when">${fmtDateShort(s.start)} · ${fmtTime(s.start)}</div>
+      <div class="fr-list-row-body"><span class="fr-list-row-open">Ledig</span></div>
+    </div>
+  `;
+}
+
+function renderListSection(containerId, items, kind) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!items.length) { container.innerHTML = ''; return; }
+  const shown = kind === 'booked' ? listBookedShown : listOpenShown;
+  const visible = items.slice(0, shown);
+  const label = kind === 'booked'
+    ? `${frIcon('lock')} Bookinger (${items.length})`
+    : `${frIcon('checkCircle')} Ledige tider (${items.length})`;
+  const rowsHtml = visible.map(item => kind === 'booked' ? bookedRowHtml(item) : openRowHtml(item)).join('');
+  const remaining = items.length - shown;
+  const moreHtml = remaining > 0
+    ? `<button type="button" class="fr-list-more-btn" onclick="expandListSection('${kind}')">Vis flere (${remaining} igjen)</button>`
+    : '';
+  container.innerHTML = `<div class="fr-list-section-label">${label}</div>${rowsHtml}${moreHtml}`;
+  if (kind === 'booked') {
+    container.querySelectorAll('.fr-list-row').forEach((row, i) => { row.onclick = () => openEdit(visible[i]); });
+  }
+}
+
+function expandListSection(kind) {
+  if (kind === 'booked') listBookedShown += LIST_PAGE_SIZE; else listOpenShown += LIST_PAGE_SIZE;
+  renderListSection(kind === 'booked' ? 'listBookedSection' : 'listOpenSection', kind === 'booked' ? window._frListBooked : window._frListOpen, kind);
+}
+
 function renderList(days) {
   const el = document.getElementById('list');
-  el.innerHTML = '';
 
   const allBooked = [];
   const allOpen = [];
@@ -968,48 +1024,19 @@ function renderList(days) {
     day.booked.forEach(b => allBooked.push(b));
     day.available.forEach(s => allOpen.push(s));
   });
+  window._frListBooked = allBooked;
+  window._frListOpen = allOpen;
+  listBookedShown = LIST_PAGE_SIZE;
+  listOpenShown = LIST_PAGE_SIZE;
 
   if (!allBooked.length && !allOpen.length) {
     el.innerHTML = '<p class="fr-empty-day">Ingen hendelser i valgt periode.</p>';
     return;
   }
 
-  if (allBooked.length) {
-    const label = document.createElement('div');
-    label.className = 'fr-list-section-label';
-    label.innerHTML = `${frIcon('lock')} Bookinger (${allBooked.length})`;
-    el.appendChild(label);
-    allBooked.forEach(b => {
-      const row = document.createElement('div');
-      row.className = 'fr-list-row';
-      row.onclick = () => openEdit(b);
-      row.innerHTML = `
-        <div class="fr-list-row-when">${fmtDateShort(b.start)} · ${fmtTime(b.start)}</div>
-        <div class="fr-list-row-body">
-          <div class="fr-list-row-name">${b.name} ${b.code ? `<span class="fr-list-row-code">${b.code}</span>` : ''}${b.customerNumber ? ` <span class="fr-list-row-code fr-list-row-customer">${formatCustomerId(b.customerNumber)}</span>` : ''}</div>
-          <div class="fr-list-row-meta">${b.phone}${b.services ? ' · ' + b.services : ''}</div>
-        </div>
-      `;
-      el.appendChild(row);
-    });
-  }
-
-  if (allOpen.length) {
-    const label = document.createElement('div');
-    label.className = 'fr-list-section-label';
-    label.innerHTML = `${frIcon('checkCircle')} Ledige tider (${allOpen.length})`;
-    el.appendChild(label);
-    allOpen.forEach(s => {
-      const row = document.createElement('div');
-      row.className = 'fr-list-row';
-      row.style.cursor = 'default';
-      row.innerHTML = `
-        <div class="fr-list-row-when">${fmtDateShort(s.start)} · ${fmtTime(s.start)}</div>
-        <div class="fr-list-row-body"><span class="fr-list-row-open">Ledig</span></div>
-      `;
-      el.appendChild(row);
-    });
-  }
+  el.innerHTML = `<div id="listBookedSection"></div><div id="listOpenSection"></div>`;
+  renderListSection('listBookedSection', allBooked, 'booked');
+  renderListSection('listOpenSection', allOpen, 'open');
 }
 
 /* ---------------- Edit booking modal ---------------- */
@@ -1716,7 +1743,7 @@ async function createPromo() {
     document.getElementById('promoTitle').value = '';
     setPromoGaugeValue(0);
     document.getElementById('promoDescription').value = '';
-    document.getElementById('promoStart').value = '';
+    document.getElementById('promoStart').valueAsDate = new Date();
     document.getElementById('promoEnd').value = '';
     loadPromoAdmin();
   } catch (e) {
@@ -1934,8 +1961,9 @@ function setPromoGaugeValue(v) {
   const valueEl = document.getElementById('promoGaugeValueText');
   const hidden = document.getElementById('promoDiscountPct');
   if (!track) return;
-  handle.style.bottom = v + '%';
-  dim.style.height = (100 - v) + '%';
+  handle.style.left = v + '%';
+  dim.style.left = v + '%';
+  dim.style.width = (100 - v) + '%';
   valueEl.textContent = v + '%';
   hidden.value = v;
 }
@@ -1943,20 +1971,20 @@ function setPromoGaugeValue(v) {
 function initPromoGauge() {
   const track = document.getElementById('promoGaugeTrack');
   if (!track) return;
-  const valueFromClientY = clientY => {
+  const valueFromClientX = clientX => {
     const rect = track.getBoundingClientRect();
-    const frac = 1 - (clientY - rect.top) / rect.height;
+    const frac = (clientX - rect.left) / rect.width;
     return frac * 100;
   };
   let dragging = false;
   track.addEventListener('pointerdown', e => {
     dragging = true;
-    setPromoGaugeValue(valueFromClientY(e.clientY));
+    setPromoGaugeValue(valueFromClientX(e.clientX));
     try { track.setPointerCapture(e.pointerId); } catch (err) { /* no active pointer to capture — value already set */ }
   });
   track.addEventListener('pointermove', e => {
     if (!dragging) return;
-    setPromoGaugeValue(valueFromClientY(e.clientY));
+    setPromoGaugeValue(valueFromClientX(e.clientX));
   });
   track.addEventListener('pointerup', () => { dragging = false; });
   track.addEventListener('pointercancel', () => { dragging = false; });
