@@ -55,7 +55,7 @@
     padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.15s ease;
   }
   .fr-list-row:hover { border-color: var(--fr-gold); }
-  .fr-list-row-when { font-family: var(--font-display); font-weight: 600; font-size: 0.85rem; min-width: 5.4rem; color: var(--fr-panel-text); }
+  .fr-list-row-when { font-family: var(--font-display); font-weight: 600; font-size: 0.85rem; min-width: 7rem; color: var(--fr-panel-text); }
   .fr-list-row-body { flex: 1; min-width: 0; }
   .fr-list-row-name { font-weight: 600; font-size: 0.9rem; color: var(--fr-panel-text); }
   .fr-list-row-meta { font-size: 0.78rem; color: var(--fr-panel-text-faint); }
@@ -76,11 +76,6 @@
   .fr-tl-bar { position: relative; display: flex; border: 1px solid var(--fr-panel-border); border-radius: 8px; overflow: hidden; height: 2.4rem; }
   .fr-tl-hour { flex: 1; background: var(--fr-panel-bg-2); border-right: 1px solid var(--fr-panel-border); }
   .fr-tl-hour:last-child { border-right: none; }
-  .fr-tl-hour.fr-tl-open { background: #BFE3C4; }
-  .fr-tl-hour.fr-tl-booked {
-    background-color: #B58A6B;
-    background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.3) 0px, rgba(255,255,255,0.3) 3px, transparent 3px, transparent 8px);
-  }
   .fr-tl-new {
     position: absolute; top: -2px; bottom: -2px;
     background: rgba(232,185,35,0.4); border: 2px solid var(--fr-gold); border-radius: 6px;
@@ -101,16 +96,36 @@
   .fr-tl-dot-new { background: rgba(232,185,35,0.4); border: 1.5px solid var(--fr-gold); }
   .fr-tl-weekday { font-size: 0.85rem; font-weight: 600; color: var(--fr-panel-text-soft); margin-top: 0.35rem; }
 
+  .fr-tl-week-strip { display: flex; gap: 0.35rem; margin-bottom: 0.5rem; }
+  .fr-tl-week-day {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+    background: var(--fr-panel-bg-2); border: 1.5px solid var(--fr-panel-border); border-radius: 10px;
+    padding: 0.4rem 0.2rem; cursor: pointer; color: var(--fr-panel-text-soft);
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .fr-tl-week-day:hover { border-color: var(--fr-gold); }
+  .fr-tl-week-day-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .fr-tl-week-day-num { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; color: var(--fr-panel-text); }
+  .fr-tl-week-day-today { border-color: rgba(232,185,35,0.55); }
+  .fr-tl-week-day-selected { background: var(--fr-gold); border-color: var(--fr-gold); }
+  .fr-tl-week-day-selected .fr-tl-week-day-label,
+  .fr-tl-week-day-selected .fr-tl-week-day-num { color: var(--fr-black); }
+
   .fr-tl-booked-block {
-    position: absolute; top: 0; bottom: 0; cursor: pointer;
-    transition: background 0.1s ease;
+    position: absolute; top: 2px; bottom: 2px; cursor: pointer;
+    border-radius: 5px; box-sizing: border-box;
+    background-color: #B58A6B;
+    background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.3) 0px, rgba(255,255,255,0.3) 3px, transparent 3px, transparent 8px);
+    transition: filter 0.1s ease;
   }
-  .fr-tl-booked-block:hover { background: rgba(0,0,0,0.12); }
+  .fr-tl-booked-block:hover { filter: brightness(0.92); }
   .fr-tl-open-block {
-    position: absolute; top: 0; bottom: 0; cursor: pointer;
-    transition: background 0.1s ease;
+    position: absolute; top: 2px; bottom: 2px; cursor: pointer;
+    border-radius: 5px; box-sizing: border-box;
+    background: #BFE3C4;
+    transition: filter 0.1s ease;
   }
-  .fr-tl-open-block:hover { background: rgba(0,0,0,0.1); }
+  .fr-tl-open-block:hover { filter: brightness(0.94); }
   .fr-tl-booking-info {
     margin-top: 0.6rem; padding: 0.6rem 0.75rem;
     background: var(--fr-panel-bg-2); border: 1px solid var(--fr-panel-border); border-radius: 10px;
@@ -271,6 +286,7 @@
         <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="plusCircle"></span> Opprett ledige tidspunkt for kalender</h2></div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
+          <div id="createWeekStrip" class="fr-tl-week-strip"></div>
           <input type="date" id="createDate" class="form-control fr-input" onchange="loadCreateDayTimeline()" />
           <div id="createDateWeekday" class="fr-tl-weekday"></div>
         </div>
@@ -452,22 +468,10 @@
           <h2><span class="fr-icon" data-fr-icon="users"></span> Kunderegister</h2>
           <button class="fr-reveal-btn" id="customersRevealBtn" onclick="toggleCustomersReveal()" title="Vis/skjul kunderegister" aria-label="Vis/skjul kunderegister"><span class="fr-icon" data-fr-icon="eye"></span></button>
         </div>
-        <p class="fr-hint">Rediger kundenavn eller -nummer om noe er feilskrevet. Lagring oppdaterer alle jobber knyttet til kunden.</p>
+        <p class="fr-hint">Trykk på en kunde for å redigere navn, nummer eller mobil. Lagring oppdaterer alle jobber knyttet til kunden.</p>
         <p class="fr-hint" id="customersHiddenHint">Skjult av personvernhensyn — trykk på øyet for å vise.</p>
-        <div class="table-responsive d-none" id="customersTableWrap">
-          <table class="table fr-customer-table">
-            <thead>
-              <tr>
-                <th><span class="fr-icon" data-fr-icon="user"></span></th>
-                <th>Navn</th>
-                <th><span class="fr-icon" data-fr-icon="phone"></span> Mobil</th>
-                <th class="text-center"><span class="fr-icon" data-fr-icon="car"></span></th>
-                <th class="text-end">Brukt</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="customersTableBody"></tbody>
-          </table>
+        <div class="d-none" id="customersTableWrap">
+          <div id="customersList"></div>
         </div>
       </div>
     </div>
@@ -504,11 +508,20 @@
         </div>
         <div class="fr-form-row">
           <label class="fr-label">Rabatt</label>
-          <div class="fr-time-wheels">
-            <div class="fr-wheel" data-for="promoDiscountPct"></div>
-            <span class="fr-time-sep">%</span>
+          <div class="fr-gauge-row">
+            <div class="fr-gauge-col">
+              <div class="fr-gauge-value" id="promoGaugeValueText">0%</div>
+              <div class="fr-gauge-track" id="promoGaugeTrack">
+                <div class="fr-gauge-band fr-gauge-band-high"></div>
+                <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                <div class="fr-gauge-band fr-gauge-band-low"></div>
+                <div class="fr-gauge-dim" id="promoGaugeDim"></div>
+                <div class="fr-gauge-handle" id="promoGaugeHandle"></div>
+              </div>
+            </div>
+            <div class="fr-gauge-ticks"><span>100</span><span>50</span><span>0</span></div>
           </div>
-          <select id="promoDiscountPct" class="d-none"></select>
+          <input type="hidden" id="promoDiscountPct" value="0" />
         </div>
         <div class="fr-form-row">
           <label class="fr-label">Beskrivelse</label>
@@ -696,6 +709,40 @@
   </div>
 </div>
 
+<!-- Edit customer modal -->
+<div class="modal fade" id="customerEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content fr-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title"><span class="fr-icon" data-fr-icon="user"></span> Rediger kunde</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
+      </div>
+      <div class="modal-body">
+        <div class="fr-form-row">
+          <label class="fr-label">Kundenummer</label>
+          <input id="custEditNumber" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="user"></span> Navn</label>
+          <input id="custEditName" class="form-control fr-input" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="phone"></span> Mobilnummer</label>
+          <input id="custEditPhone" class="form-control fr-input" placeholder="92133900" />
+        </div>
+        <div class="fr-accounting-summary">
+          <div><span class="fr-acc-label">Jobber</span><span class="fr-acc-value" id="custEditJobCount">–</span></div>
+          <div><span class="fr-acc-label">Totalt brukt</span><span class="fr-acc-value" id="custEditTotalSpent">–</span></div>
+        </div>
+        <div id="custEditMsg" class="fr-save-msg"></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn fr-btn-primary w-100" onclick="saveCustomerEditModal()"><span class="fr-icon" data-fr-icon="save"></span> Lagre</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Photo lightbox -->
 <div class="modal fade" id="lightboxModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -781,7 +828,7 @@ function enterAdmin() {
   loadPromoAdmin();
   populateTimeWheels('jobTimeHours', 'jobTimeMinutes');
   populateTimeWheels('editJobTimeHours', 'editJobTimeMinutes');
-  populatePromoWheel();
+  initPromoGauge();
   loadJobServiceOptions();
   loadJobsAdmin();
   loadExpensesAdmin();
@@ -892,12 +939,13 @@ function fmtTime(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
 }
+const FMT_WEEKDAYS_SHORT = ["Søn", "Man", "Tir", "Ons", "Tor", "Fre", "Lør"];
 function fmtDateShort(iso) {
   if (!iso) return '';
   // Built manually — Intl's 'no-NO' locale doesn't zero-pad day/month with '2-digit'.
   const d = new Date(iso);
   const pad = n => String(n).padStart(2, '0');
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
+  return `${FMT_WEEKDAYS_SHORT[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
 }
 
 function renderList(days) {
@@ -1100,10 +1148,51 @@ function updateCreateDateWeekday() {
   label.textContent = `${cap} ${d.getDate()}. ${MONTH_LABELS[d.getMonth()]}`;
 }
 
+// Quick-pick strip for the current week (Mon-Sun), shown above the date
+// field — the native date picker still works too, this is just a shortcut
+// for the common case of picking a day this week.
+function toDateKeyLocal(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function renderCreateWeekStrip() {
+  const stripEl = document.getElementById('createWeekStrip');
+  if (!stripEl) return;
+  const now = new Date();
+  const dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - dow);
+
+  const selectedKey = document.getElementById('createDate').value;
+  const todayKey = toDateKeyLocal(now);
+
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const key = toDateKeyLocal(d);
+    const classes = ['fr-tl-week-day'];
+    if (key === selectedKey) classes.push('fr-tl-week-day-selected');
+    if (key === todayKey) classes.push('fr-tl-week-day-today');
+    html += `<button type="button" class="${classes.join(' ')}" onclick="selectCreateWeekDay('${key}')">
+      <span class="fr-tl-week-day-label">${FMT_WEEKDAYS_SHORT[d.getDay()]}</span>
+      <span class="fr-tl-week-day-num">${d.getDate()}</span>
+    </button>`;
+  }
+  stripEl.innerHTML = html;
+}
+
+function selectCreateWeekDay(key) {
+  document.getElementById('createDate').value = key;
+  loadCreateDayTimeline();
+}
+
 async function loadCreateDayTimeline() {
   const date = document.getElementById('createDate').value;
   const box = document.getElementById('createDayTimeline');
   updateCreateDateWeekday();
+  renderCreateWeekStrip();
   if (!date) { box.innerHTML = ''; return; }
   box.innerHTML = '<p class="fr-hint">Henter dagen …</p>';
   try {
@@ -1124,53 +1213,41 @@ function renderCreateDayTimeline() {
 
   const startHour = CREATE_TL_START_HOUR, endHour = CREATE_TL_END_HOUR;
   const totalHours = endHour - startHour;
-  const hourStatus = new Array(totalHours).fill('empty');
 
-  const markRange = (startIso, endIso, kind) => {
-    const s = new Date(startIso), e = new Date(endIso);
-    const sH = s.getHours() + s.getMinutes() / 60;
-    const eH = e.getHours() + e.getMinutes() / 60;
-    for (let h = startHour; h < endHour; h++) {
-      if (eH > h && sH < h + 1) {
-        if (kind === 'booked') hourStatus[h - startHour] = 'booked';
-        else if (hourStatus[h - startHour] !== 'booked') hourStatus[h - startHour] = 'open';
-      }
-    }
-  };
-  (data.available || []).forEach(s => markRange(s.start, s.end, 'open'));
-  (data.booked || []).forEach(b => markRange(b.start, b.end, 'booked'));
-
-  const hoursHtml = hourStatus.map(s => `<div class="fr-tl-hour fr-tl-${s}"></div>`).join('');
+  // Plain neutral hour-grid — just the hour separators. Actual availability
+  // used to be painted per whole hour, which visually merged two separate
+  // slots with a gap between them into one continuous green block whenever
+  // that gap fell inside a single hour. The precise, minute-accurate blocks
+  // below are now the only thing that carries color, so real gaps show.
+  const hoursHtml = new Array(totalHours).fill('').map(() => `<div class="fr-tl-hour"></div>`).join('');
   const labels = [];
   for (let h = startHour; h <= endHour; h++) {
     labels.push(`<span style="left:${((h - startHour) / totalHours) * 100}%">${h}</span>`);
   }
 
-  // Invisible clickable regions over each booked event, precisely
-  // positioned (not just per-hour like the background coloring) — click to
-  // see who has that time without leaving "Opprett tid".
-  window._frCreateTlBookings = data.booked || [];
-  const bookedBlocksHtml = (data.booked || []).map((b, i) => {
-    const s = new Date(b.start), e = new Date(b.end);
+  const fracRange = (startIso, endIso) => {
+    const s = new Date(startIso), e = new Date(endIso);
     const sFrac = (s.getHours() + s.getMinutes() / 60 - startHour) / totalHours;
     const eFrac = (e.getHours() + e.getMinutes() / 60 - startHour) / totalHours;
     const left = Math.max(0, sFrac) * 100;
     const width = (Math.min(1, eFrac) - Math.max(0, sFrac)) * 100;
+    return { left, width };
+  };
+
+  // Precisely positioned, colored, clickable blocks — click a booking for
+  // info, or an open slot to edit/delete it, without leaving "Opprett tid".
+  window._frCreateTlBookings = data.booked || [];
+  const bookedBlocksHtml = (data.booked || []).map((b, i) => {
+    const { left, width } = fracRange(b.start, b.end);
     if (width <= 0) return '';
-    return `<div class="fr-tl-booked-block" style="left:${left}%; width:${width}%;" onclick="showCreateTlBookingInfo(${i})" title="Vis hvem som har denne tiden"></div>`;
+    return `<div class="fr-tl-booked-block" style="left:${left}%; width:${width}%;" onclick="showCreateTlBookingInfo(${i})" title="${fmtTime(b.start)}–${fmtTime(b.end)}: vis hvem som har denne tiden"></div>`;
   }).join('');
 
-  // Same idea for open ("Ledig") slots — click to edit or delete them
-  // directly, same as clicking a booking, without opening Google Calendar.
   window._frCreateTlOpenSlots = data.available || [];
   const openBlocksHtml = (data.available || []).map((s, i) => {
-    const sD = new Date(s.start), eD = new Date(s.end);
-    const sFrac = (sD.getHours() + sD.getMinutes() / 60 - startHour) / totalHours;
-    const eFrac = (eD.getHours() + eD.getMinutes() / 60 - startHour) / totalHours;
-    const left = Math.max(0, sFrac) * 100;
-    const width = (Math.min(1, eFrac) - Math.max(0, sFrac)) * 100;
+    const { left, width } = fracRange(s.start, s.end);
     if (width <= 0) return '';
-    return `<div class="fr-tl-open-block" style="left:${left}%; width:${width}%;" onclick="showCreateTlOpenInfo(${i})" title="Rediger eller slett denne ledige tiden"></div>`;
+    return `<div class="fr-tl-open-block" style="left:${left}%; width:${width}%;" onclick="showCreateTlOpenInfo(${i})" title="${fmtTime(s.start)}–${fmtTime(s.end)}: rediger eller slett"></div>`;
   }).join('');
 
   const time = document.getElementById('createTime').value;
@@ -1232,6 +1309,7 @@ function showCreateTlOpenInfo(index) {
   box.classList.remove('d-none');
   box.innerHTML = `
     <div class="fr-tl-booking-info-row"><strong>Ledig tid</strong></div>
+    <div class="fr-tl-booking-info-meta">${fmtTime(s.start)} – ${fmtTime(s.end)} (${tlDurationLabel(durationMin)})</div>
     <div class="fr-inline-fields fr-form-row mt-2">
       <div>
         <label class="fr-label">Starttid</label>
@@ -1626,7 +1704,7 @@ async function createPromo() {
     if (res.status === 401) return handleAuthExpired();
     msg.textContent = 'Kampanje opprettet ✓'; msg.classList.add('ok');
     document.getElementById('promoTitle').value = '';
-    if (frWheelInstances['promoDiscountPct']) frWheelInstances['promoDiscountPct'].setToValue(0);
+    setPromoGaugeValue(0);
     document.getElementById('promoDescription').value = '';
     document.getElementById('promoStart').value = '';
     document.getElementById('promoEnd').value = '';
@@ -1744,6 +1822,7 @@ let jobsShowAll = false;
 const JOBS_PAGE_SIZE = 8;
 const jobEditModal = new bootstrap.Modal(document.getElementById('jobEditModal'));
 const lightboxModal = new bootstrap.Modal(document.getElementById('lightboxModal'));
+const customerEditModal = new bootstrap.Modal(document.getElementById('customerEditModal'));
 
 const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
 function formatDateNO(dateStr) {
@@ -1837,12 +1916,41 @@ function setWheelTime(hourSelectId, minuteSelectId, hours, minutes) {
   if (frWheelInstances[minuteSelectId]) frWheelInstances[minuteSelectId].setToValue(minutes);
 }
 
-function populatePromoWheel() {
-  const sel = document.getElementById('promoDiscountPct');
-  const values = Array.from({ length: 101 }, (_, i) => i); // 0-100
-  sel.innerHTML = values.map(v => `<option value="${v}">${v}</option>`).join('');
-  const wheelEl = document.querySelector('.fr-wheel[data-for="promoDiscountPct"]');
-  frWheelInstances['promoDiscountPct'] = frCreateWheel(wheelEl, values, v => String(v), sel);
+function setPromoGaugeValue(v) {
+  v = Math.max(0, Math.min(100, Math.round(v)));
+  const track = document.getElementById('promoGaugeTrack');
+  const handle = document.getElementById('promoGaugeHandle');
+  const dim = document.getElementById('promoGaugeDim');
+  const valueEl = document.getElementById('promoGaugeValueText');
+  const hidden = document.getElementById('promoDiscountPct');
+  if (!track) return;
+  handle.style.bottom = v + '%';
+  dim.style.height = (100 - v) + '%';
+  valueEl.textContent = v + '%';
+  hidden.value = v;
+}
+
+function initPromoGauge() {
+  const track = document.getElementById('promoGaugeTrack');
+  if (!track) return;
+  const valueFromClientY = clientY => {
+    const rect = track.getBoundingClientRect();
+    const frac = 1 - (clientY - rect.top) / rect.height;
+    return frac * 100;
+  };
+  let dragging = false;
+  track.addEventListener('pointerdown', e => {
+    dragging = true;
+    setPromoGaugeValue(valueFromClientY(e.clientY));
+    try { track.setPointerCapture(e.pointerId); } catch (err) { /* no active pointer to capture — value already set */ }
+  });
+  track.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    setPromoGaugeValue(valueFromClientY(e.clientY));
+  });
+  track.addEventListener('pointerup', () => { dragging = false; });
+  track.addEventListener('pointercancel', () => { dragging = false; });
+  setPromoGaugeValue(0);
 }
 
 async function loadActivePromoDiscount() {
@@ -1940,36 +2048,59 @@ function toggleCustomersReveal() {
   document.getElementById('customersRevealBtn').innerHTML = frIcon(customersVisible ? 'eyeOff' : 'eye');
 }
 
+const FR_AVATAR_COLORS = ['#E8B923', '#2E6E8E', '#5E8E4E', '#B5651D', '#8E4E7A', '#4E7A8E', '#A34E4E'];
+function customerAvatarColor(number) {
+  const n = Number(number) || 0;
+  return FR_AVATAR_COLORS[n % FR_AVATAR_COLORS.length];
+}
+function customerInitials(name) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+}
+
 function renderCustomersAdmin() {
-  const body = document.getElementById('customersTableBody');
-  if (!body) return;
+  const list = document.getElementById('customersList');
+  if (!list) return;
   const customers = getCustomerStats();
   if (!customers.length) {
-    body.innerHTML = '<tr><td colspan="6" class="fr-empty-day">Ingen kunder registrert ennå.</td></tr>';
+    list.innerHTML = '<p class="fr-empty-day">Ingen kunder registrert ennå.</p>';
     return;
   }
-  body.innerHTML = customers.map(c => `
-    <tr data-number="${c.number}">
-      <td><input class="form-control fr-input fr-customer-number-input" value="${formatCustomerId(c.number)}" /></td>
-      <td><input class="form-control fr-input fr-customer-name-input" value="${(c.name || '').replace(/"/g, '&quot;')}" /></td>
-      <td><input class="form-control fr-input fr-customer-phone-input" value="${(c.phone || '').replace(/"/g, '&quot;')}" placeholder="92133900" /></td>
-      <td class="text-center">${c.jobCount}</td>
-      <td class="text-end">kr ${c.totalSpent.toLocaleString('no-NO')}</td>
-      <td><button class="fr-customer-save-btn" onclick="saveCustomerEdit('${c.number}', this)" title="Lagre" aria-label="Lagre">${frIcon('save')}</button></td>
-    </tr>
+  list.innerHTML = customers.map(c => `
+    <div class="fr-customer-row" onclick="openCustomerEdit('${c.number}')">
+      <div class="fr-customer-avatar" style="background:${customerAvatarColor(c.number)}">${customerInitials(c.name)}</div>
+      <div class="fr-customer-row-body">
+        <div class="fr-customer-row-name">${(c.name || '').replace(/</g, '&lt;')} <span class="fr-list-row-code fr-list-row-customer">${formatCustomerId(c.number)}</span></div>
+        <div class="fr-customer-row-meta">${c.jobCount} jobb${c.jobCount === 1 ? '' : 'er'}${c.phone ? ' · ' + c.phone : ''}</div>
+      </div>
+      <span class="fr-customer-chevron">${frIcon('edit')}</span>
+    </div>
   `).join('');
 }
 
-async function saveCustomerEdit(originalNumber, btnEl) {
-  const row = btnEl.closest('tr');
-  const newNumber = parseCustomerId(row.querySelector('.fr-customer-number-input').value);
-  const newName = row.querySelector('.fr-customer-name-input').value.trim();
-  const newPhone = row.querySelector('.fr-customer-phone-input').value.trim();
-  if (!newNumber || !newName) return;
+function openCustomerEdit(number) {
+  const c = getCustomerStats().find(x => String(x.number) === String(number));
+  if (!c) return;
+  editingCustomerNumber = c.number;
+  document.getElementById('custEditNumber').value = formatCustomerId(c.number);
+  document.getElementById('custEditName').value = c.name || '';
+  document.getElementById('custEditPhone').value = c.phone || '';
+  document.getElementById('custEditJobCount').textContent = c.jobCount;
+  document.getElementById('custEditTotalSpent').textContent = `kr ${c.totalSpent.toLocaleString('no-NO')}`;
+  document.getElementById('custEditMsg').textContent = ''; document.getElementById('custEditMsg').className = 'fr-save-msg';
+  customerEditModal.show();
+}
 
-  const jobsToUpdate = (window._frJobs || []).filter(j => j.customer_number === originalNumber);
-  btnEl.disabled = true;
-  btnEl.innerHTML = frIcon('clock');
+async function saveCustomerEditModal() {
+  const msg = document.getElementById('custEditMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  const newNumber = parseCustomerId(document.getElementById('custEditNumber').value);
+  const newName = document.getElementById('custEditName').value.trim();
+  const newPhone = document.getElementById('custEditPhone').value.trim();
+  if (!newNumber || !newName) { msg.textContent = 'Fyll ut navn og kundenummer.'; msg.classList.add('err'); return; }
+
+  const jobsToUpdate = (window._frJobs || []).filter(j => String(j.customer_number) === String(editingCustomerNumber));
   try {
     await Promise.all(jobsToUpdate.map(j => fetch('/api/admin-data?resource=jobs', {
       method: 'PATCH',
@@ -1977,10 +2108,9 @@ async function saveCustomerEdit(originalNumber, btnEl) {
       body: JSON.stringify({ id: j.id, customer_name: newName, customer_number: newNumber, customer_phone: newPhone || null })
     })));
     await loadJobsAdmin();
+    customerEditModal.hide();
   } catch (e) {
-    alert('Klarte ikke å lagre kundeendringer.');
-    btnEl.disabled = false;
-    btnEl.innerHTML = frIcon('save');
+    msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
   }
 }
 
@@ -2187,6 +2317,7 @@ async function deleteJob(id) {
 
 /* ---------------- Rediger jobb ---------------- */
 let editingJobId = null;
+let editingCustomerNumber = null;
 
 function renderJobPhotoThumbs(photos, jobId) {
   return (photos || []).map(p => `
