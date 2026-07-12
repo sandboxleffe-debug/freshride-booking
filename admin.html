@@ -1966,7 +1966,8 @@ function formatDurationHM(totalMinutes) {
   const m = totalMinutes % 60;
   if (h === 0) return `${m} min`;
   if (m === 0) return `${h}t`;
-  return `${h}t ${m}min`;
+  if (m === 30) return `${h},5t`;
+  return `${h}t ${m}min`; // fallback for values outside the normal 30-min steps
 }
 
 function setPromoGaugeValue(v) {
