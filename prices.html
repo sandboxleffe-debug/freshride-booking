@@ -69,11 +69,15 @@
   .fr-price-card-value { margin-top: 0.9rem; padding-top: 0.9rem; width: 100%; border-top: 1px solid var(--fr-panel-border); font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; color: var(--fr-gold-deep); }
   .fr-price-card-value.fr-price-tba { font-size: 0.82rem; font-family: var(--font-body); font-weight: 600; color: var(--fr-panel-text-faint); }
 
-  /* Premium tier — a touch more exclusive: gold-gradient icon, subtle glow border, small badge */
+  /* Premium tier — a touch more exclusive: gold-gradient icon, subtle glow border, small badge.
+     margin-top gives the badge (which pokes up above the card) guaranteed clearance from
+     whatever card sits above it in the grid — the shared row gap alone was too tight and let
+     the badge visually collide with the previous card's price on some devices. */
   .fr-price-card--premium {
     border: 1px solid var(--fr-gold);
     box-shadow: 0 0 0 1px var(--fr-gold-soft), 0 10px 28px -10px rgba(232, 185, 35, 0.45);
     position: relative;
+    margin-top: 0.9rem;
   }
   .fr-price-card--premium:hover { transform: translateY(-4px); }
   .fr-price-card--premium .fr-price-card-icon {
