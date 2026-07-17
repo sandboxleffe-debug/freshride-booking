@@ -77,10 +77,14 @@
   }
   /* Before/after compare slider — two full-size layers, the "before" one
      clipped by drag position so it reveals more/less of itself over the
-     "after" layer underneath. touch-action: none keeps the horizontal
-     carousel from also trying to scroll while the user drags inside a slide. */
+     "after" layer underneath. Only a narrow invisible strip along the
+     divider (.fr-compare-hitzone) actually captures drag input — the rest
+     of the image is left alone so the carousel's own horizontal swipe
+     (move to the next/previous card) still works. An earlier version made
+     the WHOLE image drag-to-compare, which silently ate every swipe and
+     left visitors stuck on the first card. */
   .fr-compare-frame {
-    position: absolute; inset: 0; touch-action: none; cursor: ew-resize;
+    position: absolute; inset: 0;
   }
   .fr-compare-img {
     position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
@@ -106,6 +110,10 @@
     display: flex; align-items: center; justify-content: center;
     transform: translate(-50%, -50%); z-index: 4; font-size: 1.1rem; font-weight: 700;
     box-shadow: 0 4px 14px rgba(0,0,0,0.4); pointer-events: none;
+  }
+  .fr-compare-hitzone {
+    position: absolute; top: 0; bottom: 0; left: 50%; width: 48px;
+    transform: translateX(-50%); touch-action: none; cursor: ew-resize; z-index: 5;
   }
   .fr-results-info { text-align: center; margin-top: 1rem; }
   .fr-results-info h2 {
@@ -243,6 +251,7 @@ async function loadResults() {
             <span class="fr-compare-label fr-compare-label-after">Etter</span>
             <div class="fr-compare-divider"></div>
             <div class="fr-compare-handle">↔</div>
+            <div class="fr-compare-hitzone"></div>
           </div>
         </div>
         <div class="fr-results-info">
@@ -255,12 +264,15 @@ async function loadResults() {
       return wrap;
     }
 
-    // Custom pointer-driven drag (not a native <input type=range>) so the
-    // whole image is draggable, not just a thin handle track.
+    // Custom pointer-driven drag (not a native <input type=range>). Only the
+    // narrow .fr-compare-hitzone strip along the divider captures the drag —
+    // everywhere else on the image is left free for the carousel's own
+    // horizontal swipe (moving to the next/previous card).
     function setupCompareSlider(frame) {
       const before = frame.querySelector('.fr-compare-before');
       const divider = frame.querySelector('.fr-compare-divider');
       const handle = frame.querySelector('.fr-compare-handle');
+      const hitzone = frame.querySelector('.fr-compare-hitzone');
       let dragging = false;
 
       function setPercent(pct) {
@@ -268,6 +280,7 @@ async function loadResults() {
         before.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
         divider.style.left = `${pct}%`;
         handle.style.left = `${pct}%`;
+        hitzone.style.left = `${pct}%`;
       }
 
       function percentFromClientX(clientX) {
@@ -275,20 +288,20 @@ async function loadResults() {
         return ((clientX - rect.left) / rect.width) * 100;
       }
 
-      frame.addEventListener('pointerdown', e => {
+      hitzone.addEventListener('pointerdown', e => {
         dragging = true;
-        frame.setPointerCapture(e.pointerId);
+        hitzone.setPointerCapture(e.pointerId);
         setPercent(percentFromClientX(e.clientX));
       });
-      frame.addEventListener('pointermove', e => {
+      hitzone.addEventListener('pointermove', e => {
         if (!dragging) return;
         setPercent(percentFromClientX(e.clientX));
       });
-      frame.addEventListener('pointerup', e => {
+      hitzone.addEventListener('pointerup', e => {
         dragging = false;
-        try { frame.releasePointerCapture(e.pointerId); } catch (err) {}
+        try { hitzone.releasePointerCapture(e.pointerId); } catch (err) {}
       });
-      frame.addEventListener('pointercancel', () => { dragging = false; });
+      hitzone.addEventListener('pointercancel', () => { dragging = false; });
 
       setPercent(50);
     }
