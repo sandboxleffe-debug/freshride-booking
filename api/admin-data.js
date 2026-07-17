@@ -12,10 +12,11 @@ import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const FEEDBACK_URL = "https://freshride.no/feedback";
+const OWNER_PHONE = "921 33 900";
 
 function buildCompletionSmsText(name) {
   const greeting = name ? `Hei ${name}!` : "Hei!";
-  return `${greeting} Bilen din er klar hos FreshRide. Håper du ble fornøyd! Legg gjerne igjen en tilbakemelding: ${FEEDBACK_URL} Mvh William`;
+  return `${greeting} Bilen din er klar hos FreshRide. Håper du ble fornøyd! Legg gjerne igjen en tilbakemelding: ${FEEDBACK_URL} Mvh William\n\nSpørsmål? Ring William på ${OWNER_PHONE}. Denne SMS-en kan ikke besvares.`;
 }
 
 /* ---------------- About ---------------- */

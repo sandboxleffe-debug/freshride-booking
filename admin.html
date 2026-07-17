@@ -24,6 +24,19 @@
   @media (max-width: 720px) {
     .fr-admin-wrap { padding-bottom: 7.5rem; }
   }
+  /* Tab switching: a light "card swap" slide+fade, direction-aware (which
+     way along fr-tab-btn/fr-bnav order the new tab sits relative to the old
+     one). Kept short and subtle so it reads as a transition, not a delay. */
+  @keyframes fr-tab-slide-from-right { from { transform: translateX(28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes fr-tab-slide-from-left { from { transform: translateX(-28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .fr-tab-slide-right { animation: fr-tab-slide-from-right 0.22s ease-out; }
+  .fr-tab-slide-left { animation: fr-tab-slide-from-left 0.22s ease-out; }
+  @media (prefers-reduced-motion: reduce) {
+    .fr-tab-slide-right, .fr-tab-slide-left { animation: none; }
+  }
+  .fr-collapse-head { cursor: pointer; user-select: none; }
+  .fr-collapse-chevron { display: inline-block; color: var(--fr-panel-text-faint); transition: transform 0.2s ease; }
+  .fr-collapse-chevron-open { transform: rotate(180deg); }
   .fr-admin-login { max-width: 360px; margin: 3.5rem auto; }
   .fr-admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
   .fr-admin-identity { display: flex; align-items: center; gap: 0.75rem; }
@@ -212,6 +225,18 @@
   .fr-admin-cal-day.fr-admin-cal-status-orange .fr-admin-cal-dot { background: #D98A15; }
   .fr-admin-cal-day.fr-admin-cal-status-red { background: rgba(198, 59, 46, 0.14); border-color: rgba(198, 59, 46, 0.6); border-width: 1.5px; }
   .fr-admin-cal-day.fr-admin-cal-status-red .fr-admin-cal-dot { background: #C63B2E; }
+  /* Past days keep their status color (still useful history) but read as
+     "done" — a strikethrough on the day number rather than a full grayout. */
+  .fr-admin-cal-day.fr-admin-cal-day-past span:first-child { text-decoration: line-through; opacity: 0.6; }
+
+  .fr-calendar-head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; }
+  .fr-calendar-head-row .fr-calendar-head { margin-bottom: 0; }
+  .fr-cal-nav-btn {
+    background: none; border: 1.5px solid var(--fr-panel-border); border-radius: 8px;
+    width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+    color: var(--fr-panel-text-soft); font-size: 1.1rem; line-height: 1; cursor: pointer; flex-shrink: 0;
+  }
+  .fr-cal-nav-btn:hover { background: var(--fr-panel-bg-2); color: var(--fr-panel-text); border-color: var(--fr-gold); }
 
   .fr-login-input { width: 100%; margin-bottom: 0.9rem; }
   .fr-login-error { color: #FF8A7A; font-size: 0.85rem; margin-top: 0.6rem; min-height: 1.1rem; }
@@ -296,7 +321,11 @@
     <div id="tab-overview" class="fr-tab-panel">
       <div class="fr-panel">
         <div class="fr-calendar">
-          <div class="fr-calendar-head" id="calendarMonthLabel"></div>
+          <div class="fr-calendar-head-row">
+            <button class="fr-cal-nav-btn" onclick="changeCalendarMonth(-1)" aria-label="Forrige måned">‹</button>
+            <div class="fr-calendar-head" id="calendarMonthLabel"></div>
+            <button class="fr-cal-nav-btn" onclick="changeCalendarMonth(1)" aria-label="Neste måned">›</button>
+          </div>
           <div class="fr-admin-cal-grid" id="calendarGrid"></div>
         </div>
       </div>
@@ -397,88 +426,94 @@
       </div>
 
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="fileText"></span> Logg ny jobb</h2></div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
-          <input type="date" id="jobDate" class="form-control fr-input" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="user"></span> Kunde</label>
-          <select id="jobCustomerSelect" class="form-control fr-input mb-2" onchange="onCustomerSelectChange()">
-            <option value="__new__">+ Ny kunde …</option>
-          </select>
-          <div id="newCustomerFields">
-            <input id="jobCustomer" class="form-control fr-input mb-2" placeholder="Navn på ny kunde" />
-            <p class="fr-hint" id="newCustomerNumberHint"></p>
-          </div>
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="car"></span> Biltype</label>
-          <input id="jobCarType" class="form-control fr-input" placeholder="VW Golf" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="droplet"></span> Tjeneste(r)</label>
-          <div id="jobServicesGrid" class="fr-service-grid"></div>
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="dollarSign"></span> Pris betalt (kr) <span id="jobCampaignBadge" class="fr-campaign-badge d-none"><span class="fr-icon" data-fr-icon="gift"></span> Kampanjepris</span></label>
-          <input type="number" id="jobPrice" class="form-control fr-input" placeholder="450" />
-          <p class="fr-hint">Fylles automatisk ut fra valgte tjenester — kan overstyres (f.eks. ved tips).</p>
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="sliders"></span> Hvor omfattende var jobben? Velg på skala fra 1–10</label>
-          <div class="fr-gauge-row">
-            <div class="fr-gauge-col">
-              <div class="fr-gauge-track" id="jobSizeGaugeTrack">
-                <div class="fr-gauge-band fr-gauge-band-low"></div>
-                <div class="fr-gauge-band fr-gauge-band-mid"></div>
-                <div class="fr-gauge-band fr-gauge-band-high"></div>
-                <div class="fr-gauge-dim" id="jobSizeGaugeDim"></div>
-                <div class="fr-gauge-handle" id="jobSizeGaugeHandle"></div>
-              </div>
-              <div class="fr-gauge-ticks"><span>1</span><span>5</span><span>10</span></div>
-            </div>
-            <div class="fr-gauge-value" id="jobSizeGaugeValueText">5</div>
-          </div>
-          <input type="hidden" id="jobSize" value="5" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Tid brukt</label>
-          <div class="fr-gauge-row">
-            <div class="fr-gauge-col">
-              <div class="fr-gauge-track" id="jobTimeGaugeTrack">
-                <div class="fr-gauge-band fr-gauge-band-low"></div>
-                <div class="fr-gauge-band fr-gauge-band-mid"></div>
-                <div class="fr-gauge-band fr-gauge-band-high"></div>
-                <div class="fr-gauge-dim" id="jobTimeGaugeDim"></div>
-                <div class="fr-gauge-handle" id="jobTimeGaugeHandle"></div>
-              </div>
-              <div class="fr-gauge-ticks"><span>0</span><span>2t</span><span>4t</span></div>
-            </div>
-            <div class="fr-gauge-value" id="jobTimeGaugeValueText">0 min</div>
-          </div>
-          <input type="hidden" id="jobTimeSpentMinutes" value="0" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="fileText"></span> Notater</label>
-          <textarea id="jobNotes" class="form-control fr-input" rows="2" placeholder="Valgfritt"></textarea>
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-badge-before" data-fr-icon="camera"></span> Førbilder</label>
-          <input type="file" id="jobPhotosBefore" class="form-control fr-input" accept="image/*" multiple />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-badge-after" data-fr-icon="star"></span> Etterbilder</label>
-          <input type="file" id="jobPhotosAfter" class="form-control fr-input" accept="image/*" multiple />
-        </div>
-        <p class="fr-hint">Før- og etterbilder brukes på Resultater-siden hvis jobben merkes som referanse.</p>
-        <button class="btn fr-btn-primary w-100" id="createJobBtn" onclick="createJob()"><span class="fr-icon" data-fr-icon="save"></span> Lagre jobb</button>
-        <div id="jobMsg" class="fr-save-msg"></div>
+        <div class="fr-panel-head"><h2>Jobblogg</h2></div>
+        <div id="jobsList"></div>
       </div>
 
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>Jobblogg</h2></div>
-        <div id="jobsList"></div>
+        <div class="fr-panel-head fr-panel-head-flex fr-collapse-head" onclick="toggleNewJobForm()">
+          <h2><span class="fr-icon" data-fr-icon="fileText"></span> Logg ny jobb</h2>
+          <span class="fr-collapse-chevron" id="newJobFormChevron">▾</span>
+        </div>
+        <p class="fr-hint">Brukes nesten aldri — jobber legges vanligvis inn automatisk fra bookinger. Trykk for å åpne skjemaet.</p>
+        <div id="newJobFormBody" class="d-none">
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
+            <input type="date" id="jobDate" class="form-control fr-input" />
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="user"></span> Kunde</label>
+            <select id="jobCustomerSelect" class="form-control fr-input mb-2" onchange="onCustomerSelectChange()">
+              <option value="__new__">+ Ny kunde …</option>
+            </select>
+            <div id="newCustomerFields">
+              <input id="jobCustomer" class="form-control fr-input mb-2" placeholder="Navn på ny kunde" />
+              <p class="fr-hint" id="newCustomerNumberHint"></p>
+            </div>
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="car"></span> Biltype</label>
+            <input id="jobCarType" class="form-control fr-input" placeholder="VW Golf" />
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="droplet"></span> Tjeneste(r)</label>
+            <div id="jobServicesGrid" class="fr-service-grid"></div>
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="dollarSign"></span> Pris betalt (kr) <span id="jobCampaignBadge" class="fr-campaign-badge d-none"><span class="fr-icon" data-fr-icon="gift"></span> Kampanjepris</span></label>
+            <input type="number" id="jobPrice" class="form-control fr-input" placeholder="450" />
+            <p class="fr-hint">Fylles automatisk ut fra valgte tjenester — kan overstyres (f.eks. ved tips).</p>
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="sliders"></span> Hvor omfattende var jobben? Velg på skala fra 1–10</label>
+            <div class="fr-gauge-row">
+              <div class="fr-gauge-col">
+                <div class="fr-gauge-track" id="jobSizeGaugeTrack">
+                  <div class="fr-gauge-band fr-gauge-band-low"></div>
+                  <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                  <div class="fr-gauge-band fr-gauge-band-high"></div>
+                  <div class="fr-gauge-dim" id="jobSizeGaugeDim"></div>
+                  <div class="fr-gauge-handle" id="jobSizeGaugeHandle"></div>
+                </div>
+                <div class="fr-gauge-ticks"><span>1</span><span>5</span><span>10</span></div>
+              </div>
+              <div class="fr-gauge-value" id="jobSizeGaugeValueText">5</div>
+            </div>
+            <input type="hidden" id="jobSize" value="5" />
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="clock"></span> Tid brukt</label>
+            <div class="fr-gauge-row">
+              <div class="fr-gauge-col">
+                <div class="fr-gauge-track" id="jobTimeGaugeTrack">
+                  <div class="fr-gauge-band fr-gauge-band-low"></div>
+                  <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                  <div class="fr-gauge-band fr-gauge-band-high"></div>
+                  <div class="fr-gauge-dim" id="jobTimeGaugeDim"></div>
+                  <div class="fr-gauge-handle" id="jobTimeGaugeHandle"></div>
+                </div>
+                <div class="fr-gauge-ticks"><span>0</span><span>2t</span><span>4t</span></div>
+              </div>
+              <div class="fr-gauge-value" id="jobTimeGaugeValueText">0 min</div>
+            </div>
+            <input type="hidden" id="jobTimeSpentMinutes" value="0" />
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="fileText"></span> Notater</label>
+            <textarea id="jobNotes" class="form-control fr-input" rows="2" placeholder="Valgfritt"></textarea>
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-badge-before" data-fr-icon="camera"></span> Førbilder</label>
+            <input type="file" id="jobPhotosBefore" class="form-control fr-input" accept="image/*" multiple />
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-badge-after" data-fr-icon="star"></span> Etterbilder</label>
+            <input type="file" id="jobPhotosAfter" class="form-control fr-input" accept="image/*" multiple />
+          </div>
+          <p class="fr-hint">Før- og etterbilder brukes på Resultater-siden hvis jobben merkes som referanse.</p>
+          <button class="btn fr-btn-primary w-100" id="createJobBtn" onclick="createJob()"><span class="fr-icon" data-fr-icon="save"></span> Lagre jobb</button>
+          <div id="jobMsg" class="fr-save-msg"></div>
+        </div>
       </div>
 
       <div class="fr-panel">
@@ -541,7 +576,6 @@
         <hr class="my-3" style="border-color: var(--fr-panel-border);">
         <label class="fr-label"><span class="fr-icon" data-fr-icon="plusCircle"></span> Legg til bilde</label>
         <input type="file" id="newGalleryFile" class="form-control fr-input mb-2" accept="image/*" />
-        <input id="newGalleryAlt" class="form-control fr-input mb-2" placeholder="Beskrivelse (valgfritt)" />
         <button class="btn fr-btn-primary w-100" onclick="uploadGalleryImage()">Last opp bilde</button>
         <div id="galleryMsg" class="fr-save-msg"></div>
       </div>
@@ -976,12 +1010,67 @@ function enterAdmin() {
   document.getElementById('promoStart').valueAsDate = new Date();
 }
 
+const FR_TAB_ORDER = ['overview', 'create', 'services', 'about', 'reviews', 'accounting', 'customers'];
+
 function showTab(name) {
-  document.querySelectorAll('.fr-tab-panel').forEach(p => p.classList.add('d-none'));
-  document.getElementById(`tab-${name}`).classList.remove('d-none');
+  const current = document.querySelector('.fr-tab-panel:not(.d-none)');
+  const fromIdx = current ? FR_TAB_ORDER.indexOf(current.id.replace('tab-', '')) : -1;
+  const toIdx = FR_TAB_ORDER.indexOf(name);
+  const slideClass = toIdx >= fromIdx ? 'fr-tab-slide-right' : 'fr-tab-slide-left';
+
+  document.querySelectorAll('.fr-tab-panel').forEach(p => {
+    p.classList.add('d-none');
+    p.classList.remove('fr-tab-slide-right', 'fr-tab-slide-left');
+  });
+  const next = document.getElementById(`tab-${name}`);
+  next.classList.remove('d-none');
+  if (fromIdx !== -1 && fromIdx !== toIdx) {
+    void next.offsetWidth; // restart the animation even if the same class was just used
+    next.classList.add(slideClass);
+  }
   document.querySelectorAll('.fr-tab-btn, .fr-bnav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
+
+// Thumb swipe between tabs on mobile — left swipe moves to the next tab,
+// right swipe to the previous, matching the fr-tab-btn/fr-bnav order above.
+// Ignores gestures starting on elements that already use horizontal drag
+// (job-size/time gauges, the "Opprett tid" slot timeline, form controls).
+(function setupTabSwipe() {
+  const wrap = document.querySelector('.fr-admin-wrap');
+  if (!wrap) return;
+  const IGNORE_SELECTOR = 'input, textarea, select, button, a, .fr-gauge-track, .fr-gauge-handle, ' +
+    '.fr-tl-bar, .fr-tl-new, .fr-tl-week-strip, .fr-admin-cal-grid, .fr-day-timeline';
+  let startX = null, startY = null, tracking = false;
+
+  wrap.addEventListener('touchstart', e => {
+    if (e.target.closest(IGNORE_SELECTOR)) { tracking = false; return; }
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY; tracking = true;
+  }, { passive: true });
+
+  wrap.addEventListener('touchmove', e => {
+    if (!tracking) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX, dy = t.clientY - startY;
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) tracking = false; // vertical scroll, not a swipe
+  }, { passive: true });
+
+  wrap.addEventListener('touchend', e => {
+    if (!tracking || startX === null) return;
+    tracking = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX, dy = t.clientY - startY;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+    const current = document.querySelector('.fr-tab-panel:not(.d-none)');
+    if (!current) return;
+    const idx = FR_TAB_ORDER.indexOf(current.id.replace('tab-', ''));
+    const nextIdx = dx < 0 ? idx + 1 : idx - 1; // swipe left → next tab, swipe right → previous
+    if (nextIdx < 0 || nextIdx >= FR_TAB_ORDER.length) return;
+    showTab(FR_TAB_ORDER[nextIdx]);
+  }, { passive: true });
+})();
 
 function handleAuthExpired() {
   sessionStorage.removeItem('fr_admin_pw');
@@ -997,11 +1086,23 @@ function toDateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+let calendarViewYear, calendarViewMonth; // 1-indexed month; defaults to the current month on first load
+
+function changeCalendarMonth(delta) {
+  const now = new Date();
+  if (calendarViewYear === undefined) { calendarViewYear = now.getFullYear(); calendarViewMonth = now.getMonth() + 1; }
+  calendarViewMonth += delta;
+  if (calendarViewMonth > 12) { calendarViewMonth = 1; calendarViewYear++; }
+  if (calendarViewMonth < 1) { calendarViewMonth = 12; calendarViewYear--; }
+  loadMonthCalendar();
+}
+
 async function loadMonthCalendar() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  document.getElementById("calendarMonthLabel").textContent = `${MONTH_LABELS[now.getMonth()]} ${year}`;
+  if (calendarViewYear === undefined) { calendarViewYear = now.getFullYear(); calendarViewMonth = now.getMonth() + 1; }
+  const year = calendarViewYear;
+  const month = calendarViewMonth;
+  document.getElementById("calendarMonthLabel").textContent = `${MONTH_LABELS[month - 1]} ${year}`;
 
   const grid = document.getElementById("calendarGrid");
   grid.innerHTML = "";
@@ -1036,6 +1137,7 @@ async function loadMonthCalendar() {
     const cell = document.createElement("div");
     cell.className = "fr-admin-cal-day";
     if (key === todayKey) cell.classList.add("fr-admin-cal-day-today");
+    if (cellDate < new Date(now.getFullYear(), now.getMonth(), now.getDate())) cell.classList.add("fr-admin-cal-day-past");
     const status = dayStatuses[key];
     if (status) cell.classList.add(`fr-admin-cal-status-${status}`);
     const num = document.createElement("span");
@@ -2486,6 +2588,16 @@ function getCheckedJobServices(prefix) {
   return Array.from(document.querySelectorAll(`${prefix} .fr-job-service-checkbox:checked`)).map(cb => cb.value);
 }
 
+// "Logg ny jobb" is almost never used manually (jobs are auto-drafted from
+// bookings) — collapsed by default so it doesn't dominate the scroll, only
+// expanding its fields once someone deliberately opens it.
+function toggleNewJobForm() {
+  const body = document.getElementById('newJobFormBody');
+  const isOpen = !body.classList.contains('d-none');
+  body.classList.toggle('d-none', isOpen);
+  document.getElementById('newJobFormChevron').classList.toggle('fr-collapse-chevron-open', !isOpen);
+}
+
 async function createJob() {
   const job_date = document.getElementById('jobDate').value;
   const select = document.getElementById('jobCustomerSelect');
@@ -3007,7 +3119,6 @@ function renderGalleryList() {
   list.innerHTML = images.map((img, i) => `
     <div class="fr-gallery-admin-row">
       <img src="${img.path}" class="fr-gallery-admin-thumb" alt="">
-      <input class="form-control form-control-sm fr-input fr-gallery-admin-alt" value="${(img.alt || '').replace(/"/g, '&quot;')}" placeholder="Beskrivelse" onchange="updateGalleryAlt('${img.id}', this.value)">
       <div class="fr-gallery-admin-actions">
         <button class="fr-icon-btn" title="Flytt opp" ${i === 0 ? 'disabled' : ''} onclick="moveGalleryImage(${i}, -1)">${frIcon('trendingUp')}</button>
         <button class="fr-icon-btn" title="Flytt ned" ${i === images.length - 1 ? 'disabled' : ''} onclick="moveGalleryImage(${i}, 1)">${frIcon('trendingDown')}</button>
@@ -3015,14 +3126,6 @@ function renderGalleryList() {
       </div>
     </div>
   `).join('');
-}
-
-async function updateGalleryAlt(id, alt) {
-  await fetch('/api/admin-data?resource=gallery', {
-    method: 'PATCH',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, alt })
-  });
 }
 
 async function moveGalleryImage(index, dir) {
@@ -3050,7 +3153,6 @@ async function deleteGalleryImage(id) {
 
 async function uploadGalleryImage() {
   const fileInput = document.getElementById('newGalleryFile');
-  const altInput = document.getElementById('newGalleryAlt');
   const msg = document.getElementById('galleryMsg');
   msg.textContent = ''; msg.className = 'fr-save-msg';
   const file = fileInput.files[0];
@@ -3060,12 +3162,11 @@ async function uploadGalleryImage() {
     const res = await fetch('/api/admin-data?resource=gallery', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg', alt: altInput.value.trim() || null })
+      body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' })
     });
     if (res.status === 401) return handleAuthExpired();
     if (!res.ok) throw new Error();
     fileInput.value = '';
-    altInput.value = '';
     msg.textContent = 'Lastet opp ✓'; msg.classList.add('ok');
     loadGalleryAdmin();
   } catch (e) {

@@ -20,6 +20,7 @@ import { createDraftJobLog } from "./_lib/customers.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const SITE_URL = "https://freshride.no";
+const OWNER_PHONE = "921 33 900";
 
 // Estimated duration per service, in minutes. Used to shrink the booked
 // calendar event when the chosen service takes less time than the
@@ -64,7 +65,8 @@ function buildBookingText({ name, phone, services, date, time, endTime, code }) 
     `Tid: ${time} – ${endTime}\n` +
     `Tjeneste(r): ${services.join(", ")}\n` +
     `Adresse: ${BUSINESS_ADDRESS}\n` +
-    `Legg til i kalender: ${calendarUrl}\n`
+    `Legg til i kalender: ${calendarUrl}\n\n` +
+    `Spørsmål? Ring William på ${OWNER_PHONE}. Denne SMS-en kan ikke besvares.`
   );
 }
 

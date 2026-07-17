@@ -629,15 +629,14 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-save-msg.ok { color: #2E7D32; }
 .fr-save-msg.err { color: #C0392B; }
 
-.fr-gallery-admin-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.fr-gallery-admin-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.7rem; }
 .fr-gallery-admin-row {
-  display: flex; align-items: center; gap: 0.6rem;
+  display: flex; flex-direction: column; gap: 0.4rem;
   background: var(--fr-panel-bg-2); border: 1px solid var(--fr-panel-border); border-radius: 10px;
-  padding: 0.5rem 0.6rem;
+  padding: 0.5rem;
 }
-.fr-gallery-admin-thumb { width: 2.8rem; height: 2.8rem; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
-.fr-gallery-admin-alt { flex: 1; min-width: 0; }
-.fr-gallery-admin-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
+.fr-gallery-admin-thumb { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; }
+.fr-gallery-admin-actions { display: flex; gap: 0.35rem; justify-content: center; }
 .fr-gallery-admin-actions .fr-icon-btn:disabled { opacity: 0.3; cursor: default; }
 .fr-gallery-admin-actions .fr-icon-btn:disabled:hover { border-color: var(--fr-panel-border); }
 
