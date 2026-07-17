@@ -406,11 +406,10 @@ async function handleJobs(req, res, supabase) {
     if (show_as_reference !== undefined) {
       if (show_as_reference) {
         const { data: existingJob } = await supabase.from("freshride_jobs")
-          .select("photo_paths_before, photo_paths_after").eq("id", id).single();
-        const hasBefore = (existingJob?.photo_paths_before || []).length > 0;
-        const hasAfter = (existingJob?.photo_paths_after || []).length > 0;
-        if (!hasBefore || !hasAfter) {
-          return res.status(400).json({ error: "Trenger både før- og etterbilde for å vises som referanse" });
+          .select("photo_pairs").eq("id", id).single();
+        const hasCompletePair = (existingJob?.photo_pairs || []).some(p => p.before && p.after);
+        if (!hasCompletePair) {
+          return res.status(400).json({ error: "Trenger minst ett komplett bildepar (før + etter) for å vises som referanse" });
         }
       }
       updates.show_as_reference = show_as_reference;
@@ -425,8 +424,9 @@ async function handleJobs(req, res, supabase) {
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: "Missing id" });
     const { data: job } = await supabase.from("freshride_jobs")
-      .select("photo_paths, photo_paths_before, photo_paths_after").eq("id", id).single();
-    const allPaths = [...(job?.photo_paths || []), ...(job?.photo_paths_before || []), ...(job?.photo_paths_after || [])];
+      .select("photo_paths, photo_paths_before, photo_paths_after, photo_pairs").eq("id", id).single();
+    const pairPaths = (job?.photo_pairs || []).flatMap(p => [p.before, p.after]).filter(Boolean);
+    const allPaths = [...(job?.photo_paths || []), ...(job?.photo_paths_before || []), ...(job?.photo_paths_after || []), ...pairPaths];
     if (allPaths.length) {
       await supabase.storage.from("job-photos").remove(allPaths);
     }
