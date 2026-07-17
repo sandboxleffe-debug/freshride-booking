@@ -1094,7 +1094,7 @@ function changeCalendarMonth(delta) {
   calendarViewMonth += delta;
   if (calendarViewMonth > 12) { calendarViewMonth = 1; calendarViewYear++; }
   if (calendarViewMonth < 1) { calendarViewMonth = 12; calendarViewYear--; }
-  loadMonthCalendar();
+  return loadMonthCalendar();
 }
 
 async function loadMonthCalendar() {

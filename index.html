@@ -440,9 +440,9 @@ function changeCalendarMonth(delta) {
   let y = calendarViewYear, m = calendarViewMonth + delta;
   if (m > 12) { m = 1; y++; }
   if (m < 1) { m = 12; y--; }
-  if (y < minYear || (y === minYear && m < minMonth)) return; // can't book the past — don't navigate before the current month
+  if (y < minYear || (y === minYear && m < minMonth)) return Promise.resolve(); // can't book the past — don't navigate before the current month
   calendarViewYear = y; calendarViewMonth = m;
-  loadMonthCalendar();
+  return loadMonthCalendar();
 }
 
 async function loadMonthCalendar() {
