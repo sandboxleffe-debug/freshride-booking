@@ -2530,13 +2530,30 @@ function populateCustomerDropdown() {
   onCustomerSelectChange();
 }
 
+let _frJobCarAutoFilled = null; // tracks our own last suggestion so a manually typed car type is never overwritten
+
 function onCustomerSelectChange() {
   const select = document.getElementById('jobCustomerSelect');
   const isNew = select.value === '__new__';
   document.getElementById('newCustomerFields').classList.toggle('d-none', !isNew);
+  const carType = document.getElementById('jobCarType');
   if (isNew) {
     document.getElementById('jobCustomer').value = '';
     document.getElementById('newCustomerNumberHint').textContent = `Får kundenummer ${formatCustomerId(nextCustomerNumber())}`;
+    // A new customer has no registered car yet — clear a previous
+    // suggestion so it doesn't silently carry over from whoever was
+    // selected before, but leave a manually typed value alone.
+    if (carType.value === _frJobCarAutoFilled) { carType.value = ''; _frJobCarAutoFilled = null; }
+    return;
+  }
+  // Suggest the customer's registered car from kunderegister, if any — only
+  // touches the field if it's empty or still holds our own last suggestion,
+  // so a manually typed car type is never overwritten.
+  if (carType.value.trim() === '' || carType.value === _frJobCarAutoFilled) {
+    const cars = _frCustomerCarsMap[String(select.value)] || [];
+    const suggestion = cars.length ? cars[0] : '';
+    carType.value = suggestion;
+    _frJobCarAutoFilled = suggestion;
   }
 }
 

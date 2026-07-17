@@ -225,6 +225,16 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
   margin-bottom: 0.85rem; color: var(--fr-panel-text); text-transform: capitalize;
 }
+.fr-calendar-head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; }
+.fr-calendar-head-row .fr-calendar-head { margin-bottom: 0; }
+.fr-cal-nav-btn {
+  background: none; border: 1.5px solid var(--fr-panel-border); border-radius: 8px;
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  color: var(--fr-panel-text-soft); font-size: 1.1rem; line-height: 1; cursor: pointer; flex-shrink: 0;
+}
+.fr-cal-nav-btn:hover { background: var(--fr-panel-bg-2); color: var(--fr-panel-text); border-color: var(--fr-gold); }
+.fr-cal-nav-btn:disabled { opacity: 0.3; cursor: default; }
+.fr-cal-nav-btn:disabled:hover { background: none; color: var(--fr-panel-text-soft); border-color: var(--fr-panel-border); }
 .fr-calendar-grid { display: flex; flex-direction: column; gap: 0.4rem; }
 .fr-calendar-dow-row, .fr-calendar-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.4rem; }
 .fr-calendar-dow {
@@ -257,6 +267,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-calendar-day.fr-day-empty { visibility: hidden; cursor: default; }
 .fr-calendar-day.fr-day-past { opacity: 0.25; filter: grayscale(0.4); cursor: not-allowed; }
 .fr-calendar-day.fr-day-past:hover { transform: none; border-color: var(--fr-panel-border); }
+.fr-calendar-day.fr-day-past span:first-child { text-decoration: line-through; }
 .fr-calendar-day.fr-day-closed {
   cursor: not-allowed;
   opacity: 0.55;

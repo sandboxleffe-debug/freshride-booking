@@ -172,7 +172,11 @@
     </div>
 
     <div class="fr-calendar">
-      <div class="fr-calendar-head" id="calendarMonthLabel"></div>
+      <div class="fr-calendar-head-row">
+        <button class="fr-cal-nav-btn" id="calendarPrevBtn" onclick="changeCalendarMonth(-1)" aria-label="Forrige måned">‹</button>
+        <div class="fr-calendar-head" id="calendarMonthLabel"></div>
+        <button class="fr-cal-nav-btn" onclick="changeCalendarMonth(1)" aria-label="Neste måned">›</button>
+      </div>
       <div class="fr-calendar-grid" id="calendarGrid"></div>
     </div>
 
@@ -427,11 +431,28 @@ function formatDateLabel(key) {
 // which move every year) — "M-D" keys. Closed days, same as Sundays.
 const NO_FIXED_HOLIDAYS = new Set(["1-1", "5-1", "5-17", "12-25", "12-26"]);
 
+let calendarViewYear, calendarViewMonth; // 1-indexed month; defaults to the current month on first load
+
+function changeCalendarMonth(delta) {
+  const now = new Date();
+  const minYear = now.getFullYear(), minMonth = now.getMonth() + 1;
+  if (calendarViewYear === undefined) { calendarViewYear = minYear; calendarViewMonth = minMonth; }
+  let y = calendarViewYear, m = calendarViewMonth + delta;
+  if (m > 12) { m = 1; y++; }
+  if (m < 1) { m = 12; y--; }
+  if (y < minYear || (y === minYear && m < minMonth)) return; // can't book the past — don't navigate before the current month
+  calendarViewYear = y; calendarViewMonth = m;
+  loadMonthCalendar();
+}
+
 async function loadMonthCalendar() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1; // 1-12
-  document.getElementById("calendarMonthLabel").textContent = `${MONTH_LABELS[now.getMonth()]} ${year}`;
+  if (calendarViewYear === undefined) { calendarViewYear = now.getFullYear(); calendarViewMonth = now.getMonth() + 1; }
+  const year = calendarViewYear;
+  const month = calendarViewMonth;
+  document.getElementById("calendarMonthLabel").textContent = `${MONTH_LABELS[month - 1]} ${year}`;
+  const isAtCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+  document.getElementById("calendarPrevBtn").disabled = isAtCurrentMonth;
 
   const grid = document.getElementById("calendarGrid");
   grid.innerHTML = "";
