@@ -19,6 +19,7 @@ import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
 import { createDraftJobLog } from "./_lib/customers.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
+const SITE_URL = "https://freshride.no";
 const TALKDESK_URL = "https://api.talkdeskapp.eu/flows/8767c122bb494be38cec8453794ee659/interactions";
 
 // Estimated duration per service, in minutes. Used to shrink the booked
@@ -60,6 +61,7 @@ function formatNorwegian(dateTimeStr) {
 // Shared plain-text body used for both the SMS and the owner email, so the
 // two notifications always read identically.
 function buildBookingText({ name, phone, services, date, time, endTime, code }) {
+  const calendarUrl = `${SITE_URL}/api/calendar-invite?code=${encodeURIComponent(code)}&phone=${encodeURIComponent(phone)}`;
   return (
     `Ny booking mottatt\n\n` +
     `Kode: ${code}\n` +
@@ -68,7 +70,8 @@ function buildBookingText({ name, phone, services, date, time, endTime, code }) 
     `Dato: ${date}\n` +
     `Tid: ${time} – ${endTime}\n` +
     `Tjeneste(r): ${services.join(", ")}\n` +
-    `Adresse: ${BUSINESS_ADDRESS}\n`
+    `Adresse: ${BUSINESS_ADDRESS}\n` +
+    `Legg til i kalender: ${calendarUrl}\n`
   );
 }
 

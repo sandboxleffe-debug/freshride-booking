@@ -11,30 +11,7 @@
 //   -> cancels the booking (reverts the slot back to "Ledig")
 //   -> { ok: true }
 
-import { getCalendarClient, CALENDAR_ID } from "./_lib/google-calendar.js";
-
-function normalizePhone(p) {
-  return (p || "").replace(/\D/g, "");
-}
-
-async function findBookingByCode(calendar, code) {
-  const now = new Date();
-  const timeMin = new Date(now);
-  timeMin.setDate(timeMin.getDate() - 7);
-  const timeMax = new Date(now);
-  timeMax.setDate(timeMax.getDate() + 180);
-
-  const { data } = await calendar.events.list({
-    calendarId: CALENDAR_ID,
-    timeMin: timeMin.toISOString(),
-    timeMax: timeMax.toISOString(),
-    singleEvents: true,
-    maxResults: 2500,
-    privateExtendedProperty: `freshride_code=${code}`,
-  });
-
-  return (data.items || [])[0] || null;
-}
+import { getCalendarClient, CALENDAR_ID, findBookingByCode, normalizePhone } from "./_lib/google-calendar.js";
 
 export default async function handler(req, res) {
   const code = (req.method === "GET" ? req.query.code : req.body?.code || "").toString().toUpperCase();
@@ -46,7 +23,7 @@ export default async function handler(req, res) {
 
   try {
     const calendar = getCalendarClient();
-    const event = await findBookingByCode(calendar, code);
+    const event = await findBookingByCode(calendar, CALENDAR_ID, code);
 
     if (!event) return res.status(200).json({ found: false });
 

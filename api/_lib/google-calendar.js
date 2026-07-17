@@ -67,3 +67,29 @@ export function generateUniqueCode(usedCodes) {
   }
   return code;
 }
+
+export function normalizePhone(p) {
+  return (p || "").replace(/\D/g, "");
+}
+
+// Shared by booking-lookup.js and calendar-invite.js — both need to find a
+// booking by its short code and verify the caller's phone matches before
+// revealing anything.
+export async function findBookingByCode(calendar, calendarId, code) {
+  const now = new Date();
+  const timeMin = new Date(now);
+  timeMin.setDate(timeMin.getDate() - 7);
+  const timeMax = new Date(now);
+  timeMax.setDate(timeMax.getDate() + 180);
+
+  const { data } = await calendar.events.list({
+    calendarId,
+    timeMin: timeMin.toISOString(),
+    timeMax: timeMax.toISOString(),
+    singleEvents: true,
+    maxResults: 2500,
+    privateExtendedProperty: `freshride_code=${code}`,
+  });
+
+  return (data.items || [])[0] || null;
+}
