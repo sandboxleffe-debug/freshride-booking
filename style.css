@@ -651,23 +651,25 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-gallery-admin-actions .fr-icon-btn:disabled { opacity: 0.3; cursor: default; }
 .fr-gallery-admin-actions .fr-icon-btn:disabled:hover { border-color: var(--fr-panel-border); }
 
-/* Gallery: lively, self-looping strip of real work photos */
+/* Gallery: lively, self-scrolling strip of real work photos — auto-scroll is
+   JS-driven (not a CSS transform loop) specifically so a manual swipe/drag
+   can take over via plain native scrolling instead of fighting an animation
+   that's still running underneath it. See loadGallery()/setupGalleryAutoScroll()
+   in index.html. */
 .fr-gallery-section { margin-bottom: 2.5rem; }
 .fr-gallery-track-wrap {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
   mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
+.fr-gallery-track-wrap::-webkit-scrollbar { display: none; }
 .fr-gallery-track {
   display: flex;
   gap: 0.8rem;
   width: max-content;
-  animation: fr-gallery-loop 130s linear infinite;
-}
-.fr-gallery-track:hover { animation-play-state: paused; }
-@keyframes fr-gallery-loop {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
 }
 .fr-gallery-img {
   flex: 0 0 auto;
@@ -676,6 +678,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   border-radius: 14px;
   object-fit: cover;
   border: 1px solid var(--fr-line-dark-zone);
+  cursor: pointer;
   transition: transform 0.25s ease, border-color 0.25s ease;
 }
 .fr-gallery-img:hover {

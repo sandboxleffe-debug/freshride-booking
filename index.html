@@ -243,6 +243,16 @@
   </div>
 </div>
 
+<!-- Gallery photo lightbox -->
+<div class="modal fade" id="galleryLightboxModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background:transparent; border:none;">
+      <button type="button" class="btn-close btn-close-white ms-auto me-2 mt-2" data-bs-dismiss="modal" aria-label="Lukk"></button>
+      <img id="galleryLightboxImg" src="" style="width:100%; border-radius:12px;">
+    </div>
+  </div>
+</div>
+
 <!-- Success toast -->
 <div class="fr-toast-wrap">
   <div id="successToast" class="fr-toast">
@@ -308,6 +318,12 @@ function dismissPromo() {
 loadPromo();
 
 /* ---------------- Gallery ("Se oss i aksjon") — images managed from admin ---------------- */
+const galleryLightboxModal = new bootstrap.Modal(document.getElementById('galleryLightboxModal'));
+function openGalleryLightbox(src) {
+  document.getElementById('galleryLightboxImg').src = src;
+  galleryLightboxModal.show();
+}
+
 async function loadGallery() {
   try {
     const res = await fetch('/api/content?type=gallery');
@@ -315,11 +331,53 @@ async function loadGallery() {
     const images = data.images || [];
     if (!images.length) return;
     const track = document.getElementById('galleryTrack');
-    // Doubled so the CSS marquee (translateX -50%) loops seamlessly.
+    const wrap = document.querySelector('.fr-gallery-track-wrap');
+    // Doubled so the auto-scroll (see setupGalleryAutoScroll) can wrap
+    // seamlessly once it passes the first set.
     const imgHtml = images.map(img => `<img src="${img.path}" alt="${(img.alt || '').replace(/"/g, '&quot;')}" class="fr-gallery-img" loading="lazy">`).join('');
     track.innerHTML = imgHtml + imgHtml;
     document.getElementById('gallerySection').style.display = '';
+
+    track.querySelectorAll('img').forEach(img => {
+      img.addEventListener('click', () => openGalleryLightbox(img.src));
+    });
+    setupGalleryAutoScroll(wrap, track);
   } catch (e) { /* silently skip — no gallery section shown */ }
+}
+
+// Ambient auto-scroll driven by native scrollLeft (not a CSS transform loop)
+// so a manual swipe/drag can take over cleanly instead of fighting an
+// animation still running underneath it — pauses on interaction and resumes
+// a few seconds after the user lets go, from wherever they left off. The
+// track is duplicated, so once scrollLeft passes the first set's width it
+// wraps back by that amount for a seamless loop.
+function setupGalleryAutoScroll(wrap, track) {
+  let paused = false;
+  let resumeTimer = null;
+  let lastTs = null;
+  const SPEED = 18; // px/sec — gentle drift
+
+  function tick(ts) {
+    const halfWidth = track.scrollWidth / 2;
+    if (!paused && halfWidth > 0 && lastTs !== null) {
+      const dt = (ts - lastTs) / 1000;
+      wrap.scrollLeft += SPEED * dt;
+      if (wrap.scrollLeft >= halfWidth) wrap.scrollLeft -= halfWidth;
+    }
+    lastTs = ts;
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  function pause() { paused = true; clearTimeout(resumeTimer); }
+  function scheduleResume() { clearTimeout(resumeTimer); resumeTimer = setTimeout(() => { paused = false; }, 3000); }
+
+  wrap.addEventListener('pointerdown', pause);
+  wrap.addEventListener('pointerup', scheduleResume);
+  wrap.addEventListener('pointercancel', scheduleResume);
+  wrap.addEventListener('touchstart', pause, { passive: true });
+  wrap.addEventListener('touchend', scheduleResume, { passive: true });
+  wrap.addEventListener('wheel', () => { pause(); scheduleResume(); }, { passive: true });
 }
 loadGallery();
 

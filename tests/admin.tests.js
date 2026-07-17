@@ -39,6 +39,12 @@
     el.dispatchEvent(ev);
   }
 
+  test('login screen: shows the FreshRide logo', () => {
+    const img = document.querySelector('#loginView .fr-login-logo');
+    assert(!!img, 'expected an .fr-login-logo image on the login screen');
+    assert(img.getAttribute('src').includes('freshride-logo'), `unexpected logo src: ${img.getAttribute('src')}`);
+  });
+
   document.getElementById('loginView').classList.add('d-none');
   document.getElementById('adminView').classList.remove('d-none');
 

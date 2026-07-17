@@ -38,6 +38,7 @@
   .fr-collapse-chevron { display: inline-block; color: var(--fr-panel-text-faint); transition: transform 0.2s ease; }
   .fr-collapse-chevron-open { transform: rotate(180deg); }
   .fr-admin-login { max-width: 360px; margin: 3.5rem auto; }
+  .fr-login-logo { display: block; width: 120px; height: 120px; margin: 0 auto 1.25rem; border-radius: 50%; }
   .fr-admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
   .fr-admin-identity { display: flex; align-items: center; gap: 0.75rem; }
   .fr-admin-avatar {
@@ -257,6 +258,7 @@
 
   <!-- Login -->
   <div id="loginView" class="fr-panel fr-admin-login">
+    <img src="assets/freshride-logo.png" alt="FreshRide" class="fr-login-logo" />
     <p class="fr-label mb-2"><span class="fr-icon" data-fr-icon="lock"></span> PASSORD</p>
     <input type="password" id="pw" class="form-control fr-input fr-login-input" placeholder="Skriv inn passord" />
     <button class="btn fr-btn-primary w-100" onclick="login()">Logg inn</button>
