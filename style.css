@@ -959,6 +959,17 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   font-size: 0.82rem; font-weight: 600; padding: 0.45rem 0.9rem; border-radius: 8px; cursor: pointer; width: 100%;
 }
 .fr-add-car-btn:hover { border-color: var(--fr-gold); color: var(--fr-panel-text); }
+
+/* Generic secondary/outline action button — light panels & modals */
+.fr-btn-outline {
+  border: 1.5px dashed var(--fr-panel-border); background: none; color: var(--fr-panel-text-soft);
+  font-size: 0.85rem; font-weight: 600; padding: 0.55rem 0.9rem; border-radius: 8px; cursor: pointer; width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+}
+.fr-btn-outline:hover { border-color: var(--fr-gold); color: var(--fr-panel-text); }
+.fr-btn-outline:disabled { opacity: 0.5; cursor: default; }
+.fr-btn-outline:disabled:hover { border-color: var(--fr-panel-border); color: var(--fr-panel-text-soft); }
+.fr-sms-sent-flag { color: #2E7D32; }
 .fr-cust-history { max-height: 12rem; overflow-y: auto; border: 1px solid var(--fr-panel-border); border-radius: 10px; }
 .fr-cust-history-row {
   display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.65rem;

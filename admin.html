@@ -531,6 +531,17 @@
       </div>
 
       <div class="fr-panel">
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="bell"></span> Test SMS ("jobben er ferdig")</h2></div>
+        <p class="fr-hint">Send meldingen kunder får når du varsler at jobben er ferdig, til ditt eget nummer — for å se nøyaktig hvordan den ser ut.</p>
+        <label class="fr-label mt-2">Mobilnummer</label>
+        <input id="testSmsPhoneInput" class="form-control fr-input mb-2" placeholder="92133900" />
+        <button class="fr-btn-outline" id="testSmsBtn" onclick="sendTestCompletionSms()">
+          <span class="fr-icon" data-fr-icon="bell"></span> Send test-SMS til meg selv
+        </button>
+        <div id="testSmsMsg" class="fr-save-msg"></div>
+      </div>
+
+      <div class="fr-panel">
         <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="gift"></span> Ny kampanje</h2></div>
         <div class="fr-form-row">
           <label class="fr-label">Tittel</label>
@@ -745,6 +756,14 @@
             <label class="form-check-label" for="editJobShowReference">Vis under referanser</label>
           </div>
           <p class="fr-hint" id="editJobReferenceHint">Krever minst ett før- og ett etterbilde.</p>
+        </div>
+
+        <div class="fr-form-row">
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="bell"></span> Varsle kunde</label>
+          <p class="fr-hint" id="editJobSmsStatus"></p>
+          <button type="button" class="fr-btn-outline" id="editJobSmsBtn" onclick="sendCompletionSms()">
+            <span class="fr-icon" data-fr-icon="bell"></span> Send "jobben er ferdig"-SMS
+          </button>
         </div>
 
         <div id="editJobMsg" class="fr-save-msg"></div>
@@ -2366,6 +2385,7 @@ function buildJobRow(j, isDraft) {
   const photoIcon = (j.photos && j.photos.length) ? `<span class="fr-job-photo-flag">${frIcon('camera')} ${j.photos.length}</span>` : '';
   const campaignFlag = j.campaign_price ? `<span class="fr-campaign-badge">${frIcon('gift')}</span>` : '';
   const referenceFlag = j.show_as_reference ? `<span class="fr-job-photo-flag" title="Vises på Resultater-siden">${frIcon('star')}</span>` : '';
+  const smsFlag = j.completion_sms_sent_at ? `<span class="fr-job-photo-flag fr-sms-sent-flag" title="Kunde varslet ${new Date(j.completion_sms_sent_at).toLocaleDateString('no-NO')}">${frIcon('bell')}</span>` : '';
   row.innerHTML = `
     <div class="fr-job-compact-main">
       <span class="fr-job-compact-date">${formatDateNO(j.job_date)}</span>
@@ -2377,7 +2397,7 @@ function buildJobRow(j, isDraft) {
     <div class="fr-job-compact-right">
       ${isDraft
         ? '<span class="fr-draft-badge">Kladd</span>'
-        : `${referenceFlag}${campaignFlag}${photoIcon}<span class="fr-job-compact-price">kr ${Number(j.price_paid).toLocaleString('no-NO')}</span>`}
+        : `${referenceFlag}${campaignFlag}${smsFlag}${photoIcon}<span class="fr-job-compact-price">kr ${Number(j.price_paid).toLocaleString('no-NO')}</span>`}
     </div>
   `;
   return row;
@@ -2586,8 +2606,24 @@ function openJobEdit(id) {
   document.getElementById('editJobPhotosBefore').innerHTML = renderJobPhotoThumbs(job.photosBefore, job.id);
   document.getElementById('editJobPhotosAfter').innerHTML = renderJobPhotoThumbs(job.photosAfter, job.id);
   updateJobReferenceCheckboxState(job);
+  renderJobSmsStatus(job);
 
   jobEditModal.show();
+}
+
+function renderJobSmsStatus(job) {
+  const statusEl = document.getElementById('editJobSmsStatus');
+  const btn = document.getElementById('editJobSmsBtn');
+  if (job.completion_sms_sent_at) {
+    const d = new Date(job.completion_sms_sent_at);
+    statusEl.innerHTML = `${frIcon('checkCircle')} Varslet ${d.toLocaleDateString('no-NO')} kl. ${d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })}`;
+    statusEl.classList.add('fr-sms-sent-flag');
+  } else {
+    statusEl.textContent = 'Ikke varslet ennå.';
+    statusEl.classList.remove('fr-sms-sent-flag');
+  }
+  btn.disabled = !job.customer_phone;
+  btn.title = job.customer_phone ? '' : 'Kunden mangler mobilnummer';
 }
 
 async function deleteJobPhoto(jobId, path) {
@@ -2679,6 +2715,34 @@ function deleteJobFromEdit() {
   deleteJob(editingJobId);
 }
 
+async function sendCompletionSms() {
+  const btn = document.getElementById('editJobSmsBtn');
+  const msg = document.getElementById('editJobMsg');
+  if (btn.disabled) return;
+  if (!confirm('Sende SMS til kunden om at jobben er ferdig?')) return;
+  btn.disabled = true;
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  try {
+    const res = await fetch('/api/admin-data?resource=jobs', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send-completion-sms', jobId: editingJobId })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Klarte ikke å sende SMS.');
+
+    const job = (window._frJobs || []).find(j => j.id === editingJobId);
+    if (job) job.completion_sms_sent_at = data.sentAt;
+    renderJobSmsStatus(job || { customer_phone: true, completion_sms_sent_at: data.sentAt });
+    renderJobsList();
+    msg.textContent = 'SMS sendt ✓'; msg.classList.add('ok');
+  } catch (e) {
+    msg.textContent = e.message || 'Klarte ikke å sende SMS.'; msg.classList.add('err');
+    btn.disabled = false;
+  }
+}
+
 /* ---------------- Regnskap: utgifter ---------------- */
 async function loadExpensesAdmin() {
   const list = document.getElementById('expensesList');
@@ -2756,6 +2820,8 @@ async function loadAboutAdmin() {
     document.getElementById('ownerSmsToggle').checked = !!data.owner_sms_notify;
     document.getElementById('ownerSmsToggleLabel').textContent = data.owner_sms_notify ? 'På' : 'Av';
     document.getElementById('ownerSmsPhoneInput').value = data.owner_sms_phone || '';
+    const firstOwnerPhone = (data.owner_sms_phone || '').split(',')[0].trim();
+    if (firstOwnerPhone) document.getElementById('testSmsPhoneInput').value = firstOwnerPhone;
   } catch (e) {}
 }
 
@@ -2965,6 +3031,30 @@ async function saveOwnerSmsPhone(value) {
     msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
   } catch (e) {
     msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+  }
+}
+
+async function sendTestCompletionSms() {
+  const btn = document.getElementById('testSmsBtn');
+  const msg = document.getElementById('testSmsMsg');
+  const phone = document.getElementById('testSmsPhoneInput').value.trim();
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  if (!phone) { msg.textContent = 'Skriv inn et mobilnummer.'; msg.classList.add('err'); return; }
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/admin-data?resource=jobs', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send-test-completion-sms', phone })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Klarte ikke å sende test-SMS.');
+    msg.textContent = 'Test-SMS sendt ✓'; msg.classList.add('ok');
+  } catch (e) {
+    msg.textContent = e.message || 'Klarte ikke å sende test-SMS.'; msg.classList.add('err');
+  } finally {
+    btn.disabled = false;
   }
 }
 

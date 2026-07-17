@@ -14,13 +14,12 @@ import { getCalendarClient, CALENDAR_ID, getUsedCodes, generateUniqueCode } from
 import { sendOwnerEmail } from "./_lib/email.js";
 import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
-import { getTalkdeskAccessToken } from "./_lib/talkdesk-auth.js";
+import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
 import { createDraftJobLog } from "./_lib/customers.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const SITE_URL = "https://freshride.no";
-const TALKDESK_URL = "https://api.talkdeskapp.eu/flows/8767c122bb494be38cec8453794ee659/interactions";
 
 // Estimated duration per service, in minutes. Used to shrink the booked
 // calendar event when the chosen service takes less time than the
@@ -40,12 +39,6 @@ function estimatedDurationMinutes(services) {
     .filter(v => v !== undefined);
   if (!matched.length) return null; // unknown service — keep original slot length
   return Math.max(...matched);
-}
-
-function toE164Norway(rawPhone) {
-  const digits = rawPhone.replace(/\D/g, "");
-  if (rawPhone.trim().startsWith("+")) return rawPhone.trim();
-  return `+47${digits}`;
 }
 
 const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
@@ -86,41 +79,11 @@ async function logNotification({ channel, recipient, code, name, status }) {
   }
 }
 
-async function sendTalkdeskSms({ toPhone, name, time, date, services, message }) {
-  let token;
-  try {
-    token = await getTalkdeskAccessToken();
-  } catch (err) {
-    // Falls back to the old manually-pasted token until TALKDESK_CLIENT_ID/
-    // TALKDESK_CLIENT_SECRET are configured in Vercel — see talkdesk-auth.js.
-    console.error("sendTalkdeskSms: OAuth token fetch failed, falling back to static token:", err.message);
-    token = process.env.TALKDESK_ACCESS_TOKEN;
-  }
-  if (!token) {
-    console.error("sendTalkdeskSms: no Talkdesk access token available");
-    return false;
-  }
-  const res = await fetch(TALKDESK_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      des_number: toE164Norway(toPhone), name, time, date,
-      services: services.join(", "), address: BUSINESS_ADDRESS,
-      message,
-    }),
-  });
-  if (!res.ok) {
-    console.error("sendTalkdeskSms failed:", res.status, await res.text().catch(() => ""));
-    return false;
-  }
-  return true;
-}
-
 async function sendBookingSms({ phone, name, services, start, end, code }) {
   const { date, time } = formatNorwegian(start);
   const endTime = formatOsloTime(end);
   const message = buildBookingText({ name, phone, services, date, time, endTime, code });
-  return sendTalkdeskSms({ toPhone: phone, name, time, date, services, message });
+  return sendTalkdeskSms({ toPhone: phone, name, time, date, services, address: BUSINESS_ADDRESS, message });
 }
 
 // Extra SMS to the business owner's own number(s), if enabled in admin
@@ -142,7 +105,7 @@ async function sendOwnerSms({ name, phone, services, start, end, code }) {
     const numbers = data.owner_sms_phone.split(",").map(n => n.trim()).filter(Boolean);
     const results = await Promise.all(
       numbers.map(async toPhone => {
-        const ok = await sendTalkdeskSms({ toPhone, name, time, date, services, message });
+        const ok = await sendTalkdeskSms({ toPhone, name, time, date, services, address: BUSINESS_ADDRESS, message });
         await logNotification({ channel: "sms_eier", recipient: toPhone, code, name, status: ok ? "ok" : "failed" });
         return ok;
       })
