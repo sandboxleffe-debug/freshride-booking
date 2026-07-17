@@ -917,6 +917,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Converts HEIC/HEIF (Samsung's "high efficiency" photo format) to JPEG in
+     the browser before upload — Chrome on Android can't decode HEIC itself,
+     and asking William to convert every already-taken photo by hand isn't
+     realistic, so compressImageFile() below does it automatically. -->
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script>
 /* ---------------- Nøytrale SVG-ikoner (erstatter emoji i admin-panelet) ---------------- */
 const FR_ICON_PATHS = {
@@ -2038,17 +2043,27 @@ async function deletePromo(id) {
 // fail or run out of memory on those before it ever reaches the resize step,
 // which is why an upload that works fine from a Pixel can fail on a Samsung.
 // createImageBitmap() decodes straight from the File/Blob (no giant base64
-// detour) and is far more memory-efficient for large originals; we also
-// detect HEIC/HEIF up front since Chrome on Android can't decode it at all.
+// detour) and is far more memory-efficient for large originals; HEIC/HEIF is
+// converted to JPEG via heic2any() first since no Android browser can decode
+// it natively (this also covers photos already taken before HEIF was
+// switched off, not just new ones).
 async function compressImageFile(file, maxDim = 1000, quality = 0.7) {
+  let sourceFile = file;
   const name = (file.name || '').toLowerCase();
-  if (file.type === 'image/heic' || file.type === 'image/heif' || name.endsWith('.heic') || name.endsWith('.heif')) {
-    throw new Error('Dette bildeformatet (HEIC/HEIF) støttes ikke av nettleseren. Bytt kameraet til JPEG (vanligvis under Kamera-innstillinger → Bildeformater) og ta bildet på nytt.');
+  const isHeic = file.type === 'image/heic' || file.type === 'image/heif' || name.endsWith('.heic') || name.endsWith('.heif');
+  if (isHeic) {
+    try {
+      const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+      sourceFile = Array.isArray(converted) ? converted[0] : converted;
+    } catch (err) {
+      console.error('compressImageFile: HEIC conversion failed:', err);
+      throw new Error('Kunne ikke konvertere HEIC-bildet. Prøv å dele det som JPG fra Galleri-appen først, eller skru av HEIF i kamerainnstillingene.');
+    }
   }
 
   if (window.createImageBitmap) {
     try {
-      const bitmap = await createImageBitmap(file);
+      const bitmap = await createImageBitmap(sourceFile);
       const ratio = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
       const width = Math.round(bitmap.width * ratio);
       const height = Math.round(bitmap.height * ratio);
@@ -2082,7 +2097,7 @@ async function compressImageFile(file, maxDim = 1000, quality = 0.7) {
       img.src = e.target.result;
     };
     reader.onerror = () => reject(new Error('Kunne ikke lese bildefilen.'));
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(sourceFile);
   });
 }
 
