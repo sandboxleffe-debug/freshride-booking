@@ -43,8 +43,12 @@
   }
   .fr-range-btn.active { background: var(--fr-gold); color: var(--fr-black); border-color: var(--fr-gold); font-weight: 700; }
 
-  /* Neutral single-color SVG icons, sized relative to surrounding text so they drop into labels/buttons/headings uniformly */
-  #adminView svg, #loginView svg { width: 1.35em; height: 1.35em; vertical-align: -0.28em; flex-shrink: 0; }
+  /* Neutral single-color SVG icons, sized relative to surrounding text so they drop into labels/buttons/headings uniformly.
+     Unscoped (not #adminView/#loginView only) because the modals (job/customer/service edit, lightbox) live
+     outside both as body-level siblings — scoping this to those two ids left icons inside modals either
+     invisible (collapsed to 0×0 inside a plain span) or, worse, blown up to fill the whole button
+     (a raw <svg> dropped straight into a button's innerHTML, as the "Fullfør jobb" checkmark was). */
+  svg { width: 1.35em; height: 1.35em; vertical-align: -0.28em; flex-shrink: 0; }
   .fr-icon { display: inline-flex; }
   /* Before/after symbolism — muted grey for the "before" shot, warm gold for the "after" result */
   .fr-badge-before, .fr-badge-after {
@@ -730,12 +734,6 @@
           <label class="fr-label"><span class="fr-icon" data-fr-icon="fileText"></span> Notater</label>
           <textarea id="editJobNotes" class="form-control fr-input" rows="2"></textarea>
         </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Bilder</label>
-          <div id="editJobPhotos" class="fr-job-photos"></div>
-          <input type="file" id="editJobNewPhotos" class="form-control fr-input mt-2" accept="image/*" multiple />
-        </div>
-
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-badge-before" data-fr-icon="camera"></span> Førbilder (Resultater-siden)</label>
           <div id="editJobPhotosBefore" class="fr-job-photos"></div>
@@ -2602,7 +2600,6 @@ function openJobEdit(id) {
   document.getElementById('editJobShowReference').checked = !!job.show_as_reference;
   document.getElementById('editJobMsg').textContent = '';
 
-  document.getElementById('editJobPhotos').innerHTML = renderJobPhotoThumbs(job.photos, job.id);
   document.getElementById('editJobPhotosBefore').innerHTML = renderJobPhotoThumbs(job.photosBefore, job.id);
   document.getElementById('editJobPhotosAfter').innerHTML = renderJobPhotoThumbs(job.photosAfter, job.id);
   updateJobReferenceCheckboxState(job);
@@ -2653,7 +2650,6 @@ async function saveJobEdit() {
   const saveBtn = document.getElementById('saveJobEditBtn');
   if (saveBtn.disabled) return; // already saving — ignore a double-click/tap
   msg.textContent = ''; msg.className = 'fr-save-msg';
-  const newPhotoFiles = document.getElementById('editJobNewPhotos').files;
   const newBeforeFiles = document.getElementById('editJobNewPhotosBefore').files;
   const newAfterFiles = document.getElementById('editJobNewPhotosAfter').files;
 
@@ -2662,7 +2658,6 @@ async function saveJobEdit() {
     // Upload any new photos first — the reference-toggle PATCH below checks
     // for before/after photos server-side, so they need to exist already if
     // this save is the one adding them.
-    await uploadJobPhotos(newPhotoFiles, editingJobId, undefined);
     await uploadJobPhotos(newBeforeFiles, editingJobId, 'before');
     await uploadJobPhotos(newAfterFiles, editingJobId, 'after');
 
@@ -2695,7 +2690,6 @@ async function saveJobEdit() {
 
     // Clear the file inputs now that the photos are uploaded — otherwise a
     // second save (e.g. an impatient re-click) would re-upload the same files.
-    document.getElementById('editJobNewPhotos').value = '';
     document.getElementById('editJobNewPhotosBefore').value = '';
     document.getElementById('editJobNewPhotosAfter').value = '';
 
