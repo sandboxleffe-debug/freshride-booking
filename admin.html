@@ -2033,7 +2033,37 @@ async function deletePromo(id) {
 }
 
 /* ---------------- Regnskap: bilder (komprimering i nettleseren før opplasting) ---------------- */
-function compressImageFile(file, maxDim = 1000, quality = 0.7) {
+// Some phones (notably recent Samsungs) shoot very high-resolution originals
+// and/or save as HEIC/HEIF — the old <img>+dataURL decode path can silently
+// fail or run out of memory on those before it ever reaches the resize step,
+// which is why an upload that works fine from a Pixel can fail on a Samsung.
+// createImageBitmap() decodes straight from the File/Blob (no giant base64
+// detour) and is far more memory-efficient for large originals; we also
+// detect HEIC/HEIF up front since Chrome on Android can't decode it at all.
+async function compressImageFile(file, maxDim = 1000, quality = 0.7) {
+  const name = (file.name || '').toLowerCase();
+  if (file.type === 'image/heic' || file.type === 'image/heif' || name.endsWith('.heic') || name.endsWith('.heif')) {
+    throw new Error('Dette bildeformatet (HEIC/HEIF) støttes ikke av nettleseren. Bytt kameraet til JPEG (vanligvis under Kamera-innstillinger → Bildeformater) og ta bildet på nytt.');
+  }
+
+  if (window.createImageBitmap) {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const ratio = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+      const width = Math.round(bitmap.width * ratio);
+      const height = Math.round(bitmap.height * ratio);
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+      bitmap.close();
+      return canvas.toDataURL('image/jpeg', quality).split(',')[1];
+    } catch (err) {
+      console.error('compressImageFile: createImageBitmap failed, falling back to <img> decode:', err);
+      // fall through to the older method below — some browsers support
+      // createImageBitmap but still choke on a particular file
+    }
+  }
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => {
@@ -2048,10 +2078,10 @@ function compressImageFile(file, maxDim = 1000, quality = 0.7) {
         canvas.getContext('2d').drawImage(img, 0, 0, width, height);
         resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
       };
-      img.onerror = reject;
+      img.onerror = () => reject(new Error('Kunne ikke lese bildet — filen kan være for stor eller i et format telefonen/nettleseren ikke støtter.'));
       img.src = e.target.result;
     };
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error('Kunne ikke lese bildefilen.'));
     reader.readAsDataURL(file);
   });
 }
@@ -2669,7 +2699,7 @@ async function createJob() {
     loadJobsAdmin();
     loadAccountingSummary();
   } catch (e) {
-    msg.textContent = 'Noe gikk galt.'; msg.classList.add('err');
+    msg.textContent = e.message || 'Noe gikk galt.'; msg.classList.add('err');
   } finally {
     saveBtn.disabled = false;
   }
@@ -2752,7 +2782,7 @@ async function uploadPairPhoto(pairIndex, side, inputEl) {
     if (!res.ok) throw new Error();
     await refreshEditingJobPhotoPairs();
   } catch (e) {
-    alert('Klarte ikke å laste opp bilde.');
+    alert(e.message || 'Klarte ikke å laste opp bilde.');
   }
 }
 
@@ -3170,7 +3200,7 @@ async function uploadGalleryImage() {
     msg.textContent = 'Lastet opp ✓'; msg.classList.add('ok');
     loadGalleryAdmin();
   } catch (e) {
-    msg.textContent = 'Klarte ikke å laste opp.'; msg.classList.add('err');
+    msg.textContent = e.message || 'Klarte ikke å laste opp.'; msg.classList.add('err');
   }
 }
 
