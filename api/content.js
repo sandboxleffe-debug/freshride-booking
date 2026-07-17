@@ -103,36 +103,47 @@ export default async function handler(req, res) {
   }
 
   if (type === "references") {
+    // Each element of photo_pairs is one matched camera angle
+    // ({ before, after }, either side may be null). Only pairs with BOTH
+    // sides present are shown — that's what makes the before/after slider
+    // on Resultater meaningful (dragging compares the same angle).
     try {
       const { data: jobs, error } = await supabase
         .from("freshride_jobs")
-        .select("id, car_type, reference_product_name, services, photo_paths_before, photo_paths_after, job_date")
+        .select("id, car_type, reference_product_name, services, photo_pairs, job_date")
         .eq("show_as_reference", true)
         .order("job_date", { ascending: false });
       if (error) throw error;
 
-      const signAll = async paths => {
-        if (!paths?.length) return [];
-        const { data: signed } = await supabase.storage.from("job-photos").createSignedUrls(paths, 3600);
-        return (signed || []).map(s => s.signedUrl).filter(Boolean);
-      };
-
-      const references = [];
+      const allPaths = [];
       for (const j of jobs || []) {
-        const beforePaths = j.photo_paths_before || [];
-        const afterPaths = j.photo_paths_after || [];
-        if (!beforePaths.length || !afterPaths.length) continue;
-        const [before, after] = await Promise.all([signAll(beforePaths), signAll(afterPaths)]);
-        if (!before.length || !after.length) continue;
-        references.push({
-          id: j.id,
-          carType: j.car_type || "",
-          productName: j.reference_product_name || j.services || "",
-          before, // array — may hold multiple angles, not paired 1:1 with `after`
-          after,
+        for (const p of j.photo_pairs || []) {
+          if (p.before && p.after) { allPaths.push(p.before, p.after); }
+        }
+      }
+      let urlByPath = {};
+      if (allPaths.length) {
+        const { data: signed } = await supabase.storage.from("job-photos").createSignedUrls(allPaths, 3600);
+        (signed || []).forEach((s, i) => { if (s.signedUrl) urlByPath[allPaths[i]] = s.signedUrl; });
+      }
+
+      const pairs = [];
+      for (const j of jobs || []) {
+        (j.photo_pairs || []).forEach((p, i) => {
+          if (!p.before || !p.after) return;
+          const before = urlByPath[p.before];
+          const after = urlByPath[p.after];
+          if (!before || !after) return;
+          pairs.push({
+            id: `${j.id}-${i}`,
+            carType: j.car_type || "",
+            productName: j.reference_product_name || j.services || "",
+            before,
+            after,
+          });
         });
       }
-      return res.status(200).json({ references });
+      return res.status(200).json({ pairs });
     } catch (err) {
       console.error("content references error:", err);
       return res.status(500).json({ error: "Klarte ikke å hente referanser" });

@@ -70,40 +70,43 @@
     overflow: hidden;
     background: #0c0b0e;
   }
-  .fr-results-main-img {
-    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-  }
-  @keyframes fr-results-fade-in { from { opacity: 0.25; } to { opacity: 1; } }
-  .fr-results-main-img.fr-results-fade-in { animation: fr-results-fade-in 0.3s ease; }
   .fr-results-frame::after {
     content: "";
     position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 32%);
   }
-  .fr-results-toggle {
-    position: absolute; bottom: 0.9rem; left: 50%; transform: translateX(-50%);
-    display: flex; background: rgba(8,7,10,0.65); backdrop-filter: blur(6px);
-    border: 1px solid rgba(232,185,35,0.4); border-radius: 999px; padding: 0.2rem;
-    z-index: 2;
+  /* Before/after compare slider — two full-size layers, the "before" one
+     clipped by drag position so it reveals more/less of itself over the
+     "after" layer underneath. touch-action: none keeps the horizontal
+     carousel from also trying to scroll while the user drags inside a slide. */
+  .fr-compare-frame {
+    position: absolute; inset: 0; touch-action: none; cursor: ew-resize;
   }
-  .fr-results-toggle button {
-    border: none; background: none; color: var(--fr-text-dark-zone-soft);
-    font-size: 0.78rem; font-weight: 700; padding: 0.42rem 1.1rem; border-radius: 999px; cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
+  .fr-compare-img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    user-select: none; -webkit-user-drag: none; pointer-events: none;
   }
-  .fr-results-toggle button.active { background: var(--fr-gold); color: var(--fr-black); }
-  .fr-results-thumbs {
-    display: flex; gap: 0.45rem; margin-top: 0.65rem;
-    overflow-x: auto; scrollbar-width: none; padding-bottom: 0.15rem;
+  .fr-compare-before { clip-path: inset(0 50% 0 0); }
+  .fr-compare-label {
+    position: absolute; top: 0.6rem; font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0.05em; text-transform: uppercase; padding: 0.25rem 0.6rem;
+    border-radius: 999px; background: rgba(8,7,10,0.55); backdrop-filter: blur(4px);
+    color: var(--fr-text-dark-zone-soft); z-index: 2; pointer-events: none;
   }
-  .fr-results-thumbs::-webkit-scrollbar { display: none; }
-  .fr-results-thumb {
-    width: 3.4rem; height: 3.4rem; flex-shrink: 0; object-fit: cover;
-    border-radius: 9px; border: 2px solid transparent; opacity: 0.5; cursor: pointer;
-    transition: opacity 0.15s ease, border-color 0.15s ease;
+  .fr-compare-label-before { left: 0.6rem; }
+  .fr-compare-label-after { right: 0.6rem; }
+  .fr-compare-divider {
+    position: absolute; top: 0; bottom: 0; left: 50%; width: 2px;
+    background: var(--fr-gold); transform: translateX(-1px); z-index: 3; pointer-events: none;
+    box-shadow: 0 0 10px rgba(232,185,35,0.6);
   }
-  .fr-results-thumb:hover { opacity: 0.85; }
-  .fr-results-thumb.active { opacity: 1; border-color: var(--fr-gold); }
+  .fr-compare-handle {
+    position: absolute; top: 50%; left: 50%; width: 2.6rem; height: 2.6rem;
+    border-radius: 50%; background: var(--fr-gold); color: var(--fr-black);
+    display: flex; align-items: center; justify-content: center;
+    transform: translate(-50%, -50%); z-index: 4; font-size: 1.1rem; font-weight: 700;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4); pointer-events: none;
+  }
   .fr-results-info { text-align: center; margin-top: 1rem; }
   .fr-results-info h2 {
     font-family: var(--font-display); font-weight: 700; font-size: 1.25rem;
@@ -216,77 +219,85 @@ async function loadResults() {
     const res = await fetch('/api/content?type=references');
     if (!res.ok) throw new Error('failed');
     const data = await res.json();
-    const refs = data.references || [];
+    const pairs = data.pairs || [];
 
-    if (!refs.length) {
+    if (!pairs.length) {
       hintEl.classList.add('d-none');
       emptyEl.classList.remove('d-none');
       return;
     }
 
-    // Before/after photos aren't necessarily shot from the same angle, so
-    // each side is browsed independently — toggle Før/Etter, then (if that
-    // side has more than one photo) tap a thumbnail to swap the main image.
+    // Each pair is before/after shot from the same camera angle, so they're
+    // merged into one image with a drag-to-compare slider instead of being
+    // browsed as separate toggled lists.
     function buildSlide(r, i) {
       const wrap = document.createElement('div');
       wrap.className = 'fr-results-slide';
       wrap.dataset.index = i;
       wrap.innerHTML = `
         <div class="fr-results-frame">
-          <img class="fr-results-main-img" loading="lazy" alt="${r.carType || 'FreshRide'}">
-          <div class="fr-results-toggle">
-            <button type="button" data-state="before">Før${r.before.length > 1 ? ` (${r.before.length})` : ''}</button>
-            <button type="button" data-state="after">Etter${r.after.length > 1 ? ` (${r.after.length})` : ''}</button>
+          <div class="fr-compare-frame">
+            <img class="fr-compare-img fr-compare-after" src="${r.after}" loading="lazy" alt="${r.carType || 'FreshRide'} — etter">
+            <img class="fr-compare-img fr-compare-before" src="${r.before}" loading="lazy" alt="${r.carType || 'FreshRide'} — før">
+            <span class="fr-compare-label fr-compare-label-before">Før</span>
+            <span class="fr-compare-label fr-compare-label-after">Etter</span>
+            <div class="fr-compare-divider"></div>
+            <div class="fr-compare-handle">↔</div>
           </div>
         </div>
-        <div class="fr-results-thumbs d-none"></div>
         <div class="fr-results-info">
           <h2>${r.carType || 'FreshRide'}</h2>
           ${r.productName ? `<span class="fr-results-product">${r.productName}</span>` : ''}
         </div>
       `;
 
-      const mainImg = wrap.querySelector('.fr-results-main-img');
-      const thumbsEl = wrap.querySelector('.fr-results-thumbs');
-      const toggleBtns = wrap.querySelectorAll('.fr-results-toggle button');
-      let state = 'before';
-      let idx = 0;
-
-      function render() {
-        const set = state === 'before' ? r.before : r.after;
-        idx = Math.min(idx, set.length - 1);
-        mainImg.src = set[idx];
-        mainImg.classList.remove('fr-results-fade-in');
-        void mainImg.offsetWidth; // restart the fade animation
-        mainImg.classList.add('fr-results-fade-in');
-        toggleBtns.forEach(b => b.classList.toggle('active', b.dataset.state === state));
-
-        if (set.length > 1) {
-          thumbsEl.classList.remove('d-none');
-          thumbsEl.innerHTML = set.map((url, ti) => `<img src="${url}" class="fr-results-thumb${ti === idx ? ' active' : ''}" data-i="${ti}" loading="lazy">`).join('');
-          thumbsEl.querySelectorAll('.fr-results-thumb').forEach(t => {
-            t.addEventListener('click', () => { idx = Number(t.dataset.i); render(); });
-          });
-        } else {
-          thumbsEl.classList.add('d-none');
-          thumbsEl.innerHTML = '';
-        }
-      }
-
-      toggleBtns.forEach(b => b.addEventListener('click', () => {
-        if (b.dataset.state === state) return;
-        state = b.dataset.state; idx = 0; render();
-      }));
-
-      render();
+      setupCompareSlider(wrap.querySelector('.fr-compare-frame'));
       return wrap;
     }
 
-    track.innerHTML = '';
-    refs.forEach((r, i) => track.appendChild(buildSlide(r, i)));
+    // Custom pointer-driven drag (not a native <input type=range>) so the
+    // whole image is draggable, not just a thin handle track.
+    function setupCompareSlider(frame) {
+      const before = frame.querySelector('.fr-compare-before');
+      const divider = frame.querySelector('.fr-compare-divider');
+      const handle = frame.querySelector('.fr-compare-handle');
+      let dragging = false;
 
-    if (refs.length > 1) {
-      dotsEl.innerHTML = refs.map((_, i) => `<span class="fr-results-dot${i === 0 ? ' active' : ''}"></span>`).join('');
+      function setPercent(pct) {
+        pct = Math.max(0, Math.min(100, pct));
+        before.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+        divider.style.left = `${pct}%`;
+        handle.style.left = `${pct}%`;
+      }
+
+      function percentFromClientX(clientX) {
+        const rect = frame.getBoundingClientRect();
+        return ((clientX - rect.left) / rect.width) * 100;
+      }
+
+      frame.addEventListener('pointerdown', e => {
+        dragging = true;
+        frame.setPointerCapture(e.pointerId);
+        setPercent(percentFromClientX(e.clientX));
+      });
+      frame.addEventListener('pointermove', e => {
+        if (!dragging) return;
+        setPercent(percentFromClientX(e.clientX));
+      });
+      frame.addEventListener('pointerup', e => {
+        dragging = false;
+        try { frame.releasePointerCapture(e.pointerId); } catch (err) {}
+      });
+      frame.addEventListener('pointercancel', () => { dragging = false; });
+
+      setPercent(50);
+    }
+
+    track.innerHTML = '';
+    pairs.forEach((r, i) => track.appendChild(buildSlide(r, i)));
+
+    if (pairs.length > 1) {
+      dotsEl.innerHTML = pairs.map((_, i) => `<span class="fr-results-dot${i === 0 ? ' active' : ''}"></span>`).join('');
       const dots = Array.from(dotsEl.children);
       const slides = Array.from(track.children);
       const observer = new IntersectionObserver((entries) => {

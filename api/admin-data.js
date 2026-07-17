@@ -176,13 +176,29 @@ async function handleJobs(req, res, supabase) {
       const { data: signed } = await supabase.storage.from("job-photos").createSignedUrls(paths, 3600);
       return (signed || []).map((s, i) => ({ path: paths[i], url: s.signedUrl })).filter(p => p.url);
     };
+    // photo_pairs is [{before: path|null, after: path|null}, ...] — resolve
+    // both sides to signed URLs while keeping them paired by index.
+    const signPairs = async pairs => {
+      if (!pairs?.length) return [];
+      const allPaths = [];
+      pairs.forEach(p => { if (p.before) allPaths.push(p.before); if (p.after) allPaths.push(p.after); });
+      if (!allPaths.length) return pairs.map(() => ({ before: null, after: null }));
+      const { data: signed } = await supabase.storage.from("job-photos").createSignedUrls(allPaths, 3600);
+      const urlByPath = {};
+      (signed || []).forEach((s, i) => { if (s.signedUrl) urlByPath[allPaths[i]] = s.signedUrl; });
+      return pairs.map(p => ({
+        before: p.before ? { path: p.before, url: urlByPath[p.before] || null } : null,
+        after: p.after ? { path: p.after, url: urlByPath[p.after] || null } : null,
+      }));
+    };
     const jobs = await Promise.all((data || []).map(async job => {
-      const [photos, photosBefore, photosAfter] = await Promise.all([
+      const [photos, photosBefore, photosAfter, photoPairs] = await Promise.all([
         signPaths(job.photo_paths),
         signPaths(job.photo_paths_before),
         signPaths(job.photo_paths_after),
+        signPairs(job.photo_pairs),
       ]);
-      return { ...job, photos, photosBefore, photosAfter };
+      return { ...job, photos, photosBefore, photosAfter, photoPairs };
     }));
 
     const income = (data || []).reduce((sum, j) => sum + Number(j.price_paid || 0), 0);
@@ -215,6 +231,76 @@ async function handleJobs(req, res, supabase) {
       } catch (err) {
         console.error("upload-photo error:", err);
         return res.status(500).json({ error: "Klarte ikke å laste opp bilde" });
+      }
+    }
+
+    // Paired before/after photos — each pair represents one camera angle,
+    // so "matching" happens at upload time (or after, by filling in the
+    // missing side) instead of hoping two separately-uploaded lists happen
+    // to line up. pairIndex === -1 (or omitted) starts a new pair.
+    if (action === "upload-pair-photo") {
+      const { jobId, pairIndex, side, imageBase64, mimeType } = req.body || {};
+      if (!jobId || !imageBase64 || (side !== "before" && side !== "after")) {
+        return res.status(400).json({ error: "Missing jobId, imageBase64, or invalid side" });
+      }
+      try {
+        const buffer = Buffer.from(imageBase64, "base64");
+        const ext = (mimeType || "image/jpeg").split("/")[1] || "jpg";
+        const path = `${jobId}/pair-${Date.now()}.${ext}`;
+        const { error: uploadErr } = await supabase.storage.from("job-photos").upload(path, buffer, {
+          contentType: mimeType || "image/jpeg",
+        });
+        if (uploadErr) throw uploadErr;
+
+        const { data: job, error: getErr } = await supabase.from("freshride_jobs").select("photo_pairs").eq("id", jobId).single();
+        if (getErr) throw getErr;
+        const pairs = job.photo_pairs || [];
+        const idx = (pairIndex === undefined || pairIndex === null || pairIndex === -1) ? -1 : Number(pairIndex);
+        if (idx === -1 || !pairs[idx]) {
+          pairs.push({ before: null, after: null, [side]: path });
+        } else {
+          pairs[idx] = { ...pairs[idx], [side]: path };
+        }
+        const { error: updateErr } = await supabase.from("freshride_jobs").update({ photo_pairs: pairs }).eq("id", jobId);
+        if (updateErr) throw updateErr;
+
+        return res.status(200).json({ ok: true, pairs });
+      } catch (err) {
+        console.error("upload-pair-photo error:", err);
+        return res.status(500).json({ error: "Klarte ikke å laste opp bilde" });
+      }
+    }
+
+    if (action === "delete-pair-photo") {
+      // Clears one side of a pair (keeps the row, e.g. so the other side
+      // can still be replaced) — pass clearWholePair to drop the row too.
+      const { jobId, pairIndex, side, clearWholePair } = req.body || {};
+      if (!jobId || pairIndex === undefined || pairIndex === null) return res.status(400).json({ error: "Missing jobId or pairIndex" });
+      try {
+        const { data: job, error: getErr } = await supabase.from("freshride_jobs").select("photo_pairs").eq("id", jobId).single();
+        if (getErr) throw getErr;
+        const pairs = job.photo_pairs || [];
+        const idx = Number(pairIndex);
+        const pair = pairs[idx];
+        if (!pair) return res.status(404).json({ error: "Fant ikke bildeparet" });
+
+        const pathsToRemove = clearWholePair
+          ? [pair.before, pair.after].filter(Boolean)
+          : [pair[side]].filter(Boolean);
+        if (pathsToRemove.length) await supabase.storage.from("job-photos").remove(pathsToRemove);
+
+        if (clearWholePair) {
+          pairs.splice(idx, 1);
+        } else {
+          pairs[idx] = { ...pair, [side]: null };
+        }
+        const { error: updateErr } = await supabase.from("freshride_jobs").update({ photo_pairs: pairs }).eq("id", jobId);
+        if (updateErr) throw updateErr;
+
+        return res.status(200).json({ ok: true, pairs });
+      } catch (err) {
+        console.error("delete-pair-photo error:", err);
+        return res.status(500).json({ error: "Klarte ikke å slette bilde" });
       }
     }
 
