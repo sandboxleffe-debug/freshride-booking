@@ -48,6 +48,26 @@
     assertEqual(after, before, 'the public calendar must never navigate before the current month');
   });
 
+  test('legend: orange dot is labeled "Delvis ledig", not "Delvis booket"', () => {
+    const text = document.querySelector('.fr-calendar-legend').textContent;
+    assert(text.includes('Delvis ledig'), 'expected "Delvis ledig" in the legend');
+    assert(!text.includes('Delvis booket'), 'the old "Delvis booket" wording should be gone');
+  });
+
+  test('nav rail: "Om FreshRide" label (not "Om meg")', () => {
+    const link = document.querySelector('a[href="about.html"]');
+    assert(!!link, 'expected an about.html nav link');
+    assertEqual(link.getAttribute('title'), 'Om FreshRide');
+    assert(link.textContent.includes('Om FreshRide'));
+  });
+
+  test('phone field: strips non-digits and caps at 8', () => {
+    const el = document.getElementById('phone');
+    el.value = '92-13 39 001abc';
+    el.dispatchEvent(new Event('input'));
+    assertEqual(el.value, '92133900');
+  });
+
   window.fetch = origFetch;
 
   const results = [];

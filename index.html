@@ -81,9 +81,9 @@
     <span class="fr-nav-rail-icon" data-rail-icon="home"></span>
     <span class="fr-nav-rail-label">Forside</span>
   </a>
-  <a href="about.html" class="fr-nav-rail-item" title="Om meg">
+  <a href="about.html" class="fr-nav-rail-item" title="Om FreshRide">
     <span class="fr-nav-rail-icon" data-rail-icon="info"></span>
-    <span class="fr-nav-rail-label">Om meg</span>
+    <span class="fr-nav-rail-label">Om FreshRide</span>
   </a>
   <a href="prices.html" class="fr-nav-rail-item" title="Priser">
     <span class="fr-nav-rail-icon" data-rail-icon="dollarSign"></span>
@@ -167,7 +167,7 @@
 
     <div class="fr-calendar-legend">
       <span class="fr-legend-item"><i class="fr-dot fr-dot-green"></i> Ledige tider</span>
-      <span class="fr-legend-item"><i class="fr-dot fr-dot-orange"></i> Delvis booket</span>
+      <span class="fr-legend-item"><i class="fr-dot fr-dot-orange"></i> Delvis ledig</span>
       <span class="fr-legend-item"><i class="fr-dot fr-dot-red"></i> Fullbooket</span>
     </div>
 
@@ -224,7 +224,7 @@
         </div>
         <div class="mb-2">
           <label for="phone" class="form-label fr-label">📞 Mobilnummer</label>
-          <input id="phone" class="form-control fr-input" placeholder="" inputmode="numeric" />
+          <input id="phone" class="form-control fr-input" type="tel" placeholder="92133900" inputmode="numeric" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
         </div>
         <div class="mb-3" id="carSuggestWrap" style="display:none;">
           <p class="fr-hint mb-1">Velg bilen din (valgfritt):</p>

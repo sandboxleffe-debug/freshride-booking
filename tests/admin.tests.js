@@ -284,6 +284,147 @@
     assertEqual(document.querySelectorAll('#galleryList img.fr-gallery-admin-thumb').length, 2);
   });
 
+  // =========================================================================
+  // Login: loading bar shows while verifying, hides after (success or fail)
+  // =========================================================================
+  test('login: shows the loading bar while pending and hides it afterward', async () => {
+    document.getElementById('loginView').classList.remove('d-none');
+    document.getElementById('adminView').classList.add('d-none');
+    document.getElementById('pw').value = 'whatever';
+    const origFetch = window.fetch;
+    let resolveFetch;
+    window.fetch = () => new Promise(r => { resolveFetch = r; });
+    const loginPromise = login();
+    await new Promise(r => setTimeout(r, 0)); // let login() reach its await
+    const bar = document.getElementById('loginLoadingBar');
+    const btn = document.getElementById('loginBtn');
+    assert(!bar.classList.contains('d-none'), 'loading bar should be visible while the fetch is pending');
+    assert(btn.disabled, 'login button should be disabled while pending');
+    resolveFetch(new Response(JSON.stringify({}), { status: 401 }));
+    await loginPromise;
+    assert(bar.classList.contains('d-none'), 'loading bar should hide once the request settles');
+    assertEqual(btn.disabled, false, 'button should re-enable once the request settles');
+    window.fetch = origFetch;
+    document.getElementById('loginView').classList.add('d-none');
+    document.getElementById('adminView').classList.remove('d-none');
+  });
+
+  // =========================================================================
+  // Oversikt: completed-projects section between Bookinger and Ledige tider
+  // =========================================================================
+  test('oversikt: "Ledige tider" shows only 3 before "vis flere"', () => {
+    window._frJobs = [];
+    const el = document.getElementById('list');
+    el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
+    const openItems = Array.from({ length: 7 }, (_, i) => ({ start: `2026-07-${10 + i}T10:00:00Z` }));
+    listOpenShown = LIST_OPEN_PAGE_SIZE;
+    window._frListOpen = openItems;
+    renderListSection('listOpenSection', openItems, 'open');
+    const rows = document.querySelectorAll('#listOpenSection .fr-list-row');
+    assertEqual(rows.length, 3, 'should show exactly 3 open slots before expanding');
+    assert(!!document.querySelector('#listOpenSection .fr-list-more-btn'), 'expected a "vis flere" button');
+  });
+
+  test('oversikt: renderCompletedSection() shows recent completed jobs, sorted newest first', () => {
+    const el = document.getElementById('list');
+    el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
+    window._frJobs = [
+      { id: 'd1', status: 'draft', job_date: '2026-07-20', customer_name: 'Kladd' },
+      { id: 'j1', status: 'completed', job_date: '2026-07-10', customer_name: 'Eldst', price_paid: 100 },
+      { id: 'j2', status: 'completed', job_date: '2026-07-15', customer_name: 'Nyest', price_paid: 200 },
+    ];
+    renderCompletedSection();
+    const names = Array.from(document.querySelectorAll('#listCompletedSection .fr-list-row-name')).map(el => el.textContent.trim());
+    assertEqual(names, ['Nyest', 'Eldst'], 'draft jobs excluded, newest completed job first');
+  });
+
+  // =========================================================================
+  // Admin calendar: collapse fully-past weeks (matches public calendar)
+  // =========================================================================
+  test('calendar: a fully-past week collapses into a single bar', async () => {
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ days: {} }), { status: 200 }));
+    const now = new Date();
+    // View a month that's fully in the past relative to "today" if we're not
+    // in January, otherwise skip (no fully-past month available to force this).
+    if (now.getMonth() > 0) {
+      calendarViewYear = now.getFullYear();
+      calendarViewMonth = now.getMonth(); // previous month, guaranteed fully past
+      await loadMonthCalendar();
+      const bars = document.querySelectorAll('.fr-admin-cal-week-collapsed');
+      assert(bars.length > 0, 'expected at least one collapsed week bar in a fully-past month');
+    }
+    calendarViewYear = undefined; calendarViewMonth = undefined;
+    await loadMonthCalendar();
+  });
+
+  // =========================================================================
+  // Besøkende i dag: gridlines, total, click-for-value, GA link
+  // =========================================================================
+  test('visitor chart: renders gridlines, total, and updates value on bar click', () => {
+    const days = [
+      { date: '20260710', visitors: 5 },
+      { date: '20260711', visitors: 10 },
+      { date: '20260712', visitors: 3 },
+      { date: '20260713', visitors: 8 },
+      { date: '20260714', visitors: 20 },
+      { date: '20260715', visitors: 1 },
+      { date: '20260716', visitors: 12 },
+    ];
+    renderGaWeekChart(days);
+    const wrap = document.getElementById('gaWeekChart');
+    assertEqual(wrap.querySelectorAll('.fr-ga-gridline').length, 2, 'expected two gridlines (max + half-max)');
+    assertEqual(wrap.querySelectorAll('.fr-ga-bar-col').length, 7);
+    assertEqual(document.getElementById('gaWeekTotal').textContent, `${5+10+3+8+20+1+12} siste 7 dager`);
+
+    const firstBar = wrap.querySelector('.fr-ga-bar-col');
+    firstBar.click();
+    assert(firstBar.classList.contains('fr-ga-bar-active'), 'clicked bar should be marked active');
+    assert(document.getElementById('gaChartSelectedValue').textContent.includes('5 besøkende'), 'expected the clicked day\'s visitor count to be shown');
+  });
+
+  test('visitor chart: GA icon link updates from propertyId', async () => {
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      todayVisitors: 3, todayPageViews: 9, yesterdayVisitors: 2, yesterdayPageViews: 5,
+      last7Days: [{ date: '20260716', visitors: 3 }], propertyId: '123456789',
+    }), { status: 200 }));
+    await loadAnalyticsSummary();
+    window.fetch = origFetch;
+    assert(document.getElementById('gaLink').href.includes('123456789'), 'GA link should deep-link using the returned propertyId');
+  });
+
+  // =========================================================================
+  // Phone fields: digits-only, max 8 characters
+  // =========================================================================
+  test('phone fields: strip non-digits and cap at 8 characters on input', () => {
+    const ids = ['editPhone', 'editJobCustomerPhone', 'custEditPhone', 'testSmsPhoneInput'];
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      assert(!!el, `expected #${id} to exist`);
+      el.value = '92-13 39 001abc';
+      el.dispatchEvent(new Event('input'));
+      assertEqual(el.value, '92133900', `#${id} should strip non-digits and cap at 8 chars`);
+    }
+  });
+
+  // =========================================================================
+  // Kunderegister: multi-line detail rows instead of one long meta line
+  // =========================================================================
+  test('kunderegister: phone/car/job count render as separate detail lines', () => {
+    window._frJobs = [
+      { id: 'j1', customer_number: '9', customer_name: 'Multi Linje', customer_phone: '92133900', status: 'completed', job_date: '2026-07-01' },
+    ];
+    _frCustomerCarsMap = { '9': ['Volvo V60'] };
+    renderCustomersAdmin();
+    const row = Array.from(document.querySelectorAll('.fr-customer-row')).find(r => r.textContent.includes('Multi Linje'));
+    assert(!!row, 'expected a customer row for Multi Linje');
+    const details = row.querySelectorAll('.fr-customer-row-detail');
+    assertEqual(details.length, 3, 'expected phone, car, and job-count as separate lines');
+    assert(details[0].textContent.includes('92133900'));
+    assert(details[1].textContent.includes('Volvo V60'));
+    assert(details[2].textContent.includes('jobb'));
+  });
+
   // ---- Run sequentially, in order, and collect results ----
   const results = [];
   for (const { name, fn } of testList) {

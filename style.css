@@ -834,10 +834,21 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-acc-expense { color: #B0392C; }
 
 /* Small 7-day visitor bar chart under the GA summary */
-.fr-ga-chart { display: flex; align-items: flex-end; gap: 0.4rem; height: 4.2rem; margin-top: 0.85rem; }
-.fr-ga-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 0.3rem; }
-.fr-ga-bar { width: 100%; max-width: 1.4rem; background: var(--fr-gold); border-radius: 4px 4px 2px 2px; min-height: 3px; transition: height 0.3s ease; }
+.fr-ga-icon-link { color: inherit; display: inline-flex; }
+.fr-ga-icon-link:hover { color: var(--fr-gold-deep); }
+.fr-ga-total { font-family: var(--font-display); font-weight: 700; font-size: 1rem; color: var(--fr-gold-deep); }
+.fr-ga-chart-wrap { position: relative; margin-top: 0.85rem; }
+.fr-ga-gridline { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--fr-panel-border); z-index: 0; }
+.fr-ga-gridline span {
+  position: absolute; left: 0; top: -0.85em; font-size: 0.6rem; color: var(--fr-panel-text-faint);
+  background: var(--fr-panel-bg); padding-right: 0.3rem;
+}
+.fr-ga-chart { display: flex; align-items: flex-end; gap: 0.4rem; height: 4.2rem; position: relative; z-index: 1; }
+.fr-ga-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 0.3rem; cursor: pointer; }
+.fr-ga-bar { width: 100%; max-width: 1.4rem; background: var(--fr-gold); border-radius: 4px 4px 2px 2px; min-height: 3px; transition: height 0.3s ease, background 0.15s ease; }
+.fr-ga-bar-col.fr-ga-bar-active .fr-ga-bar { background: var(--fr-gold-deep); }
 .fr-ga-bar-label { font-size: 0.62rem; color: var(--fr-panel-text-faint); }
+.fr-ga-chart-value { font-size: 0.8rem; color: var(--fr-panel-text-soft); margin: 0.5rem 0 0; min-height: 1.1rem; }
 
 /* Admin: job log rows + photo thumbnails */
 .fr-job-row { align-items: flex-start; }
@@ -954,6 +965,12 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-customer-row-body { flex: 1; min-width: 0; }
 .fr-customer-row-name { font-weight: 600; font-size: 0.9rem; color: var(--fr-panel-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fr-customer-row-meta { font-size: 0.78rem; color: var(--fr-panel-text-faint); }
+.fr-customer-row-details { display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.25rem; }
+.fr-customer-row-detail {
+  display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--fr-panel-text-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fr-customer-row-detail svg { width: 0.85em; height: 0.85em; flex-shrink: 0; }
 .fr-customer-chevron { flex-shrink: 0; color: var(--fr-panel-text-faint); display: flex; }
 .fr-customer-chevron svg { width: 1.1em; height: 1.1em; }
 

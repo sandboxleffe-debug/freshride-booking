@@ -113,6 +113,7 @@
   .fr-list-row:hover { border-color: var(--fr-gold); }
   .fr-list-row-when { font-family: var(--font-display); font-weight: 600; font-size: 0.85rem; min-width: 7rem; color: var(--fr-panel-text); }
   .fr-list-row-body { flex: 1; min-width: 0; }
+  .fr-list-row-price { flex-shrink: 0; font-weight: 700; font-size: 0.85rem; color: var(--fr-gold-deep); }
   .fr-list-row-name { font-weight: 600; font-size: 0.9rem; color: var(--fr-panel-text); }
   .fr-list-row-meta { font-size: 0.78rem; color: var(--fr-panel-text-faint); }
   .fr-list-row-code { font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; color: var(--fr-gold-deep); background: var(--fr-gold-soft); padding: 0.1rem 0.4rem; border-radius: 6px; }
@@ -229,6 +230,11 @@
   /* Past days keep their status color (still useful history) but read as
      "done" — a strikethrough on the day number rather than a full grayout. */
   .fr-admin-cal-day.fr-admin-cal-day-past span:first-child { text-decoration: line-through; opacity: 0.6; }
+  .fr-admin-cal-week-collapsed {
+    grid-column: 1 / -1;
+    text-align: center; font-size: 0.72rem; color: var(--fr-panel-text-faint);
+    padding: 0.3rem 0; opacity: 0.7; letter-spacing: 0.02em;
+  }
 
   .fr-calendar-head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; }
   .fr-calendar-head-row .fr-calendar-head { margin-bottom: 0; }
@@ -241,6 +247,12 @@
 
   .fr-login-input { width: 100%; margin-bottom: 0.9rem; }
   .fr-login-error { color: #FF8A7A; font-size: 0.85rem; margin-top: 0.6rem; min-height: 1.1rem; }
+  .fr-login-loading { height: 3px; border-radius: 2px; background: rgba(0,0,0,0.08); overflow: hidden; margin-top: 0.7rem; }
+  .fr-login-loading-fill { height: 100%; width: 35%; background: var(--fr-gold); border-radius: 2px; animation: fr-login-loading-slide 1s ease-in-out infinite; }
+  @keyframes fr-login-loading-slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(285%); }
+  }
 </style>
 </head>
 <body>
@@ -260,8 +272,9 @@
   <div id="loginView" class="fr-panel fr-admin-login">
     <img src="assets/freshride-logo.png" alt="FreshRide" class="fr-login-logo" />
     <p class="fr-label mb-2"><span class="fr-icon" data-fr-icon="lock"></span> PASSORD</p>
-    <input type="password" id="pw" class="form-control fr-input fr-login-input" placeholder="Skriv inn passord" />
-    <button class="btn fr-btn-primary w-100" onclick="login()">Logg inn</button>
+    <input type="password" id="pw" class="form-control fr-input fr-login-input" placeholder="Skriv inn passord" onkeydown="if(event.key==='Enter') login()" />
+    <button class="btn fr-btn-primary w-100" id="loginBtn" onclick="login()">Logg inn</button>
+    <div id="loginLoadingBar" class="fr-login-loading d-none"><div class="fr-login-loading-fill"></div></div>
     <div id="loginError" class="fr-login-error"></div>
   </div>
 
@@ -406,13 +419,20 @@
     <!-- Tab: Regnskap -->
     <div id="tab-accounting" class="fr-tab-panel d-none">
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="users"></span> Besøkende i dag</h2></div>
+        <div class="fr-panel-head fr-panel-head-flex">
+          <h2>
+            <a href="https://analytics.google.com/" target="_blank" rel="noopener" id="gaLink" title="Åpne i Google Analytics" class="fr-ga-icon-link"><span class="fr-icon" data-fr-icon="users"></span></a>
+            Besøkende i dag
+          </h2>
+          <span class="fr-ga-total" id="gaWeekTotal"></span>
+        </div>
         <div class="fr-accounting-summary">
           <div><span class="fr-acc-label">Besøkende</span><span class="fr-acc-value" id="gaVisitors">–</span></div>
           <div><span class="fr-acc-label">Sidevisninger</span><span class="fr-acc-value" id="gaPageViews">–</span></div>
         </div>
         <p class="fr-hint" id="gaTrendHint"></p>
-        <div id="gaWeekChart" class="fr-ga-chart"></div>
+        <div id="gaWeekChart" class="fr-ga-chart-wrap"></div>
+        <p class="fr-ga-chart-value" id="gaChartSelectedValue">Trykk på en søyle for å se antall besøkende den dagen.</p>
       </div>
 
       <div class="fr-panel">
@@ -598,7 +618,7 @@
         <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="bell"></span> Test SMS ("jobben er ferdig")</h2></div>
         <p class="fr-hint">Send meldingen kunder får når du varsler at jobben er ferdig, til ditt eget nummer — for å se nøyaktig hvordan den ser ut.</p>
         <label class="fr-label mt-2">Mobilnummer</label>
-        <input id="testSmsPhoneInput" class="form-control fr-input mb-2" placeholder="92133900" />
+        <input id="testSmsPhoneInput" class="form-control fr-input mb-2" type="tel" inputmode="numeric" maxlength="8" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
         <button class="fr-btn-outline" id="testSmsBtn" onclick="sendTestCompletionSms()">
           <span class="fr-icon" data-fr-icon="bell"></span> Send test-SMS til meg selv
         </button>
@@ -685,7 +705,7 @@
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="phone"></span> Mobilnummer</label>
-          <input id="editPhone" class="form-control fr-input" />
+          <input id="editPhone" class="form-control fr-input" type="tel" inputmode="numeric" maxlength="8" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="droplet"></span> Tjeneste(r)</label>
@@ -742,7 +762,7 @@
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="phone"></span> Mobilnummer</label>
-          <input id="editJobCustomerPhone" class="form-control fr-input" placeholder="92133900" />
+          <input id="editJobCustomerPhone" class="form-control fr-input" type="tel" inputmode="numeric" maxlength="8" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="car"></span> Biltype</label>
@@ -851,7 +871,7 @@
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="phone"></span> Mobilnummer</label>
-          <input id="custEditPhone" class="form-control fr-input" placeholder="92133900" />
+          <input id="custEditPhone" class="form-control fr-input" type="tel" inputmode="numeric" maxlength="8" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
         </div>
         <div class="fr-form-row">
           <label class="fr-label">🚗 Biler</label>
@@ -958,7 +978,13 @@ function authHeaders() { return { 'x-admin-password': getPw() }; }
 async function login() {
   const pw = document.getElementById('pw').value;
   const errEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  const loadingBar = document.getElementById('loginLoadingBar');
+  if (btn.disabled) return; // already logging in — ignore a double-click/tap
   errEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Logger inn …';
+  loadingBar.classList.remove('d-none');
   try {
     const res = await fetch(`/api/admin-overview?days=${currentDays}`, { headers: { 'x-admin-password': pw } });
     if (res.status === 401) { errEl.textContent = 'Feil passord.'; return; }
@@ -967,6 +993,10 @@ async function login() {
     enterAdmin();
   } catch (e) {
     errEl.textContent = 'Noe gikk galt. Prøv igjen.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Logg inn';
+    loadingBar.classList.add('d-none');
   }
 }
 
@@ -1104,12 +1134,6 @@ async function loadMonthCalendar() {
   let startWeekday = firstOfMonth.getDay();
   startWeekday = startWeekday === 0 ? 6 : startWeekday - 1;
 
-  for (let i = 0; i < startWeekday; i++) {
-    const el = document.createElement("div");
-    el.className = "fr-admin-cal-day fr-admin-cal-day-empty";
-    grid.appendChild(el);
-  }
-
   const todayKey = toDateKey(now);
   let dayStatuses = {};
   try {
@@ -1117,24 +1141,52 @@ async function loadMonthCalendar() {
     if (res.ok) { const data = await res.json(); dayStatuses = data.days || {}; }
   } catch (e) {}
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    const cellDate = new Date(year, month - 1, d);
-    const key = toDateKey(cellDate);
-    const cell = document.createElement("div");
-    cell.className = "fr-admin-cal-day";
-    if (key === todayKey) cell.classList.add("fr-admin-cal-day-today");
-    if (cellDate < new Date(now.getFullYear(), now.getMonth(), now.getDate())) cell.classList.add("fr-admin-cal-day-past");
-    const status = dayStatuses[key];
-    if (status) cell.classList.add(`fr-admin-cal-status-${status}`);
-    const num = document.createElement("span");
-    num.textContent = d;
-    cell.appendChild(num);
-    if (status) {
-      const dot = document.createElement("span");
-      dot.className = "fr-admin-cal-dot";
-      cell.appendChild(dot);
+  // Flat list of cells (null = padding), chunked into 7-day weeks so a
+  // fully-past week can collapse to a slim bar — same treatment as the
+  // public booking calendar (index.html).
+  const cells = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month - 1, d));
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  for (let w = 0; w < cells.length; w += 7) {
+    const weekCells = cells.slice(w, w + 7);
+    const realDates = weekCells.filter(Boolean);
+    const isFullyPast = realDates.length > 0 && realDates.every(d => toDateKey(d) < todayKey);
+
+    if (isFullyPast) {
+      const first = realDates[0], last = realDates[realDates.length - 1];
+      const bar = document.createElement("div");
+      bar.className = "fr-admin-cal-week-collapsed";
+      bar.textContent = `${first.getDate()}.–${last.getDate()}. ${MONTH_LABELS[first.getMonth()].slice(0, 3)}`;
+      grid.appendChild(bar);
+      continue;
     }
-    grid.appendChild(cell);
+
+    weekCells.forEach(cellDate => {
+      if (!cellDate) {
+        const el = document.createElement("div");
+        el.className = "fr-admin-cal-day fr-admin-cal-day-empty";
+        grid.appendChild(el);
+        return;
+      }
+      const key = toDateKey(cellDate);
+      const cell = document.createElement("div");
+      cell.className = "fr-admin-cal-day";
+      if (key === todayKey) cell.classList.add("fr-admin-cal-day-today");
+      if (key < todayKey) cell.classList.add("fr-admin-cal-day-past");
+      const status = dayStatuses[key];
+      if (status) cell.classList.add(`fr-admin-cal-status-${status}`);
+      const num = document.createElement("span");
+      num.textContent = cellDate.getDate();
+      cell.appendChild(num);
+      if (status) {
+        const dot = document.createElement("span");
+        dot.className = "fr-admin-cal-dot";
+        cell.appendChild(dot);
+      }
+      grid.appendChild(cell);
+    });
   }
 }
 
@@ -1171,8 +1223,9 @@ function fmtDateShort(iso) {
 }
 
 const LIST_PAGE_SIZE = 5;
+const LIST_OPEN_PAGE_SIZE = 3; // "Ledige tider" is a quick glance, not a browse list — 3 is plenty before "vis flere"
 let listBookedShown = LIST_PAGE_SIZE;
-let listOpenShown = LIST_PAGE_SIZE;
+let listOpenShown = LIST_OPEN_PAGE_SIZE;
 
 function bookedRowHtml(b) {
   return `
@@ -1216,7 +1269,7 @@ function renderListSection(containerId, items, kind) {
 }
 
 function expandListSection(kind) {
-  if (kind === 'booked') listBookedShown += LIST_PAGE_SIZE; else listOpenShown += LIST_PAGE_SIZE;
+  if (kind === 'booked') listBookedShown += LIST_PAGE_SIZE; else listOpenShown += LIST_OPEN_PAGE_SIZE;
   renderListSection(kind === 'booked' ? 'listBookedSection' : 'listOpenSection', kind === 'booked' ? window._frListBooked : window._frListOpen, kind);
 }
 
@@ -1232,16 +1285,43 @@ function renderList(days) {
   window._frListBooked = allBooked;
   window._frListOpen = allOpen;
   listBookedShown = LIST_PAGE_SIZE;
-  listOpenShown = LIST_PAGE_SIZE;
+  listOpenShown = LIST_OPEN_PAGE_SIZE;
 
   if (!allBooked.length && !allOpen.length) {
     el.innerHTML = '<p class="fr-empty-day">Ingen hendelser i valgt periode.</p>';
     return;
   }
 
-  el.innerHTML = `<div id="listBookedSection"></div><div id="listOpenSection"></div>`;
+  el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
   renderListSection('listBookedSection', allBooked, 'booked');
+  renderCompletedSection();
   renderListSection('listOpenSection', allOpen, 'open');
+}
+
+// Recently completed jobs, shown between "Bookinger" and "Ledige tider" —
+// window._frJobs loads in parallel with the overview fetch (see enterAdmin),
+// so this is also called from loadJobsAdmin() in case jobs arrive after the
+// Oversikt list has already rendered once.
+const RECENT_COMPLETED_COUNT = 5;
+function completedRowHtml(j) {
+  return `
+    <div class="fr-list-row" style="cursor:default">
+      <div class="fr-list-row-when">${formatDateNO(j.job_date)}</div>
+      <div class="fr-list-row-body">
+        <div class="fr-list-row-name">${j.customer_name || ''}</div>
+        <div class="fr-list-row-meta">${j.car_type ? j.car_type + ' · ' : ''}${j.services || ''}</div>
+      </div>
+      <div class="fr-list-row-price">kr ${Number(j.price_paid || 0).toLocaleString('no-NO')}</div>
+    </div>
+  `;
+}
+function renderCompletedSection() {
+  const container = document.getElementById('listCompletedSection');
+  if (!container) return; // Oversikt tab hasn't rendered its list yet
+  const jobs = (window._frJobs || []).filter(j => j.status !== 'draft').sort((a, b) => (b.job_date || '').localeCompare(a.job_date || ''));
+  if (!jobs.length) { container.innerHTML = ''; return; }
+  const label = `${frIcon('checkCircle')} Siste fullførte prosjekter`;
+  container.innerHTML = `<div class="fr-list-section-label">${label}</div>${jobs.slice(0, RECENT_COMPLETED_COUNT).map(completedRowHtml).join('')}`;
 }
 
 /* ---------------- Edit booking modal ---------------- */
@@ -2110,6 +2190,10 @@ async function loadAnalyticsSummary() {
     document.getElementById('gaVisitors').textContent = data.todayVisitors.toLocaleString('no-NO');
     document.getElementById('gaPageViews').textContent = data.todayPageViews.toLocaleString('no-NO');
 
+    if (data.propertyId) {
+      document.getElementById('gaLink').href = `https://analytics.google.com/analytics/web/#/p${data.propertyId}/reports/intelligenthome`;
+    }
+
     const hint = document.getElementById('gaTrendHint');
     const { todayVisitors, yesterdayVisitors } = data;
     if (yesterdayVisitors > 0) {
@@ -2130,21 +2214,46 @@ async function loadAnalyticsSummary() {
 }
 
 const GA_DOW_SHORT = ["Sø", "Ma", "Ti", "On", "To", "Fr", "Lø"];
+const GA_MONTHS_SHORT = ["jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des"];
 function renderGaWeekChart(days) {
-  const box = document.getElementById('gaWeekChart');
-  if (!box) return;
+  const wrap = document.getElementById('gaWeekChart');
+  if (!wrap) return;
   const max = Math.max(1, ...days.map(d => d.visitors));
-  box.innerHTML = days.map(d => {
-    const pct = Math.max(4, Math.round((d.visitors / max) * 100));
+  const total = days.reduce((sum, d) => sum + d.visitors, 0);
+  document.getElementById('gaWeekTotal').textContent = `${total.toLocaleString('no-NO')} siste 7 dager`;
+
+  const dayMeta = days.map(d => {
     const y = Number(d.date.slice(0, 4)), m = Number(d.date.slice(4, 6)) - 1, day = Number(d.date.slice(6, 8));
-    const dow = new Date(y, m, day).getDay();
+    return { ...d, dow: new Date(y, m, day).getDay(), day, month: m };
+  });
+
+  const barsHtml = dayMeta.map((d, i) => {
+    const pct = Math.max(4, Math.round((d.visitors / max) * 100));
     return `
-      <div class="fr-ga-bar-col" title="${d.visitors} besøkende">
+      <div class="fr-ga-bar-col" data-i="${i}">
         <div class="fr-ga-bar" style="height:${pct}%"></div>
-        <span class="fr-ga-bar-label">${GA_DOW_SHORT[dow]}</span>
+        <span class="fr-ga-bar-label">${GA_DOW_SHORT[d.dow]}</span>
       </div>
     `;
   }).join('');
+
+  // Two rough gridlines (max + half-max) give a sense of scale without
+  // needing pixel-perfect alignment to the bar baseline.
+  wrap.innerHTML = `
+    <div class="fr-ga-gridline" style="top:0%"><span>${max}</span></div>
+    <div class="fr-ga-gridline" style="top:50%"><span>${Math.round(max / 2)}</span></div>
+    <div class="fr-ga-chart">${barsHtml}</div>
+  `;
+
+  wrap.querySelectorAll('.fr-ga-bar-col').forEach(col => {
+    col.addEventListener('click', () => {
+      wrap.querySelectorAll('.fr-ga-bar-col').forEach(c => c.classList.remove('fr-ga-bar-active'));
+      col.classList.add('fr-ga-bar-active');
+      const d = dayMeta[Number(col.dataset.i)];
+      document.getElementById('gaChartSelectedValue').textContent =
+        `${GA_DOW_SHORT[d.dow]} ${d.day}. ${GA_MONTHS_SHORT[d.month]}: ${d.visitors.toLocaleString('no-NO')} besøkende`;
+    });
+  });
 }
 
 async function loadAccountingSummary() {
@@ -2391,13 +2500,16 @@ function renderCustomersAdmin() {
   }
   list.innerHTML = customers.map(c => {
     const cars = _frCustomerCarsMap[String(c.number)] || [];
-    const carsMeta = cars.length ? ` · 🚗 ${cars.join(', ')}` : '';
     return `
     <div class="fr-customer-row" onclick="openCustomerEdit('${c.number}')">
       <div class="fr-customer-avatar" style="background:${customerAvatarColor(c.number)}">${customerInitials(c.name)}</div>
       <div class="fr-customer-row-body">
         <div class="fr-customer-row-name">${(c.name || '').replace(/</g, '&lt;')} <span class="fr-list-row-code fr-list-row-customer">${formatCustomerId(c.number)}</span></div>
-        <div class="fr-customer-row-meta">${c.jobCount} jobb${c.jobCount === 1 ? '' : 'er'}${c.phone ? ' · ' + c.phone : ''}${carsMeta}</div>
+        <div class="fr-customer-row-details">
+          ${c.phone ? `<div class="fr-customer-row-detail">${frIcon('phone')} ${c.phone}</div>` : ''}
+          ${cars.length ? `<div class="fr-customer-row-detail">${frIcon('car')} ${cars.join(', ')}</div>` : ''}
+          <div class="fr-customer-row-detail">${frIcon('checkCircle')} ${c.jobCount} jobb${c.jobCount === 1 ? '' : 'er'}</div>
+        </div>
       </div>
       <span class="fr-customer-chevron">${frIcon('edit')}</span>
     </div>
@@ -2619,6 +2731,7 @@ async function loadJobsAdmin() {
     populateCustomerDropdown();
     renderJobsList();
     renderCustomersAdmin();
+    renderCompletedSection();
   } catch (e) {
     list.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente jobblogg.</p>';
   }

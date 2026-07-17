@@ -74,5 +74,9 @@ export async function getVisitorSummary() {
     yesterdayVisitors: Number(yesterday?.metricValues?.[0]?.value || 0),
     yesterdayPageViews: Number(yesterday?.metricValues?.[1]?.value || 0),
     last7Days,
+    // Sent along so the admin UI can deep-link straight to this property in
+    // Google Analytics — harmless to expose, this endpoint is already behind
+    // the admin password and the id is only useful to someone with GA access.
+    propertyId: process.env.GA4_PROPERTY_ID || null,
   };
 }
