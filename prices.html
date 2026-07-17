@@ -248,27 +248,30 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <script src="nav-rail.js"></script>
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
 
 const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
 
-const PRICE_ICONS = {
-  droplet: '<path d="M12 2.5C10 5.3 6 10.6 6 14.2a6 6 0 0 0 12 0c0-3.6-4-8.9-6-11.7Z"/>',
-  car: '<path fill-rule="evenodd" d="M5.6 5.5A2 2 0 0 1 7.5 4h9a2 2 0 0 1 1.9 1.5L19.8 11H21a2 2 0 0 1 2 2v4a1 1 0 0 1-1 1h-1.1a2.5 2.5 0 0 1-4.9 0H8a2.5 2.5 0 0 1-4.9 0H2a1 1 0 0 1-1-1v-4a2 2 0 0 1 2-2h1.2L5.6 5.5ZM6.2 10h11.6l-1.3-4H7.5l-1.3 4ZM6 16a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm12 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z" clip-rule="evenodd"/>',
-  diamond: '<path d="M7 3h10l5 6-10 13L2 9Z"/><path d="M2 9h20M7 3l5 6 5-6M12 9v13" stroke="rgba(0,0,0,0.28)" stroke-width="0.6" fill="none"/>',
-  shield: '<path fill-rule="evenodd" d="M12 1.5 4 4.7V11c0 5.6 3.4 9.9 8 11.5 4.6-1.6 8-5.9 8-11.5V4.7L12 1.5Zm-1.3 14.3L6.8 12l1.4-1.4 2.5 2.5 5-5L17.1 9.5l-6.4 6.3Z" clip-rule="evenodd"/>',
-  sparkle: '<path d="M11 2h2v9h9v2h-9v9h-2v-9H2v-2h9V2Z"/>',
-};
+const PRICE_ICON_MAP = { droplet: 'Droplet', car: 'Car', diamond: 'Gem', shield: 'ShieldCheck', sparkle: 'Sparkle' };
+function priceIcon(name) {
+  const nodes = window.lucide?.icons?.[PRICE_ICON_MAP[name] || name];
+  if (!nodes) return '';
+  return nodes.map(([tag, attrs]) => {
+    const attrStr = Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ');
+    return `<${tag} ${attrStr}></${tag}>`;
+  }).join('');
+}
 
 function iconForLabel(label) {
   const l = (label || "").toLowerCase();
-  if (l.includes("premium")) return PRICE_ICONS.diamond;
-  if (l.includes("interior+") || l.includes("interior +")) return PRICE_ICONS.sparkle;
-  if (l.includes("complete")) return PRICE_ICONS.shield;
-  if (l.includes("exterior")) return PRICE_ICONS.car;
-  return PRICE_ICONS.droplet;
+  if (l.includes("premium")) return priceIcon("diamond");
+  if (l.includes("interior+") || l.includes("interior +")) return priceIcon("sparkle");
+  if (l.includes("complete")) return priceIcon("shield");
+  if (l.includes("exterior")) return priceIcon("car");
+  return priceIcon("droplet");
 }
 
 async function loadPrices() {
@@ -292,9 +295,9 @@ async function loadPrices() {
         <div class="fr-price-card-flipper">
           <div class="fr-price-card-face fr-price-card-front">
             <span class="fr-price-card-accent"></span>
-            <svg class="fr-price-card-bgicon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${iconForLabel(s.label)}</svg>
+            <svg class="fr-price-card-bgicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconForLabel(s.label)}</svg>
             <div class="fr-price-card-icon">
-              <svg viewBox="0 0 24 24" fill="currentColor">${iconForLabel(s.label)}</svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconForLabel(s.label)}</svg>
             </div>
             <h3 class="fr-price-card-title">${s.label}</h3>
             ${s.description ? `<p class="fr-price-card-desc--front">${s.description}</p>` : ''}
@@ -303,7 +306,7 @@ async function loadPrices() {
           </div>
           <div class="fr-price-card-face fr-price-card-back">
             <div class="fr-price-card-icon">
-              <svg viewBox="0 0 24 24" fill="currentColor">${iconForLabel(s.label)}</svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconForLabel(s.label)}</svg>
             </div>
             <h3 class="fr-price-card-title">${s.label}</h3>
             ${(s.long_description || s.description) ? `<p class="fr-price-card-desc--back">${s.long_description || s.description}</p>` : ''}

@@ -39,6 +39,12 @@
     el.dispatchEvent(ev);
   }
 
+  test('icons: Lucide loaded and frIcon() renders real SVG content for every mapped name', () => {
+    assert(typeof window.lucide === 'object', 'Lucide failed to load from CDN');
+    const missing = Object.keys(FR_ICON_MAP).filter(name => !frIcon(name).includes('<svg'));
+    assertEqual(missing, [], `frIcon() returned empty output for: ${missing.join(', ')}`);
+  });
+
   test('login screen: shows the FreshRide logo', () => {
     const img = document.querySelector('#loginView .fr-login-logo');
     assert(!!img, 'expected an .fr-login-logo image on the login screen');
