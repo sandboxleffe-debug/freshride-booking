@@ -74,6 +74,31 @@ export async function upsertCustomerCars(supabase, customerNumber, cars) {
   return !error;
 }
 
+// Appends a car to a customer's saved list if it isn't already there
+// (case-insensitive match) — keeps Kunderegister in sync whenever a job's
+// car_type is set, instead of that only happening when someone manually
+// edits the customer's car list. Best-effort: never throws, since this is
+// always a secondary side effect of some other write that already succeeded.
+export async function syncCarToCustomer(supabase, customerNumber, car) {
+  const trimmed = (car || "").toString().trim();
+  if (!customerNumber || !trimmed) return;
+  try {
+    const { data } = await supabase
+      .from("freshride_customers")
+      .select("cars")
+      .eq("customer_number", String(customerNumber))
+      .maybeSingle();
+    const existing = data?.cars || [];
+    const alreadyHas = existing.some(c => String(c).trim().toLowerCase() === trimmed.toLowerCase());
+    if (alreadyHas) return;
+    await supabase
+      .from("freshride_customers")
+      .upsert({ customer_number: String(customerNumber), cars: [...existing, trimmed], updated_at: new Date().toISOString() });
+  } catch (err) {
+    console.error("syncCarToCustomer error:", err);
+  }
+}
+
 export async function getNextCustomerNumber(supabase) {
   const { data } = await supabase.from("freshride_jobs").select("customer_number").not("customer_number", "is", null);
   const nums = (data || []).map(r => Number(r.customer_number)).filter(n => !isNaN(n));
@@ -93,17 +118,36 @@ export async function createDraftJobLog(supabase, { name, phone, services, jobDa
   const match = await findCustomerByPhone(supabase, phone);
   const customer_number = match ? match.customer_number : String(await getNextCustomerNumber(supabase));
 
+  // A returning customer isn't guaranteed to pick/type a car at booking time
+  // (they may skip the suggestion chips) — fall back to whatever's already
+  // on their Kunderegister card so the draft still shows up with a car.
+  let car_type = (car || "").toString().trim();
+  if (!car_type && match) {
+    const { data: existingCustomer } = await supabase
+      .from("freshride_customers")
+      .select("cars")
+      .eq("customer_number", String(customer_number))
+      .maybeSingle();
+    car_type = (existingCustomer?.cars || [])[0] || "";
+  }
+
   const { error } = await supabase.from("freshride_jobs").insert({
     job_date: jobDate,
     customer_name: name,
     customer_phone: phone,
     customer_number,
-    car_type: car || null,
+    car_type: car_type || null,
     services: Array.isArray(services) ? services.join(", ") : (services || ""),
     price_paid: 0,
     status: "draft",
     booking_code: code || null,
   });
   if (error) return { ok: false, reason: "error" };
+
+  // A car typed at booking time that isn't on file yet gets added, so
+  // Kunderegister stays current going forward instead of only reflecting
+  // whatever was last entered manually.
+  if (car_type) await syncCarToCustomer(supabase, customer_number, car_type);
+
   return { ok: true };
 }

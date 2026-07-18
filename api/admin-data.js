@@ -7,7 +7,7 @@
 
 import { getSupabaseAdmin, checkAdminPassword } from "./_lib/supabase.js";
 import { getVisitorSummary } from "./_lib/analytics.js";
-import { upsertCustomerCars } from "./_lib/customers.js";
+import { upsertCustomerCars, syncCarToCustomer } from "./_lib/customers.js";
 import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
@@ -382,6 +382,7 @@ async function handleJobs(req, res, supabase) {
         campaign_price: !!campaign_price,
       }).select().single();
     if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å lagre jobb" }); }
+    if (car_type && customer_number) await syncCarToCustomer(supabase, customer_number, car_type);
     return res.status(200).json({ ok: true, job: data });
   }
 
@@ -417,6 +418,14 @@ async function handleJobs(req, res, supabase) {
 
     const { error } = await supabase.from("freshride_jobs").update(updates).eq("id", id);
     if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å oppdatere jobb" }); }
+
+    if (car_type) {
+      const syncCustomerNumber = customer_number !== undefined
+        ? customer_number
+        : (await supabase.from("freshride_jobs").select("customer_number").eq("id", id).single()).data?.customer_number;
+      if (syncCustomerNumber) await syncCarToCustomer(supabase, syncCustomerNumber, car_type);
+    }
+
     return res.status(200).json({ ok: true });
   }
 
