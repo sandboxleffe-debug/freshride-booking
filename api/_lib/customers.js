@@ -53,6 +53,34 @@ export function lookupCustomerNumber(map, phone) {
   return map.get(normalizePhone(phone)) || null;
 }
 
+// Bulk lookup so the admin overview's "Bookinger" list can show each
+// booking's car — the calendar event itself never stores it (see
+// book-slot.js's requestBody), so this cross-references freshride_jobs by
+// booking_code first (exact, set at booking time) and falls back to phone
+// (for older bookings without a code, or if the code lookup misses).
+export async function buildCarLookupMaps(supabase) {
+  const byCode = new Map();
+  const byPhone = new Map();
+  const { data, error } = await supabase
+    .from("freshride_jobs")
+    .select("booking_code, customer_phone, car_type")
+    .not("car_type", "is", null);
+  if (error || !data) return { byCode, byPhone };
+  for (const row of data) {
+    if (row.booking_code && !byCode.has(row.booking_code)) byCode.set(row.booking_code, row.car_type);
+    const phoneKey = normalizePhone(row.customer_phone);
+    if (phoneKey && !byPhone.has(phoneKey)) byPhone.set(phoneKey, row.car_type);
+  }
+  return { byCode, byPhone };
+}
+
+export function lookupCar(maps, code, phone) {
+  if (code && maps.byCode.has(code)) return maps.byCode.get(code);
+  const phoneKey = normalizePhone(phone);
+  if (phoneKey && maps.byPhone.has(phoneKey)) return maps.byPhone.get(phoneKey);
+  return null;
+}
+
 // Cars are stored separately (freshride_customers) since they're a
 // per-customer attribute, not tied to any one job.
 export async function getCarsByPhone(supabase, phone) {

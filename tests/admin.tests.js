@@ -408,6 +408,17 @@
   });
 
   // =========================================================================
+  // Bookinger list: shows car info when the overview API supplies it
+  // (calendar events themselves never store car — see admin-overview.js)
+  // =========================================================================
+  test('bookedRowHtml: includes the car when present, omits it when absent', () => {
+    const withCar = bookedRowHtml({ start: '2026-07-24T10:00:00Z', name: 'Ola Testesen', phone: '90000001', car: 'VW Golf', services: 'FreshRide Interior', code: 'T01' });
+    assert(withCar.includes('VW Golf'), 'expected the car to appear in the row when present');
+    const withoutCar = bookedRowHtml({ start: '2026-07-24T10:00:00Z', name: 'Kari Testesen', phone: '', car: null, services: 'FreshRide Complete', code: null });
+    assert(!withoutCar.includes('null'), 'a missing car must not leak the literal "null" into the row');
+  });
+
+  // =========================================================================
   // Kunderegister: multi-line detail rows instead of one long meta line
   // =========================================================================
   test('kunderegister: phone/car/job count render as separate detail lines', () => {

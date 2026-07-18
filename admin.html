@@ -1233,7 +1233,7 @@ function bookedRowHtml(b) {
       <div class="fr-list-row-when">${fmtDateShort(b.start)} · ${fmtTime(b.start)}</div>
       <div class="fr-list-row-body">
         <div class="fr-list-row-name">${b.name} ${b.code ? `<span class="fr-list-row-code">${b.code}</span>` : ''}${b.customerNumber ? ` <span class="fr-list-row-code fr-list-row-customer">${formatCustomerId(b.customerNumber)}</span>` : ''}</div>
-        <div class="fr-list-row-meta">${b.phone}${b.services ? ' · ' + b.services : ''}</div>
+        <div class="fr-list-row-meta">${b.phone}${b.car ? ' · ' + b.car : ''}${b.services ? ' · ' + b.services : ''}</div>
       </div>
     </div>
   `;

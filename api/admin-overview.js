@@ -6,7 +6,7 @@
 import { getCalendarClient, CALENDAR_ID } from "./_lib/google-calendar.js";
 import { checkAdminPassword, getSupabaseAdmin } from "./_lib/supabase.js";
 import { getOsloParts, osloWallTimeToUtc } from "./_lib/timezone.js";
-import { buildPhoneCustomerMap, lookupCustomerNumber } from "./_lib/customers.js";
+import { buildPhoneCustomerMap, lookupCustomerNumber, buildCarLookupMaps, lookupCar } from "./_lib/customers.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -27,11 +27,12 @@ export default async function handler(req, res) {
     if (date) {
       const timeMin = osloWallTimeToUtc(date, "00:00").toISOString();
       const timeMax = osloWallTimeToUtc(date, "23:59:59").toISOString();
-      const [{ data }, phoneMap] = await Promise.all([
+      const [{ data }, phoneMap, carMaps] = await Promise.all([
         calendar.events.list({
           calendarId: CALENDAR_ID, timeMin, timeMax, singleEvents: true, orderBy: "startTime",
         }),
         buildPhoneCustomerMap(getSupabaseAdmin()),
+        buildCarLookupMaps(getSupabaseAdmin()),
       ]);
       const available = [], booked = [];
       for (const e of data.items || []) {
@@ -40,14 +41,16 @@ export default async function handler(req, res) {
         } else {
           const parts = (e.summary || "Ukjent").split(" - ");
           const phone = parts[1] || "";
+          const code = e.extendedProperties?.private?.freshride_code || null;
           booked.push({
             id: e.id,
             start: e.start?.dateTime,
             end: e.end?.dateTime,
             name: parts[0] || "Ukjent",
             phone,
-            code: e.extendedProperties?.private?.freshride_code || null,
+            code,
             customerNumber: lookupCustomerNumber(phoneMap, phone),
+            car: lookupCar(carMaps, code, phone),
             services: (e.description || "").replace(/^Tjeneste:\s*/i, ""),
           });
         }
@@ -61,7 +64,7 @@ export default async function handler(req, res) {
     const end = new Date(start);
     end.setDate(end.getDate() + daysAhead);
 
-    const [{ data }, phoneMap] = await Promise.all([
+    const [{ data }, phoneMap, carMaps] = await Promise.all([
       calendar.events.list({
         calendarId: CALENDAR_ID,
         timeMin: start.toISOString(),
@@ -71,6 +74,7 @@ export default async function handler(req, res) {
         maxResults: 2500,
       }),
       buildPhoneCustomerMap(getSupabaseAdmin()),
+      buildCarLookupMaps(getSupabaseAdmin()),
     ]);
 
     const byDate = {};
@@ -99,6 +103,7 @@ export default async function handler(req, res) {
           name: parts[0] || "Ukjent",
           phone,
           customerNumber: lookupCustomerNumber(phoneMap, phone),
+          car: lookupCar(carMaps, code, phone),
           services: (e.description || "").replace(/^Tjeneste:\s*/i, ""),
           location: e.location || "",
         });
