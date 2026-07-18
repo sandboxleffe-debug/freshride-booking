@@ -436,6 +436,56 @@
     assert(details[2].textContent.includes('jobb'));
   });
 
+  // =========================================================================
+  // Kunderegister: per-customer avatar picker (choose between two portraits
+  // or fall back to the colored-initials circle)
+  // =========================================================================
+  test('customerAvatarHtml: renders chosen portrait, falls back to initials when unset', () => {
+    window._frJobs = [
+      { id: 'a1', customer_number: '20', customer_name: 'Avatar Testesen', customer_phone: '90000020', status: 'completed', job_date: '2026-07-01' },
+      { id: 'a2', customer_number: '21', customer_name: 'Uten Bilde', customer_phone: '90000021', status: 'completed', job_date: '2026-07-01' },
+    ];
+    _frCustomerCarsMap = {};
+    _frCustomerAvatarMap = { '20': 'avatar-2' };
+    renderCustomersAdmin();
+    const rowWith = Array.from(document.querySelectorAll('.fr-customer-row')).find(r => r.textContent.includes('Avatar Testesen'));
+    const rowWithout = Array.from(document.querySelectorAll('.fr-customer-row')).find(r => r.textContent.includes('Uten Bilde'));
+    assert(!!rowWith && !!rowWithout, 'expected both customer rows to render');
+    const img = rowWith.querySelector('.fr-customer-avatar-img img');
+    assert(!!img && img.getAttribute('src') === 'assets/avatar-2.png', 'expected customer 20 to render the chosen avatar-2 image');
+    assert(!rowWithout.querySelector('.fr-customer-avatar-img'), 'expected customer 21 (no avatar set) to fall back to the initials circle');
+  });
+
+  test('avatar picker: 3 options in edit modal, click selects it and save PATCHes it', async () => {
+    window._frJobs = [
+      { id: 'a3', customer_number: '22', customer_name: 'Picker Testesen', customer_phone: '90000022', status: 'completed', job_date: '2026-07-01' },
+    ];
+    _frCustomerCarsMap = { '22': ['Skoda Octavia'] };
+    _frCustomerAvatarMap = {};
+    openCustomerEdit('22');
+    const picker = document.getElementById('custEditAvatarPicker');
+    const opts = picker.querySelectorAll('.fr-avatar-option');
+    assertEqual(opts.length, 3, 'expected initials + avatar-1 + avatar-2 as the 3 picker options');
+    assert(opts[0].classList.contains('selected'), 'the initials/"none" option should show as selected when no avatar is chosen yet');
+
+    opts[1].click();
+    assert(picker.querySelectorAll('.fr-avatar-option')[1].classList.contains('selected'), 'clicking avatar-1 should mark it selected');
+
+    const origFetch = window.fetch;
+    let sentBody = null;
+    window.fetch = (url, opts) => {
+      if (String(url).includes('customer-cars') && opts && opts.method === 'PATCH') sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    };
+    try {
+      await saveCustomerEditModal();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assert(!!sentBody, 'expected the customer-cars PATCH to fire on save');
+    assertEqual(sentBody.avatar, 'avatar-1', 'expected the selected avatar key to be sent in the PATCH body');
+  });
+
   // ---- Run sequentially, in order, and collect results ----
   const results = [];
   for (const { name, fn } of testList) {

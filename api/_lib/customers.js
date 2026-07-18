@@ -102,6 +102,17 @@ export async function upsertCustomerCars(supabase, customerNumber, cars) {
   return !error;
 }
 
+// Avatar is saved separately from cars (its own upsert call, omitting the
+// `cars` column) so picking a picture never clobbers the customer's saved
+// car list, and vice versa — PostgREST upsert only touches columns present
+// in the payload.
+export async function upsertCustomerAvatar(supabase, customerNumber, avatar) {
+  const { error } = await supabase
+    .from("freshride_customers")
+    .upsert({ customer_number: String(customerNumber), avatar: avatar || null, updated_at: new Date().toISOString() });
+  return !error;
+}
+
 // Appends a car to a customer's saved list if it isn't already there
 // (case-insensitive match) — keeps Kunderegister in sync whenever a job's
 // car_type is set, instead of that only happening when someone manually

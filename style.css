@@ -962,6 +962,8 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; color: #fff;
 }
+.fr-customer-avatar-img { padding: 0; overflow: hidden; background: var(--fr-panel-bg-2); border: 1px solid var(--fr-panel-border); }
+.fr-customer-avatar-img img { width: 100%; height: 100%; object-fit: cover; }
 .fr-customer-row-body { flex: 1; min-width: 0; }
 .fr-customer-row-name { font-weight: 600; font-size: 0.9rem; color: var(--fr-panel-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fr-customer-row-meta { font-size: 0.78rem; color: var(--fr-panel-text-faint); }
@@ -973,6 +975,18 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-customer-row-detail svg { width: 0.85em; height: 0.85em; flex-shrink: 0; }
 .fr-customer-chevron { flex-shrink: 0; color: var(--fr-panel-text-faint); display: flex; }
 .fr-customer-chevron svg { width: 1.1em; height: 1.1em; }
+
+/* Avatar picker — customer edit modal */
+.fr-avatar-picker { display: flex; gap: 0.7rem; }
+.fr-avatar-option {
+  width: 3.4rem; height: 3.4rem; border-radius: 50%; overflow: hidden; cursor: pointer;
+  border: 2.5px solid transparent; box-shadow: 0 0 0 1px var(--fr-panel-border);
+  display: flex; align-items: center; justify-content: center; transition: border-color 0.15s ease;
+}
+.fr-avatar-option img { width: 100%; height: 100%; object-fit: cover; }
+.fr-avatar-option .fr-customer-avatar { width: 100%; height: 100%; }
+.fr-avatar-option:hover { border-color: var(--fr-gold-soft, var(--fr-gold)); }
+.fr-avatar-option.selected { border-color: var(--fr-gold); box-shadow: 0 0 0 1px var(--fr-gold); }
 
 /* Cars + job history — customer edit modal */
 .fr-cust-car-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }

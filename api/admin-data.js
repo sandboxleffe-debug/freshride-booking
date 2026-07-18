@@ -7,7 +7,7 @@
 
 import { getSupabaseAdmin, checkAdminPassword } from "./_lib/supabase.js";
 import { getVisitorSummary } from "./_lib/analytics.js";
-import { upsertCustomerCars, syncCarToCustomer } from "./_lib/customers.js";
+import { upsertCustomerCars, upsertCustomerAvatar, syncCarToCustomer } from "./_lib/customers.js";
 import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
@@ -451,17 +451,24 @@ async function handleJobs(req, res, supabase) {
 // Cars per customer, keyed by customer_number — not tied to any one job.
 async function handleCustomerCars(req, res, supabase) {
   if (req.method === "GET") {
-    const { data, error } = await supabase.from("freshride_customers").select("customer_number, cars");
+    const { data, error } = await supabase.from("freshride_customers").select("customer_number, cars, avatar");
     if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å hente biler" }); }
     const cars = {};
-    (data || []).forEach(row => { cars[row.customer_number] = row.cars || []; });
-    return res.status(200).json({ cars });
+    const avatars = {};
+    (data || []).forEach(row => { cars[row.customer_number] = row.cars || []; avatars[row.customer_number] = row.avatar || null; });
+    return res.status(200).json({ cars, avatars });
   }
   if (req.method === "PATCH") {
-    const { customer_number, cars } = req.body || {};
+    const { customer_number, cars, avatar } = req.body || {};
     if (!customer_number) return res.status(400).json({ error: "Missing customer_number" });
-    const ok = await upsertCustomerCars(supabase, customer_number, cars);
-    if (!ok) return res.status(500).json({ error: "Klarte ikke å lagre biler" });
+    if (cars !== undefined) {
+      const ok = await upsertCustomerCars(supabase, customer_number, cars);
+      if (!ok) return res.status(500).json({ error: "Klarte ikke å lagre biler" });
+    }
+    if (avatar !== undefined) {
+      const ok = await upsertCustomerAvatar(supabase, customer_number, avatar);
+      if (!ok) return res.status(500).json({ error: "Klarte ikke å lagre avatar" });
+    }
     return res.status(200).json({ ok: true });
   }
   return res.status(405).json({ error: "Method not allowed" });

@@ -870,6 +870,10 @@
           <input id="custEditName" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
+          <label class="fr-label">Avatar</label>
+          <div id="custEditAvatarPicker" class="fr-avatar-picker"></div>
+        </div>
+        <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="phone"></span> Mobilnummer</label>
           <input id="custEditPhone" class="form-control fr-input" type="tel" inputmode="numeric" maxlength="8" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
         </div>
@@ -2490,6 +2494,15 @@ function customerInitials(name) {
   return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
 }
 
+const FR_AVATARS = ['avatar-1', 'avatar-2'];
+function customerAvatarHtml(c) {
+  const avatar = _frCustomerAvatarMap[String(c.number)];
+  if (avatar && FR_AVATARS.includes(avatar)) {
+    return `<div class="fr-customer-avatar fr-customer-avatar-img"><img src="assets/${avatar}.png" alt=""></div>`;
+  }
+  return `<div class="fr-customer-avatar" style="background:${customerAvatarColor(c.number)}">${customerInitials(c.name)}</div>`;
+}
+
 function renderCustomersAdmin() {
   const list = document.getElementById('customersList');
   if (!list) return;
@@ -2502,7 +2515,7 @@ function renderCustomersAdmin() {
     const cars = _frCustomerCarsMap[String(c.number)] || [];
     return `
     <div class="fr-customer-row" onclick="openCustomerEdit('${c.number}')">
-      <div class="fr-customer-avatar" style="background:${customerAvatarColor(c.number)}">${customerInitials(c.name)}</div>
+      ${customerAvatarHtml(c)}
       <div class="fr-customer-row-body">
         <div class="fr-customer-row-name">${(c.name || '').replace(/</g, '&lt;')} <span class="fr-list-row-code fr-list-row-customer">${formatCustomerId(c.number)}</span></div>
         <div class="fr-customer-row-details">
@@ -2518,12 +2531,14 @@ function renderCustomersAdmin() {
 }
 
 let _frCustomerCarsMap = {};
+let _frCustomerAvatarMap = {};
 async function loadCustomerCars() {
   try {
     const res = await fetch('/api/admin-data?resource=customer-cars', { headers: authHeaders() });
     if (res.status === 401) return handleAuthExpired();
     const data = await res.json();
     _frCustomerCarsMap = data.cars || {};
+    _frCustomerAvatarMap = data.avatars || {};
     renderCustomersAdmin();
   } catch (e) { /* silent */ }
 }
@@ -2543,6 +2558,22 @@ function addCustomerCarRow() {
 }
 function collectCustomerCarValues() {
   return Array.from(document.querySelectorAll('#custEditCarsList .fr-cust-car-input')).map(i => i.value.trim()).filter(Boolean);
+}
+
+let _custEditSelectedAvatar = null;
+function selectCustomerAvatar(avatar) {
+  _custEditSelectedAvatar = avatar;
+  renderAvatarPicker();
+}
+function renderAvatarPicker() {
+  const box = document.getElementById('custEditAvatarPicker');
+  const options = [
+    { key: null, html: `<div class="fr-customer-avatar" style="background:${customerAvatarColor(editingCustomerNumber)}">${customerInitials(document.getElementById('custEditName').value)}</div>` },
+    ...FR_AVATARS.map(a => ({ key: a, html: `<img src="assets/${a}.png" alt="">` }))
+  ];
+  box.innerHTML = options.map(o => `
+    <div class="fr-avatar-option${_custEditSelectedAvatar === o.key ? ' selected' : ''}" onclick="selectCustomerAvatar(${o.key ? `'${o.key}'` : 'null'})">${o.html}</div>
+  `).join('');
 }
 
 function renderCustomerHistory(number) {
@@ -2574,6 +2605,8 @@ function openCustomerEdit(number) {
   document.getElementById('custEditTotalSpent').textContent = `kr ${c.totalSpent.toLocaleString('no-NO')}`;
   renderCustomerCarRows(_frCustomerCarsMap[String(c.number)] || []);
   renderCustomerHistory(c.number);
+  _custEditSelectedAvatar = _frCustomerAvatarMap[String(c.number)] || null;
+  renderAvatarPicker();
   document.getElementById('custEditMsg').textContent = ''; document.getElementById('custEditMsg').className = 'fr-save-msg';
   customerEditModal.show();
 }
@@ -2597,9 +2630,10 @@ async function saveCustomerEditModal() {
     await fetch('/api/admin-data?resource=customer-cars', {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_number: newNumber, cars })
+      body: JSON.stringify({ customer_number: newNumber, cars, avatar: _custEditSelectedAvatar })
     });
     _frCustomerCarsMap[String(newNumber)] = cars;
+    _frCustomerAvatarMap[String(newNumber)] = _custEditSelectedAvatar;
     await loadJobsAdmin();
     customerEditModal.hide();
   } catch (e) {
