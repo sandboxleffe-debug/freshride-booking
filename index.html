@@ -236,7 +236,10 @@
         </div>
         <div class="mb-2">
           <label for="discountCodeInput" class="form-label fr-label">🏷️ Rabattkode (valgfritt)</label>
-          <input id="discountCodeInput" class="form-control fr-input" placeholder="F.eks. A7K3M" maxlength="5" style="text-transform:uppercase;" oninput="onDiscountCodeInput(this.value)" />
+          <div class="fr-discount-code-row">
+            <input id="discountCodeInput" class="form-control fr-input" placeholder="F.eks. A7K3M" maxlength="5" style="text-transform:uppercase;" oninput="onDiscountCodeInput(this.value)" />
+            <button type="button" class="fr-btn-outline fr-discount-check-btn" onclick="checkDiscountCode()">Sjekk kode</button>
+          </div>
           <p id="discountCodeHint" class="fr-hint mt-1"></p>
         </div>
         <div id="formError" class="fr-form-error d-none">Fyll inn navn og mobilnummer for å fortsette.</div>
@@ -778,17 +781,50 @@ function onPhoneInputForCarSuggest() {
 document.getElementById('phone').addEventListener('input', onPhoneInputForCarSuggest);
 
 /* ---------------- Discount code (optional) ----------------
-   Validated exactly once — at the moment of booking submission — never
-   live as the customer types. A per-keystroke live check would let anyone
-   brute-force guess codes for free; checking only when they hit "Bekreft
-   booking" ties every guess to an actual booking attempt, which is both
-   rate-limited (book-slot.js) and far more costly to repeat. */
+   Never validated live as the customer types — a per-keystroke check would
+   let anyone brute-force guess codes for free. Instead there's an explicit
+   "Sjekk kode" button that validates the whole typed code in one go, and
+   book() re-validates once more at submission if the button was never
+   clicked (or the code changed since), so it's never checked letter by
+   letter either way. */
+let discountCodeState = { code: '', valid: null, percent: null };
+
 function onDiscountCodeInput(rawValue) {
   const value = rawValue.toUpperCase().replace(/[^A-Z0-9]/g, '');
   const input = document.getElementById('discountCodeInput');
   if (input.value !== value) input.value = value;
+  discountCodeState = { code: '', valid: null, percent: null }; // edited since last check — stale
   document.getElementById('discountCodeHint').textContent = '';
   document.getElementById('discountCodeHint').className = 'fr-hint mt-1';
+}
+
+async function checkDiscountCode() {
+  const hint = document.getElementById('discountCodeHint');
+  const value = document.getElementById('discountCodeInput').value.trim();
+  if (!value) { hint.textContent = ''; hint.className = 'fr-hint mt-1'; return; }
+  if (value.length < 5) {
+    hint.textContent = 'Koden må være 5 tegn.';
+    hint.className = 'fr-hint mt-1 fr-hint-error';
+    return;
+  }
+  hint.textContent = 'Sjekker kode …';
+  hint.className = 'fr-hint mt-1';
+  try {
+    const res = await fetch(`/api/content?type=discount-code&code=${encodeURIComponent(value)}`);
+    const data = await res.json();
+    if (data.valid) {
+      discountCodeState = { code: value, valid: true, percent: data.percent };
+      hint.textContent = `✓ ${data.percent}% rabatt`;
+      hint.className = 'fr-hint mt-1 fr-hint-ok';
+    } else {
+      discountCodeState = { code: value, valid: false, percent: null };
+      hint.textContent = 'Ugyldig eller allerede brukt kode.';
+      hint.className = 'fr-hint mt-1 fr-hint-error';
+    }
+  } catch (e) {
+    hint.textContent = 'Klarte ikke å sjekke koden. Prøv igjen.';
+    hint.className = 'fr-hint mt-1 fr-hint-error';
+  }
 }
 
 /* ---------------- Booking ---------------- */
@@ -816,33 +852,40 @@ async function book() {
   }
   if (hasError) return;
 
-  // The discount code (if any) is validated exactly once, right here —
-  // as part of an actual booking attempt, never while typing.
+  // The discount code (if any) only gets a fresh network check here if it
+  // wasn't already confirmed via the "Sjekk kode" button — either way it's
+  // still exactly one check for the whole typed code, never per keystroke.
   const discountHint = document.getElementById('discountCodeHint');
   const discountCode = document.getElementById('discountCodeInput').value.trim();
   let validatedDiscountCode;
   if (discountCode) {
-    bookBtn.disabled = true;
-    bookBtn.textContent = "Sjekker rabattkode …";
-    try {
-      const checkRes = await fetch(`/api/content?type=discount-code&code=${encodeURIComponent(discountCode)}`);
-      const checkData = await checkRes.json();
-      if (!checkData.valid) {
-        discountHint.textContent = 'Ugyldig eller allerede brukt kode.';
+    if (discountCodeState.code === discountCode && discountCodeState.valid === true) {
+      validatedDiscountCode = discountCode;
+    } else {
+      bookBtn.disabled = true;
+      bookBtn.textContent = "Sjekker rabattkode …";
+      try {
+        const checkRes = await fetch(`/api/content?type=discount-code&code=${encodeURIComponent(discountCode)}`);
+        const checkData = await checkRes.json();
+        if (!checkData.valid) {
+          discountCodeState = { code: discountCode, valid: false, percent: null };
+          discountHint.textContent = 'Ugyldig eller allerede brukt kode.';
+          discountHint.className = 'fr-hint mt-1 fr-hint-error';
+          bookBtn.disabled = false;
+          bookBtn.textContent = "Bekreft booking";
+          return;
+        }
+        discountCodeState = { code: discountCode, valid: true, percent: checkData.percent };
+        validatedDiscountCode = discountCode;
+        discountHint.textContent = `✓ ${checkData.percent}% rabatt`;
+        discountHint.className = 'fr-hint mt-1 fr-hint-ok';
+      } catch (e) {
+        discountHint.textContent = 'Klarte ikke å sjekke rabattkoden. Prøv igjen.';
         discountHint.className = 'fr-hint mt-1 fr-hint-error';
         bookBtn.disabled = false;
         bookBtn.textContent = "Bekreft booking";
         return;
       }
-      validatedDiscountCode = discountCode;
-      discountHint.textContent = `✓ ${checkData.percent}% rabatt`;
-      discountHint.className = 'fr-hint mt-1 fr-hint-ok';
-    } catch (e) {
-      discountHint.textContent = 'Klarte ikke å sjekke rabattkoden. Prøv igjen.';
-      discountHint.className = 'fr-hint mt-1 fr-hint-error';
-      bookBtn.disabled = false;
-      bookBtn.textContent = "Bekreft booking";
-      return;
     }
   }
 
@@ -877,6 +920,7 @@ async function book() {
     document.getElementById("carInput").value = "";
     document.getElementById("discountCodeInput").value = "";
     document.getElementById("discountCodeHint").textContent = "";
+    discountCodeState = { code: '', valid: null, percent: null };
     carSuggestLastPhone = '';
     renderCarSuggestions([]);
     loadSlotsForDate(selected.start.slice(0, 10));

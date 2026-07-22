@@ -1016,6 +1016,11 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-btn-outline:hover { border-color: var(--fr-gold); color: var(--fr-panel-text); }
 .fr-btn-outline:disabled { opacity: 0.5; cursor: default; }
 .fr-btn-outline:disabled:hover { border-color: var(--fr-panel-border); color: var(--fr-panel-text-soft); }
+
+/* Discount code field — input + explicit "Sjekk kode" button side by side */
+.fr-discount-code-row { display: flex; gap: 0.5rem; }
+.fr-discount-code-row .fr-input { flex: 1; min-width: 0; }
+.fr-discount-check-btn { width: auto; white-space: nowrap; flex-shrink: 0; }
 .fr-sms-sent-flag { color: #2E7D32; }
 .fr-cust-history { max-height: 12rem; overflow-y: auto; border: 1px solid var(--fr-panel-border); border-radius: 10px; }
 .fr-cust-history-row {
