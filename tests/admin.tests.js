@@ -640,6 +640,76 @@
     assertEqual(computeServicesBasePrice(''), null);
   });
 
+  // =========================================================================
+  // Completion-SMS reminder (VIKTIG MELDING) — sending "bilen er klar" is a
+  // manual step; these guard both the Oversikt banner and the save-time nag.
+  // =========================================================================
+  test('renderCompletionAlerts: shows the VIKTIG MELDING banner with customer, code, and a dismiss button', () => {
+    renderCompletionAlerts([{ jobId: 'a1', customerName: 'Rabatt Testesen', code: 'A12', endTime: '2026-07-20T10:00:00Z' }]);
+    const box = document.getElementById('completionAlertsBox');
+    assert(!box.classList.contains('d-none'), 'expected the banner to be visible with 1+ alerts');
+    assert(box.textContent.includes('VIKTIG MELDING'), 'expected the heading');
+    assert(box.textContent.includes('Rabatt Testesen') && box.textContent.includes('A12'), 'expected customer name and booking code');
+    assert(!!box.querySelector('.fr-completion-alert-dismiss'), 'expected a dismiss button per alert');
+  });
+
+  test('renderCompletionAlerts: hides the banner entirely when there are zero alerts', () => {
+    renderCompletionAlerts([]);
+    assert(document.getElementById('completionAlertsBox').classList.contains('d-none'), 'no alerts — banner must be hidden, not an empty box');
+  });
+
+  test('saveJobEdit: warns via confirm() when completing a job with no completion SMS sent, and Cancel aborts the save', async () => {
+    window._frJobs = [{ id: 'jSms1', booking_code: 'B99', customer_phone: '90000002', completion_sms_sent_at: null, completion_notice_dismissed: false }];
+    editingJobId = 'jSms1';
+    document.getElementById('editJobCustomerPhone').value = '90000002';
+
+    let confirmMessage = null;
+    window.confirm = (msg) => { confirmMessage = msg; return false; };
+    window.fetch = () => { throw new Error('must not PATCH when the user cancels the warning'); };
+
+    await saveJobEdit();
+    assert(confirmMessage && confirmMessage.includes('SMS'), `expected a confirm() prompt mentioning SMS, got "${confirmMessage}"`);
+  });
+
+  test('saveJobEdit: confirming the warning proceeds with the save', async () => {
+    window._frJobs = [{ id: 'jSms2', booking_code: 'B98', customer_phone: '90000003', completion_sms_sent_at: null, completion_notice_dismissed: false }];
+    editingJobId = 'jSms2';
+    document.getElementById('editJobCustomerPhone').value = '90000003';
+
+    window.confirm = () => true;
+    let patchCalled = false;
+    window.fetch = (url, opts) => {
+      if (opts && opts.method === 'PATCH') patchCalled = true;
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    };
+    await saveJobEdit();
+    assert(patchCalled, 'expected the save to proceed once the admin confirms anyway');
+  });
+
+  test('saveJobEdit: no warning at all once the notice has already been dismissed', async () => {
+    window._frJobs = [{ id: 'jSms3', booking_code: 'B97', customer_phone: '90000004', completion_sms_sent_at: null, completion_notice_dismissed: true }];
+    editingJobId = 'jSms3';
+    document.getElementById('editJobCustomerPhone').value = '90000004';
+
+    let confirmCalled = false;
+    window.confirm = () => { confirmCalled = true; return true; };
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    await saveJobEdit();
+    assert(!confirmCalled, 'a dismissed notice must not re-prompt on save');
+  });
+
+  test('saveJobEdit: no warning when the completion SMS was already sent', async () => {
+    window._frJobs = [{ id: 'jSms4', booking_code: 'B96', customer_phone: '90000005', completion_sms_sent_at: '2026-07-01T10:00:00Z', completion_notice_dismissed: false }];
+    editingJobId = 'jSms4';
+    document.getElementById('editJobCustomerPhone').value = '90000005';
+
+    let confirmCalled = false;
+    window.confirm = () => { confirmCalled = true; return true; };
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    await saveJobEdit();
+    assert(!confirmCalled, 'SMS already sent — must not prompt');
+  });
+
   // ---- Run sequentially, in order, and collect results ----
   const results = [];
   for (const { name, fn } of testList) {

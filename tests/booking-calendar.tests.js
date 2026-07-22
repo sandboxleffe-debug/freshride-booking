@@ -61,6 +61,11 @@
     assert(link.textContent.includes('Om FreshRide'));
   });
 
+  test('success toast: mentions the completion SMS the customer will get later', () => {
+    const text = document.getElementById('successToast').textContent;
+    assert(text.includes('SMS') && text.includes('ferdig') && text.includes('henting'), `expected pickup-SMS notice in the toast, got "${text}"`);
+  });
+
   // =========================================================================
   // Weather (Yr / MET Norway) — a single "emoji + degrees" line at the top
   // of the opened day's slot list (not on the calendar itself — a symbol on
@@ -102,6 +107,71 @@
     await loadSlotsForDate('2026-08-15'); // well beyond MET's ~9-day range
     const line = document.getElementById('slotsWeatherLine');
     assert(line.classList.contains('d-none'), 'a date with no forecast data must not show a stale/blank weather line');
+  });
+
+  test('loadSlotsForDate: the Yr credit sits on its own line, separate from the emoji + degrees', async () => {
+    weatherByDate = { '2026-07-24': { symbol: 'partlycloudy_day', temp: 18 } };
+    window.fetch = (url) => Promise.resolve(new Response(JSON.stringify({ events: [{ id: 'e1', start: '2026-07-24T10:00:00Z', end: '2026-07-24T11:00:00Z' }] }), { status: 200 }));
+    await loadSlotsForDate('2026-07-24');
+    const line = document.getElementById('slotsWeatherLine');
+    assert(line.innerHTML.includes('<br>'), 'expected a line break before the Yr credit');
+    assert(!!line.querySelector('a[href="https://www.yr.no"]'), 'expected the Yr credit link');
+  });
+
+  test('render(): each open slot also shows emoji + degrees for the opened day', async () => {
+    weatherByDate = { '2026-07-24': { symbol: 'rainshowers_day', temp: 14 } };
+    window.fetch = (url) => Promise.resolve(new Response(JSON.stringify({ events: [{ id: 'e1', start: '2026-07-24T10:00:00Z', end: '2026-07-24T11:00:00Z' }] }), { status: 200 }));
+    await loadSlotsForDate('2026-07-24');
+    const weatherSpan = document.querySelector('.fr-slot-weather');
+    assert(!!weatherSpan, 'expected a per-slot weather span');
+    assert(weatherSpan.textContent.includes('🌧️'), `expected the emoji on the slot, got "${weatherSpan.textContent}"`);
+    assert(weatherSpan.textContent.includes('14°'), `expected the temperature on the slot, got "${weatherSpan.textContent}"`);
+  });
+
+  test('render(): no per-slot weather span when there is no forecast for the opened day', async () => {
+    weatherByDate = {};
+    window.fetch = (url) => Promise.resolve(new Response(JSON.stringify({ events: [{ id: 'e1', start: '2026-07-24T10:00:00Z', end: '2026-07-24T11:00:00Z' }] }), { status: 200 }));
+    await loadSlotsForDate('2026-07-24');
+    assert(!document.querySelector('.fr-slot-weather'), 'no forecast data — must not render a blank weather span on the slot');
+  });
+
+  test('renderMiniWeatherStrip: shows 3 days (today + 2) with data, hides entirely with none', () => {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const key = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    weatherByDate = { [key(now)]: { symbol: 'clearsky_day', temp: 20 } };
+    renderMiniWeatherStrip();
+    const box = document.getElementById('miniWeatherStrip');
+    assert(!box.classList.contains('d-none'), 'expected the strip to show when at least one of the 3 days has data');
+    assertEqual(box.querySelectorAll('.fr-mini-weather-day').length, 3, 'expected exactly 3 day columns');
+    assert(box.textContent.includes('Lyngdal'), 'expected the location label');
+    assert(box.textContent.includes('I dag'), 'expected "I dag" for the first column, not a weekday name');
+
+    weatherByDate = {};
+    renderMiniWeatherStrip();
+    assert(box.classList.contains('d-none'), 'strip must hide entirely when none of the 3 days have data');
+  });
+
+  test('service icons: every known label pattern renders a real icon, not empty output', () => {
+    const labels = ['FreshRide Complete', 'FreshRide Exterior', 'FreshRide Interior', 'FreshRide Interior+', 'FreshRide Premium', 'Something Unmapped'];
+    const missing = labels.filter(l => !iconForServiceLabel(l).includes('<svg'));
+    assertEqual(missing, [], `expected every label (including an unmapped fallback) to render an icon, missing for: ${missing.join(', ')}`);
+  });
+
+  test('build version: fetches the latest commit SHA from GitHub and shows it in the footer', async () => {
+    window.fetch = (url) => {
+      assert(String(url).includes('api.github.com/repos/sandboxleffe-debug/freshride-booking/commits/main'), 'expected the public GitHub commits API to be called');
+      return Promise.resolve(new Response(JSON.stringify({ sha: '0920a3f1234567890' }), { status: 200 }));
+    };
+    await loadBuildVersion();
+    assertEqual(document.getElementById('buildVersion').textContent, 'build 0920a3f');
+  });
+
+  test('build version: keeps the static fallback text if the GitHub call fails', async () => {
+    document.getElementById('buildVersion').textContent = 'v1.1.0';
+    window.fetch = () => Promise.resolve(new Response('', { status: 500 }));
+    await loadBuildVersion();
+    assertEqual(document.getElementById('buildVersion').textContent, 'v1.1.0', 'a failed lookup must not blank out or break the footer text');
   });
 
   test('loadSlotsForDate: a day with zero open slots says "Fullbooket dag", not a generic empty message', async () => {

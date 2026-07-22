@@ -66,6 +66,7 @@ function buildBookingText({ name, phone, services, date, time, endTime, code }) 
     `Tid: ${time} – ${endTime}\n` +
     `Tjeneste(r): ${services.join(", ")}\n` +
     `Adresse: ${BUSINESS_ADDRESS}\n` +
+    `Du får en SMS når bilen er ferdig og klar for henting (når det måtte passe).\n` +
     `Legg til i kalender: ${calendarUrl}\n\n` +
     `Spørsmål? Ring William på ${OWNER_PHONE}. Denne SMS-en kan ikke besvares.`
   );

@@ -165,6 +165,8 @@
       <h2>📅 Velg dato</h2>
     </div>
 
+    <div id="miniWeatherStrip" class="fr-mini-weather d-none"></div>
+
     <div class="fr-calendar-legend">
       <span class="fr-legend-item"><i class="fr-dot fr-dot-green"></i> Ledige tider</span>
       <span class="fr-legend-item"><i class="fr-dot fr-dot-orange"></i> Delvis ledig</span>
@@ -276,6 +278,7 @@
       <p class="mb-1" id="toastCode"></p>
       <p class="mb-1">📍 Adresse: Oftebroveien 29, Lyngdal</p>
       <p class="mb-1">Husk å levere bilen før oppgitt tidspunkt.</p>
+      <p class="mb-1">📱 Du får en SMS når bilen er ferdig og klar for henting.</p>
       <p class="mb-1">💳 All betaling skjer via Vipps.</p>
       <p class="mb-1">Ved spørsmål, ring William på:</p>
       <p class="mb-0"><a href="tel:92133900">921 33 900</a></p>
@@ -292,7 +295,7 @@
     <span class="fr-footer-phone">William: <a href="tel:92133900">921 33 900</a></span>
   </div>
   <div class="container">
-    <span class="fr-footer-version">v1.1.0 · build 2026.07.08</span>
+    <span class="fr-footer-version" id="buildVersion">v1.1.0</span>
   </div>
 </footer>
 
@@ -301,6 +304,25 @@
 <script src="nav-rail.js"></script>
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
+
+// Build tag in the footer — no build step on this static site, so instead of
+// a version number someone has to remember to bump by hand, this just asks
+// GitHub which commit is actually live on main and shows its short SHA.
+// Keeps the static "v1.1.0" fallback text if the (public, unauthenticated)
+// API call fails for any reason — offline, rate-limited, etc.
+async function loadBuildVersion() {
+  try {
+    const res = await fetch('https://api.github.com/repos/sandboxleffe-debug/freshride-booking/commits/main');
+    if (!res.ok) return;
+    const data = await res.json();
+    const sha = data.sha?.slice(0, 7);
+    if (!sha) return;
+    document.getElementById('buildVersion').textContent = `build ${sha}`;
+  } catch (e) {
+    // keep the static fallback text
+  }
+}
+loadBuildVersion();
 
 /* ---------------- Hero media (image or looping video, set in admin) ---------------- */
 async function loadHeroMedia() {
@@ -523,6 +545,7 @@ async function loadWeather() {
   } catch (e) {
     // fail silently — booking still works fine without a weather line
   }
+  renderMiniWeatherStrip();
 }
 // Fired once immediately so it's already resolved by the time a customer
 // picks a date, rather than fetching fresh on every single day click.
@@ -541,6 +564,37 @@ function weatherEmoji(symbolCode) {
   if (code === 'fair') return '🌤️';
   if (code === 'clearsky') return '☀️';
   return '';
+}
+
+// Small Yr-style 3-day strip at the top of "Velg dato" — a quick glance at
+// the current week's weather without opening a specific day. Hides itself
+// entirely if none of the next 3 days have forecast data yet.
+function renderMiniWeatherStrip() {
+  const box = document.getElementById('miniWeatherStrip');
+  const now = new Date();
+  const cols = [];
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(now); d.setDate(now.getDate() + i);
+    const w = weatherByDate[toDateKey(d)];
+    const dow = (d.getDay() + 6) % 7; // Monday-first index
+    cols.push({ label: i === 0 ? 'I dag' : DOW_LABELS[dow], weather: w });
+  }
+  if (!cols.some(c => c.weather)) { box.classList.add('d-none'); return; }
+
+  box.innerHTML = `
+    <span class="fr-mini-weather-loc">📍 Lyngdal</span>
+    <div class="fr-mini-weather-days">
+      ${cols.map(c => `
+        <div class="fr-mini-weather-day">
+          <span class="fr-mini-weather-day-label">${c.label}</span>
+          <span class="fr-mini-weather-emoji">${c.weather ? weatherEmoji(c.weather.symbol) : '–'}</span>
+          <span class="fr-mini-weather-temp">${c.weather && typeof c.weather.temp === 'number' ? c.weather.temp + '°' : ''}</span>
+        </div>
+      `).join('')}
+    </div>
+    <span class="fr-mini-weather-credit">Yr, Meteorologisk institutt og NRK</span>
+  `;
+  box.classList.remove('d-none');
 }
 
 let calendarViewYear, calendarViewMonth; // 1-indexed month; defaults to the current month on first load
@@ -677,9 +731,11 @@ async function loadMonthCalendar() {
 loadMonthCalendar();
 
 /* ---------------- Slot loading ---------------- */
+let currentSlotsDate = null;
 async function loadSlotsForDate(date) {
   const hint = document.getElementById("dateHint");
   const slotsBlock = document.getElementById("slotsBlock");
+  currentSlotsDate = date;
 
   hint.textContent = "";
   hint.classList.remove('fr-hint-error');
@@ -693,7 +749,7 @@ async function loadSlotsForDate(date) {
   const weather = weatherByDate[date];
   const emoji = weather ? weatherEmoji(weather.symbol) : '';
   if (weather && emoji && typeof weather.temp === 'number') {
-    weatherLine.innerHTML = `Foreløpig værmelding meldt denne dagen er: ${emoji} ${weather.temp}° <span class="fr-weather-attribution-inline">(<a href="https://www.yr.no" target="_blank" rel="noopener">Yr</a>, Meteorologisk institutt og NRK)</span>`;
+    weatherLine.innerHTML = `Foreløpig værmelding meldt denne dagen er: ${emoji} ${weather.temp}°<br><span class="fr-weather-attribution-inline">(<a href="https://www.yr.no" target="_blank" rel="noopener">Yr</a>, Meteorologisk institutt og NRK)</span>`;
     weatherLine.classList.remove('d-none');
   } else {
     weatherLine.classList.add('d-none');
@@ -722,6 +778,11 @@ function render() {
   }
   setState('results');
 
+  const weather = currentSlotsDate ? weatherByDate[currentSlotsDate] : null;
+  const weatherHtml = weather && typeof weather.temp === 'number' && weatherEmoji(weather.symbol)
+    ? `<span class="fr-slot-weather">${weatherEmoji(weather.symbol)} ${weather.temp}°</span>`
+    : '';
+
   events.forEach(e => {
     const start = new Date(e.start).toLocaleTimeString("no-NO", {hour: "2-digit", minute: "2-digit"});
     const end = new Date(e.end).toLocaleTimeString("no-NO", {hour: "2-digit", minute: "2-digit"});
@@ -731,7 +792,7 @@ function render() {
     btn.className = "fr-slot";
     btn.innerHTML = `
       <span class="fr-slot-time">${start} – ${end}</span>
-      <span class="fr-slot-tag">✅ Ledig</span>
+      <span class="fr-slot-tag">✅ Ledig${weatherHtml}</span>
     `;
     btn.onclick = () => {
       selected = e;
@@ -751,6 +812,28 @@ function render() {
 }
 
 /* ---------------- Services (from Supabase) ---------------- */
+// Same icon heuristic as prices.html — one glance tells you which service is
+// which even with many of them listed (label-based since services are
+// admin-managed free text, not a fixed enum).
+const SERVICE_ICON_MAP = { droplet: 'Droplet', car: 'Car', diamond: 'Gem', shield: 'ShieldCheck', sparkle: 'Sparkle' };
+function serviceIcon(name) {
+  const nodes = window.lucide?.icons?.[SERVICE_ICON_MAP[name] || name];
+  if (!nodes) return '';
+  const inner = nodes.map(([tag, attrs]) => {
+    const attrStr = Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ');
+    return `<${tag} ${attrStr}></${tag}>`;
+  }).join('');
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+}
+function iconForServiceLabel(label) {
+  const l = (label || "").toLowerCase();
+  if (l.includes("premium")) return serviceIcon("diamond");
+  if (l.includes("interior+") || l.includes("interior +")) return serviceIcon("sparkle");
+  if (l.includes("complete")) return serviceIcon("shield");
+  if (l.includes("exterior")) return serviceIcon("car");
+  return serviceIcon("droplet");
+}
+
 async function loadServices() {
   const grid = document.getElementById("serviceGrid");
   try {
@@ -767,7 +850,7 @@ async function loadServices() {
         <input type="checkbox" class="fr-service-checkbox" value="${s.label}" data-price="${s.price_nok || 0}">
         <span class="fr-service-option-body">
           <span class="fr-service-option-top">
-            <span>${s.label}</span>
+            <span class="fr-service-name"><span class="fr-service-icon">${iconForServiceLabel(s.label)}</span>${s.label}</span>
             ${priceHtml}
           </span>
           ${s.description ? `<small class="d-block fr-service-sub">${s.description}</small>` : ""}

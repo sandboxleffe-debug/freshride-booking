@@ -1,6 +1,6 @@
 // api/admin-data.js — admin only (x-admin-password header)
 // All content-management CRUD, routed by ?resource=
-//   about | services | reviews | promotions | prices | jobs | customer-cars | discount-codes | expenses | accounting | gallery
+//   about | services | reviews | promotions | prices | jobs | completion-alerts | customer-cars | discount-codes | expenses | accounting | gallery
 //
 // Merged into one file to stay within Vercel's function count limit
 // (Hobby plan: 12 functions per deployment).
@@ -10,6 +10,7 @@ import { getVisitorSummary } from "./_lib/analytics.js";
 import { upsertCustomerCars, upsertCustomerAvatar, renameCarForCustomer, syncCarToCustomer } from "./_lib/customers.js";
 import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode } from "./_lib/discount-codes.js";
+import { getCalendarClient, CALENDAR_ID, findPastBookingByCode } from "./_lib/google-calendar.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const FEEDBACK_URL = "https://freshride.no/feedback";
@@ -607,6 +608,56 @@ async function handleGallery(req, res, supabase) {
   return res.status(405).json({ error: "Method not allowed" });
 }
 
+/* ---------------- Completion-SMS reminder ---------------- */
+// A job's row only has a date, not the booking's actual start/end time —
+// that lives on the Google Calendar event (matched by booking_code). So
+// "1 hour past the booking's end" has to cross-reference the calendar, not
+// just compare against job_date. Scale here is a handful of candidates at
+// most (jobs missing a completion SMS), so one calendar lookup per
+// candidate is cheap — no need to bulk-list a wide window up front.
+async function handleCompletionAlerts(req, res, supabase) {
+  if (req.method === "GET") {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: candidates, error } = await supabase
+        .from("freshride_jobs")
+        .select("id, customer_name, customer_phone, booking_code, job_date")
+        .is("completion_sms_sent_at", null)
+        .eq("completion_notice_dismissed", false)
+        .not("customer_phone", "is", null)
+        .not("booking_code", "is", null)
+        .lte("job_date", today);
+      if (error) throw error;
+      if (!candidates?.length) return res.status(200).json({ alerts: [] });
+
+      const calendar = getCalendarClient();
+      const cutoff = Date.now() - 60 * 60 * 1000; // 1 hour ago
+
+      const alerts = [];
+      for (const job of candidates) {
+        const event = await findPastBookingByCode(calendar, CALENDAR_ID, job.booking_code).catch(() => null);
+        const endTime = event?.end?.dateTime;
+        if (endTime && new Date(endTime).getTime() < cutoff) {
+          alerts.push({ jobId: job.id, customerName: job.customer_name, code: job.booking_code, endTime });
+        }
+      }
+      alerts.sort((a, b) => new Date(a.endTime) - new Date(b.endTime));
+      return res.status(200).json({ alerts });
+    } catch (err) {
+      console.error("completion-alerts error:", err);
+      return res.status(500).json({ error: "Klarte ikke å sjekke varslingsstatus" });
+    }
+  }
+  if (req.method === "PATCH") {
+    const { jobId } = req.body || {};
+    if (!jobId) return res.status(400).json({ error: "Missing jobId" });
+    const { error } = await supabase.from("freshride_jobs").update({ completion_notice_dismissed: true }).eq("id", jobId);
+    if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å avvise meldingen" }); }
+    return res.status(200).json({ ok: true });
+  }
+  return res.status(405).json({ error: "Method not allowed" });
+}
+
 /* ---------------- Discount codes ---------------- */
 async function handleDiscountCodes(req, res, supabase) {
   if (req.method === "GET") {
@@ -652,6 +703,7 @@ export default async function handler(req, res) {
   if (resource === "reviews") return handleReviews(req, res, supabase);
   if (resource === "promotions") return handlePromotions(req, res, supabase);
   if (resource === "jobs") return handleJobs(req, res, supabase);
+  if (resource === "completion-alerts") return handleCompletionAlerts(req, res, supabase);
   if (resource === "customer-cars") return handleCustomerCars(req, res, supabase);
   if (resource === "discount-codes") return handleDiscountCodes(req, res, supabase);
   if (resource === "expenses") return handleExpenses(req, res, supabase);

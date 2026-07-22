@@ -93,3 +93,25 @@ export async function findBookingByCode(calendar, calendarId, code) {
 
   return (data.items || [])[0] || null;
 }
+
+// Same lookup as findBookingByCode, but with a window reaching further into
+// the past — used for the completion-SMS-forgotten check, where a job could
+// in principle have sat un-notified for weeks, not just the ~7 days
+// findBookingByCode covers (that one's tuned for customers looking up a
+// booking they just made, not for finding an arbitrarily old one).
+export async function findPastBookingByCode(calendar, calendarId, code) {
+  const now = new Date();
+  const timeMin = new Date(now);
+  timeMin.setDate(timeMin.getDate() - 60);
+
+  const { data } = await calendar.events.list({
+    calendarId,
+    timeMin: timeMin.toISOString(),
+    timeMax: now.toISOString(),
+    singleEvents: true,
+    maxResults: 2500,
+    privateExtendedProperty: `freshride_code=${code}`,
+  });
+
+  return (data.items || [])[0] || null;
+}

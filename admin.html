@@ -127,6 +127,30 @@
      #jobsList sits inside a light .fr-panel, where the faint light-on-light
      color above is nearly invisible. Override when nested in a panel. */
   .fr-panel .fr-list-section-label { color: var(--fr-panel-text-soft); }
+  .fr-completion-alerts {
+    background: rgba(198, 59, 46, 0.14); border: 1.5px solid rgba(198, 59, 46, 0.55);
+    border-radius: 12px; padding: 0.9rem 1rem; margin-bottom: 1rem;
+  }
+  .fr-completion-alerts-head {
+    display: flex; align-items: center; gap: 0.5rem; font-weight: 700; color: #C63B2E;
+    font-family: var(--font-display); letter-spacing: 0.02em; margin-bottom: 0.3rem;
+  }
+  .fr-completion-alerts-head svg { width: 1.1em; height: 1.1em; }
+  .fr-completion-alerts-sub { font-size: 0.82rem; color: var(--fr-text-dark-zone-soft); margin-bottom: 0.7rem; }
+  .fr-completion-alert-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap;
+    padding: 0.5rem 0; border-top: 1px solid rgba(198, 59, 46, 0.25);
+  }
+  .fr-completion-alert-row:first-of-type { border-top: none; }
+  .fr-completion-alert-name { font-weight: 600; font-size: 0.88rem; color: var(--fr-text-dark-zone); }
+  .fr-completion-alert-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+  .fr-completion-alert-actions .fr-btn-outline { width: auto; padding: 0.35rem 0.7rem; font-size: 0.78rem; }
+  .fr-completion-alert-dismiss {
+    display: flex; align-items: center; gap: 0.3rem; background: none; border: 1.5px solid rgba(198, 59, 46, 0.4);
+    color: #C63B2E; font-size: 0.78rem; font-weight: 600; padding: 0.35rem 0.7rem; border-radius: 8px; cursor: pointer;
+  }
+  .fr-completion-alert-dismiss svg { width: 0.9em; height: 0.9em; }
+  .fr-completion-alert-dismiss:hover { background: rgba(198, 59, 46, 0.12); }
   .fr-list-more-btn {
     display: block; width: 100%; margin-top: 0.5rem;
     border: 1.5px dashed var(--fr-line-dark-zone); background: none; color: var(--fr-text-dark-zone-soft);
@@ -239,11 +263,13 @@
   .fr-calendar-head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; }
   .fr-calendar-head-row .fr-calendar-head { margin-bottom: 0; }
   .fr-cal-nav-btn {
-    background: none; border: 1.5px solid var(--fr-panel-border); border-radius: 8px;
+    background: var(--fr-gold); border: none; border-radius: 50%;
     width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-    color: var(--fr-panel-text); font-size: 1.4rem; font-weight: 700; line-height: 1; cursor: pointer; flex-shrink: 0;
+    color: var(--fr-black); font-size: 1.3rem; font-weight: 700; line-height: 1; cursor: pointer; flex-shrink: 0;
   }
-  .fr-cal-nav-btn:hover { background: var(--fr-panel-bg-2); color: var(--fr-panel-text); border-color: var(--fr-gold); }
+  .fr-cal-nav-btn:hover { filter: brightness(0.93); }
+  .fr-cal-nav-btn:disabled { background: var(--fr-panel-border); color: var(--fr-panel-text-soft); cursor: default; }
+  .fr-cal-nav-btn:disabled:hover { filter: none; }
 
   .fr-login-input { width: 100%; margin-bottom: 0.9rem; }
   .fr-login-error { color: #FF8A7A; font-size: 0.85rem; margin-top: 0.6rem; min-height: 1.1rem; }
@@ -334,6 +360,8 @@
 
     <!-- Tab: Oversikt -->
     <div id="tab-overview" class="fr-tab-panel">
+      <div id="completionAlertsBox" class="fr-completion-alerts d-none"></div>
+
       <div class="fr-panel">
         <div class="fr-calendar">
           <div class="fr-calendar-head-row">
@@ -984,7 +1012,7 @@ const FR_ICON_MAP = {
   camera: 'Camera', lock: 'Lock', unlock: 'Unlock', save: 'Save', trash: 'Trash2', edit: 'Pencil',
   checkCircle: 'CheckCircle', x: 'X', ban: 'Ban', eye: 'Eye', eyeOff: 'EyeOff',
   trendingUp: 'TrendingUp', trendingDown: 'TrendingDown', barChart: 'BarChart3', bell: 'Bell',
-  home: 'Home', image: 'Image', bag: 'ShoppingBag', tag: 'Tag',
+  home: 'Home', image: 'Image', bag: 'ShoppingBag', tag: 'Tag', alertTriangle: 'TriangleAlert',
 };
 function frIcon(name) {
   const nodes = window.lucide?.icons?.[FR_ICON_MAP[name] || name];
@@ -1356,6 +1384,56 @@ function renderCompletedSection() {
   if (!jobs.length) { container.innerHTML = ''; return; }
   const label = `${frIcon('checkCircle')} Siste fullførte prosjekter`;
   container.innerHTML = `<div class="fr-list-section-label">${label}</div>${jobs.slice(0, RECENT_COMPLETED_COUNT).map(completedRowHtml).join('')}`;
+}
+
+/* ---------------- Completion-SMS reminder (VIKTIG MELDING) ----------------
+   Sending the "bilen er klar" SMS is a manual step (see sendCompletionSms).
+   This flags jobs whose booking ended over an hour ago with no such SMS on
+   record, in case it was simply forgotten. */
+async function loadCompletionAlerts() {
+  try {
+    const res = await fetch('/api/admin-data?resource=completion-alerts', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    renderCompletionAlerts(data.alerts || []);
+  } catch (e) { /* silent — this is a best-effort reminder, not core function */ }
+}
+
+function renderCompletionAlerts(alerts) {
+  const box = document.getElementById('completionAlertsBox');
+  if (!alerts.length) { box.classList.add('d-none'); box.innerHTML = ''; return; }
+  box.classList.remove('d-none');
+  box.innerHTML = `
+    <div class="fr-completion-alerts-head">${frIcon('alertTriangle')} VIKTIG MELDING</div>
+    <p class="fr-completion-alerts-sub">Disse jobbene ble ferdig for over en time siden, men kunden er ikke varslet med SMS ennå.</p>
+    ${alerts.map(a => `
+      <div class="fr-completion-alert-row">
+        <span class="fr-completion-alert-name">${(a.customerName || 'Ukjent').replace(/</g, '&lt;')} <span class="fr-list-row-code">${a.code || ''}</span></span>
+        <div class="fr-completion-alert-actions">
+          <button type="button" class="fr-btn-outline" onclick="openJobEditByCode('${a.code}')">Åpne jobb</button>
+          <button type="button" class="fr-completion-alert-dismiss" onclick="dismissCompletionAlert('${a.jobId}')" title="Jeg har varslet kunden på annen måte">${frIcon('x')} Avvis</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function openJobEditByCode(code) {
+  const job = (window._frJobs || []).find(j => j.booking_code === code);
+  if (job) openJobEdit(job.id);
+}
+
+async function dismissCompletionAlert(jobId) {
+  try {
+    await fetch('/api/admin-data?resource=completion-alerts', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId })
+    });
+    const job = (window._frJobs || []).find(j => j.id === jobId);
+    if (job) job.completion_notice_dismissed = true;
+    loadCompletionAlerts();
+  } catch (e) { /* silent */ }
 }
 
 /* ---------------- Edit booking modal ---------------- */
@@ -2899,6 +2977,7 @@ async function loadJobsAdmin() {
     renderJobsList();
     renderCustomersAdmin();
     renderCompletedSection();
+    loadCompletionAlerts();
   } catch (e) {
     list.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente jobblogg.</p>';
   }
@@ -3190,6 +3269,17 @@ async function saveJobEdit() {
   const msg = document.getElementById('editJobMsg');
   const saveBtn = document.getElementById('saveJobEditBtn');
   if (saveBtn.disabled) return; // already saving — ignore a double-click/tap
+
+  // Saving here always finalizes the job (status: 'completed') — nag once
+  // if the "bilen er klar" SMS hasn't gone out yet, in case it was simply
+  // forgotten. Not a hard block: William may have told the customer some
+  // other way, and can confirm through anyway.
+  const editingJob = (window._frJobs || []).find(j => j.id === editingJobId);
+  const editingPhone = document.getElementById('editJobCustomerPhone').value.trim();
+  if (editingPhone && editingJob && !editingJob.completion_sms_sent_at && !editingJob.completion_notice_dismissed) {
+    if (!confirm('Du har ikke sendt SMS til kunden om at bilen er ferdig. Fortsette å lagre uten å varsle?')) return;
+  }
+
   msg.textContent = ''; msg.className = 'fr-save-msg';
 
   saveBtn.disabled = true;
@@ -3258,6 +3348,7 @@ async function sendCompletionSms() {
     if (job) job.completion_sms_sent_at = data.sentAt;
     renderJobSmsStatus(job || { customer_phone: true, completion_sms_sent_at: data.sentAt });
     renderJobsList();
+    loadCompletionAlerts();
     msg.textContent = 'SMS sendt ✓'; msg.classList.add('ok');
   } catch (e) {
     msg.textContent = e.message || 'Klarte ikke å sende SMS.'; msg.classList.add('err');
