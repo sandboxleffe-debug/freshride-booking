@@ -1021,6 +1021,15 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-discount-code-row { display: flex; gap: 0.5rem; }
 .fr-discount-code-row .fr-input { flex: 1; min-width: 0; }
 .fr-discount-check-btn { width: auto; white-space: nowrap; flex-shrink: 0; }
+
+/* Booking modal: live totalpris - rabatt = totalt breakdown */
+.fr-booking-price-summary {
+  border: 1px solid var(--fr-panel-border); border-radius: 10px; background: var(--fr-panel-bg-2);
+  padding: 0.7rem 0.9rem; margin-bottom: 0.9rem;
+}
+.fr-booking-price-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.88rem; color: var(--fr-panel-text-soft); padding: 0.15rem 0; }
+.fr-booking-price-discount { color: #2E7D32; }
+.fr-booking-price-final { font-weight: 700; font-size: 1rem; color: var(--fr-panel-text); border-top: 1px solid var(--fr-panel-border); margin-top: 0.3rem; padding-top: 0.45rem; }
 .fr-sms-sent-flag { color: #2E7D32; }
 .fr-cust-history { max-height: 12rem; overflow-y: auto; border: 1px solid var(--fr-panel-border); border-radius: 10px; }
 .fr-cust-history-row {

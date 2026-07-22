@@ -119,6 +119,60 @@
     assertEqual(discountCodeState, { code: '', valid: null, percent: null }, 'stale validation must not silently carry over to a different code');
   });
 
+  // =========================================================================
+  // Live totalpris - rabatt = totalt breakdown, so the customer sees the
+  // discount actually apply to the price, not just a "✓ 15% rabatt" hint.
+  // =========================================================================
+  function setUpTwoPricedServices() {
+    document.getElementById('serviceGrid').innerHTML = `
+      <label><input type="checkbox" class="fr-service-checkbox" value="FreshRide Interior" data-price="500"></label>
+      <label><input type="checkbox" class="fr-service-checkbox" value="FreshRide Exterior" data-price="300"></label>
+    `;
+    discountCodeState = { code: '', valid: null, percent: null };
+  }
+
+  test('price summary: hidden when no priced service is selected', () => {
+    setUpTwoPricedServices();
+    updateBookingPriceSummary();
+    assert(document.getElementById('bookingPriceSummary').classList.contains('d-none'), 'expected the summary to stay hidden with nothing selected');
+  });
+
+  test('price summary: shows the plain total with no discount applied', () => {
+    setUpTwoPricedServices();
+    document.querySelector('.fr-service-checkbox[value="FreshRide Interior"]').checked = true;
+    updateBookingPriceSummary();
+    assert(!document.getElementById('bookingPriceSummary').classList.contains('d-none'));
+    assertEqual(document.getElementById('bookingPriceTotal').textContent, 'kr 500');
+    assertEqual(document.getElementById('bookingPriceFinal').textContent, 'kr 500');
+    assert(document.getElementById('bookingPriceDiscountRow').classList.contains('d-none'), 'no discount row without a validated code');
+  });
+
+  test('price summary: applies a validated discount as totalpris - rabatt = totalt', async () => {
+    setUpTwoPricedServices();
+    document.querySelector('.fr-service-checkbox[value="FreshRide Interior"]').checked = true;
+    document.querySelector('.fr-service-checkbox[value="FreshRide Exterior"]').checked = true;
+    onDiscountCodeInput('a7k3m');
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ valid: true, percent: 15 }), { status: 200 }));
+    await checkDiscountCode();
+    assertEqual(document.getElementById('bookingPriceTotal').textContent, 'kr 800', '500 + 300');
+    assert(!document.getElementById('bookingPriceDiscountRow').classList.contains('d-none'));
+    assertEqual(document.getElementById('bookingPriceDiscountValue').textContent, '-kr 120', '15% of 800, rounded');
+    assertEqual(document.getElementById('bookingPriceFinal').textContent, 'kr 680', '800 - 120');
+  });
+
+  test('price summary: editing the code after a check reverts to the plain total', async () => {
+    setUpTwoPricedServices();
+    document.querySelector('.fr-service-checkbox[value="FreshRide Interior"]').checked = true;
+    onDiscountCodeInput('a7k3m');
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ valid: true, percent: 15 }), { status: 200 }));
+    await checkDiscountCode();
+    assert(!document.getElementById('bookingPriceDiscountRow').classList.contains('d-none'), 'sanity: discount row visible after a valid check');
+
+    onDiscountCodeInput('a7k3x'); // customer changes the code afterward
+    assert(document.getElementById('bookingPriceDiscountRow').classList.contains('d-none'), 'discount row must hide once the validated code no longer matches what is typed');
+    assertEqual(document.getElementById('bookingPriceFinal').textContent, 'kr 500', 'must fall back to the plain total, not keep the stale discounted one');
+  });
+
   function setUpValidBookingForm() {
     document.getElementById('serviceGrid').innerHTML = '<label><input type="checkbox" class="fr-service-checkbox" value="FreshRide Interior" checked></label>';
     document.getElementById('name').value = 'Ola Testesen';

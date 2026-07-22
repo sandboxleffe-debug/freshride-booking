@@ -242,6 +242,11 @@
           </div>
           <p id="discountCodeHint" class="fr-hint mt-1"></p>
         </div>
+        <div id="bookingPriceSummary" class="fr-booking-price-summary d-none">
+          <div class="fr-booking-price-row"><span>Totalpris</span><span id="bookingPriceTotal">kr 0</span></div>
+          <div class="fr-booking-price-row fr-booking-price-discount d-none" id="bookingPriceDiscountRow"><span id="bookingPriceDiscountLabel">Rabatt</span><span id="bookingPriceDiscountValue">-kr 0</span></div>
+          <div class="fr-booking-price-row fr-booking-price-final"><span>Å betale</span><span id="bookingPriceFinal">kr 0</span></div>
+        </div>
         <div id="formError" class="fr-form-error d-none">Fyll inn navn og mobilnummer for å fortsette.</div>
       </div>
       <div class="modal-footer border-0">
@@ -711,7 +716,7 @@ async function loadServices() {
       label.className = "fr-service-option";
       const priceHtml = s.price_nok ? `<span class="fr-service-price">kr ${Number(s.price_nok).toLocaleString('no-NO')}</span>` : "";
       label.innerHTML = `
-        <input type="checkbox" class="fr-service-checkbox" value="${s.label}">
+        <input type="checkbox" class="fr-service-checkbox" value="${s.label}" data-price="${s.price_nok || 0}">
         <span class="fr-service-option-body">
           <span class="fr-service-option-top">
             <span>${s.label}</span>
@@ -726,6 +731,7 @@ async function loadServices() {
     grid.querySelectorAll(".fr-service-checkbox").forEach(cb => {
       cb.addEventListener("change", () => {
         cb.closest(".fr-service-option").classList.toggle("fr-service-checked", cb.checked);
+        updateBookingPriceSummary();
       });
     });
   } catch (e) {
@@ -796,12 +802,13 @@ function onDiscountCodeInput(rawValue) {
   discountCodeState = { code: '', valid: null, percent: null }; // edited since last check — stale
   document.getElementById('discountCodeHint').textContent = '';
   document.getElementById('discountCodeHint').className = 'fr-hint mt-1';
+  updateBookingPriceSummary();
 }
 
 async function checkDiscountCode() {
   const hint = document.getElementById('discountCodeHint');
   const value = document.getElementById('discountCodeInput').value.trim();
-  if (!value) { hint.textContent = ''; hint.className = 'fr-hint mt-1'; return; }
+  if (!value) { hint.textContent = ''; hint.className = 'fr-hint mt-1'; updateBookingPriceSummary(); return; }
   if (value.length < 5) {
     hint.textContent = 'Koden må være 5 tegn.';
     hint.className = 'fr-hint mt-1 fr-hint-error';
@@ -824,6 +831,36 @@ async function checkDiscountCode() {
   } catch (e) {
     hint.textContent = 'Klarte ikke å sjekke koden. Prøv igjen.';
     hint.className = 'fr-hint mt-1 fr-hint-error';
+  }
+  updateBookingPriceSummary();
+}
+
+// Reflects the checked services (and, once confirmed, the discount code) as
+// a totalpris - rabatt = totalt breakdown, so the customer can see the
+// discount actually apply rather than just trusting the "✓ 15% rabatt" text.
+function updateBookingPriceSummary() {
+  const checked = document.querySelectorAll('.fr-service-checkbox:checked');
+  const total = Array.from(checked).reduce((sum, cb) => sum + Number(cb.dataset.price || 0), 0);
+  const box = document.getElementById('bookingPriceSummary');
+
+  if (!checked.length || total <= 0) {
+    box.classList.add('d-none');
+    return;
+  }
+  box.classList.remove('d-none');
+  document.getElementById('bookingPriceTotal').textContent = `kr ${total.toLocaleString('no-NO')}`;
+
+  const discountRow = document.getElementById('bookingPriceDiscountRow');
+  const finalEl = document.getElementById('bookingPriceFinal');
+  if (discountCodeState.valid === true) {
+    const discount = Math.round(total * (discountCodeState.percent / 100));
+    document.getElementById('bookingPriceDiscountLabel').textContent = `Rabatt (${discountCodeState.code}, -${discountCodeState.percent}%)`;
+    document.getElementById('bookingPriceDiscountValue').textContent = `-kr ${discount.toLocaleString('no-NO')}`;
+    discountRow.classList.remove('d-none');
+    finalEl.textContent = `kr ${(total - discount).toLocaleString('no-NO')}`;
+  } else {
+    discountRow.classList.add('d-none');
+    finalEl.textContent = `kr ${total.toLocaleString('no-NO')}`;
   }
 }
 
@@ -871,6 +908,7 @@ async function book() {
           discountCodeState = { code: discountCode, valid: false, percent: null };
           discountHint.textContent = 'Ugyldig eller allerede brukt kode.';
           discountHint.className = 'fr-hint mt-1 fr-hint-error';
+          updateBookingPriceSummary();
           bookBtn.disabled = false;
           bookBtn.textContent = "Bekreft booking";
           return;
@@ -879,6 +917,7 @@ async function book() {
         validatedDiscountCode = discountCode;
         discountHint.textContent = `✓ ${checkData.percent}% rabatt`;
         discountHint.className = 'fr-hint mt-1 fr-hint-ok';
+        updateBookingPriceSummary();
       } catch (e) {
         discountHint.textContent = 'Klarte ikke å sjekke rabattkoden. Prøv igjen.';
         discountHint.className = 'fr-hint mt-1 fr-hint-error';
@@ -921,6 +960,7 @@ async function book() {
     document.getElementById("discountCodeInput").value = "";
     document.getElementById("discountCodeHint").textContent = "";
     discountCodeState = { code: '', valid: null, percent: null };
+    updateBookingPriceSummary();
     carSuggestLastPhone = '';
     renderCarSuggestions([]);
     loadSlotsForDate(selected.start.slice(0, 10));
