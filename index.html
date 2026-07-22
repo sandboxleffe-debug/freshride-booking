@@ -179,6 +179,7 @@
       </div>
       <div class="fr-calendar-grid" id="calendarGrid"></div>
     </div>
+    <p class="fr-weather-attribution">Værvarsel fra <a href="https://www.yr.no" target="_blank" rel="noopener">Yr</a>, levert av Meteorologisk institutt og NRK</p>
 
     <div id="dateHint" class="fr-hint mt-2"></div>
 
@@ -506,6 +507,39 @@ function formatDateLabel(key) {
 // which move every year) — "M-D" keys. Closed days, same as Sundays.
 const NO_FIXED_HOLIDAYS = new Set(["1-1", "5-1", "5-17", "12-25", "12-26"]);
 
+/* ---------------- Weather (Yr / MET Norway, via our own /api/weather proxy) ---------------- */
+let weatherByDate = {};
+async function loadWeather() {
+  try {
+    const res = await fetch('/api/weather');
+    if (res.ok) {
+      const data = await res.json();
+      weatherByDate = data.days || {};
+    }
+  } catch (e) {
+    // fail silently — calendar still works fine without weather icons
+  }
+}
+// Fired once immediately (in parallel with everything else on the page),
+// then awaited inside loadMonthCalendar() so the very first render doesn't
+// race the weather fetch and skip the icons for that pass.
+const weatherReady = loadWeather();
+
+function weatherEmoji(symbolCode) {
+  if (!symbolCode) return '';
+  const code = symbolCode.replace(/_day|_night|_polartwilight/, '');
+  if (code.includes('thunder')) return '⛈️';
+  if (code.includes('fog')) return '🌫️';
+  if (code.includes('sleet')) return '🌨️';
+  if (code.includes('snow')) return '❄️';
+  if (code.includes('rain')) return '🌧️';
+  if (code === 'cloudy') return '☁️';
+  if (code === 'partlycloudy') return '⛅';
+  if (code === 'fair') return '🌤️';
+  if (code === 'clearsky') return '☀️';
+  return '';
+}
+
 let calendarViewYear, calendarViewMonth; // 1-indexed month; defaults to the current month on first load
 
 function changeCalendarMonth(delta) {
@@ -521,6 +555,7 @@ function changeCalendarMonth(delta) {
 }
 
 async function loadMonthCalendar() {
+  await weatherReady; // avoid a first-render race where weatherByDate is still empty
   const now = new Date();
   if (calendarViewYear === undefined) { calendarViewYear = now.getFullYear(); calendarViewMonth = now.getMonth() + 1; }
   const year = calendarViewYear;
@@ -618,6 +653,14 @@ async function loadMonthCalendar() {
       const num = document.createElement("span");
       num.textContent = cellDate.getDate();
       cell.appendChild(num);
+
+      const emoji = !isPast ? weatherEmoji(weatherByDate[key]) : '';
+      if (emoji) {
+        const weatherEl = document.createElement("span");
+        weatherEl.className = "fr-day-weather";
+        weatherEl.textContent = emoji;
+        cell.appendChild(weatherEl);
+      }
 
       if (status && !isClosed) {
         const dot = document.createElement("span");
