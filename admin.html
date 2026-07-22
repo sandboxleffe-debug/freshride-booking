@@ -643,12 +643,15 @@
       </div>
 
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="bell"></span> Test SMS ("jobben er ferdig")</h2></div>
-        <p class="fr-hint">Send meldingen kunder får når du varsler at jobben er ferdig, til ditt eget nummer — for å se nøyaktig hvordan den ser ut.</p>
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="bell"></span> Test SMS til kunder</h2></div>
+        <p class="fr-hint">Send de faktiske meldingene kunder får, til ditt eget nummer — for å se nøyaktig hvordan de ser ut akkurat nå.</p>
         <label class="fr-label mt-2">Mobilnummer</label>
         <input id="testSmsPhoneInput" class="form-control fr-input mb-2" type="tel" inputmode="numeric" maxlength="8" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
+        <button class="fr-btn-outline mb-2" id="testBookingSmsBtn" onclick="sendTestBookingSms()">
+          <span class="fr-icon" data-fr-icon="calendar"></span> Test: bekreftelse ved booking
+        </button>
         <button class="fr-btn-outline" id="testSmsBtn" onclick="sendTestCompletionSms()">
-          <span class="fr-icon" data-fr-icon="bell"></span> Send test-SMS til meg selv
+          <span class="fr-icon" data-fr-icon="bell"></span> Test: "jobben er ferdig"
         </button>
         <div id="testSmsMsg" class="fr-save-msg"></div>
       </div>
@@ -3636,8 +3639,11 @@ async function saveOwnerSmsPhone(value) {
   }
 }
 
-async function sendTestCompletionSms() {
-  const btn = document.getElementById('testSmsBtn');
+// Shared by every "Test SMS" button — sends the real message-building
+// function's exact current output, so a wording change is always visible
+// here without needing a separate copy to keep in sync.
+async function sendTestSms(action, btnId) {
+  const btn = document.getElementById(btnId);
   const msg = document.getElementById('testSmsMsg');
   const phone = document.getElementById('testSmsPhoneInput').value.trim();
   msg.textContent = ''; msg.className = 'fr-save-msg';
@@ -3647,7 +3653,7 @@ async function sendTestCompletionSms() {
     const res = await fetch('/api/admin-data?resource=jobs', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'send-test-completion-sms', phone })
+      body: JSON.stringify({ action, phone })
     });
     if (res.status === 401) return handleAuthExpired();
     const data = await res.json().catch(() => ({}));
@@ -3659,6 +3665,8 @@ async function sendTestCompletionSms() {
     btn.disabled = false;
   }
 }
+function sendTestCompletionSms() { return sendTestSms('send-test-completion-sms', 'testSmsBtn'); }
+function sendTestBookingSms() { return sendTestSms('send-test-booking-sms', 'testBookingSmsBtn'); }
 
 async function saveAbout() {
   const heading = document.getElementById('aboutHeadingInput').value.trim();

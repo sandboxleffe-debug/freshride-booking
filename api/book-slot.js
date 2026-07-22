@@ -18,9 +18,9 @@ import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
 import { createDraftJobLog } from "./_lib/customers.js";
 import { redeemDiscountCode } from "./_lib/discount-codes.js";
+import { buildBookingText } from "./_lib/sms-templates.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
-const SITE_URL = "https://freshride.no";
 const OWNER_PHONE = "921 33 900";
 
 // Estimated duration per service, in minutes. Used to shrink the booked
@@ -51,25 +51,6 @@ function formatNorwegian(dateTimeStr) {
   const date = `${p.day} ${NO_MONTHS[p.month - 1]} ${p.year}`;
   const time = `${p.hour}:${p.minute}`;
   return { date, time };
-}
-
-// Shared plain-text body used for both the SMS and the owner email, so the
-// two notifications always read identically.
-function buildBookingText({ name, phone, services, date, time, endTime, code }) {
-  const calendarUrl = `${SITE_URL}/api/calendar-invite?code=${encodeURIComponent(code)}&phone=${encodeURIComponent(phone)}`;
-  return (
-    `Ny booking mottatt\n\n` +
-    `Kode: ${code}\n` +
-    `Navn: ${name}\n` +
-    `Mobil: ${phone}\n` +
-    `Dato: ${date}\n` +
-    `Tid: ${time} – ${endTime}\n` +
-    `Tjeneste(r): ${services.join(", ")}\n` +
-    `Adresse: ${BUSINESS_ADDRESS}\n` +
-    `Du får en SMS når bilen er ferdig og klar for henting (når det måtte passe).\n` +
-    `Legg til i kalender: ${calendarUrl}\n\n` +
-    `Spørsmål? Ring William på ${OWNER_PHONE}. Denne SMS-en kan ikke besvares.`
-  );
 }
 
 async function logNotification({ channel, recipient, code, name, status }) {

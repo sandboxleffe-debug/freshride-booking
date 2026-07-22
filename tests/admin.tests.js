@@ -586,6 +586,50 @@
     assert(msg.textContent.includes('Q9F2X'), `expected the generated code in the message, got "${msg.textContent}"`);
   });
 
+  // =========================================================================
+  // Test SMS til kunder — lets William preview the exact current wording of
+  // every customer-facing SMS from his own phone, whenever it changes.
+  // =========================================================================
+  test('sendTestBookingSms: sends the send-test-booking-sms action with the typed phone', async () => {
+    document.getElementById('testSmsPhoneInput').value = '92133900';
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, message: 'x' }), { status: 200 }));
+    };
+    try {
+      await sendTestBookingSms();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody, { action: 'send-test-booking-sms', phone: '92133900' });
+    assert(document.getElementById('testSmsMsg').textContent.includes('sendt'), 'expected a success message');
+  });
+
+  test('sendTestCompletionSms: sends the send-test-completion-sms action with the typed phone', async () => {
+    document.getElementById('testSmsPhoneInput').value = '92133900';
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, message: 'x' }), { status: 200 }));
+    };
+    try {
+      await sendTestCompletionSms();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody, { action: 'send-test-completion-sms', phone: '92133900' });
+  });
+
+  test('sendTestBookingSms: a blank phone shows an error without ever calling the network', async () => {
+    document.getElementById('testSmsPhoneInput').value = '';
+    window.fetch = () => { throw new Error('must not call the network with a blank phone'); };
+    await sendTestBookingSms();
+    assert(document.getElementById('testSmsMsg').classList.contains('err'), 'expected an error message for a blank phone');
+  });
+
   test('openJobEdit: shows the discount badge with code and percent when the job has one', () => {
     window._frJobs = [
       { id: 'disc1', customer_name: 'Rabatt Testesen', job_date: '2026-07-01', status: 'draft', discount_code: 'A7K3M', discount_percent: 15 },

@@ -11,15 +11,9 @@ import { upsertCustomerCars, upsertCustomerAvatar, renameCarForCustomer, syncCar
 import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode } from "./_lib/discount-codes.js";
 import { getCalendarClient, CALENDAR_ID, findPastBookingByCode } from "./_lib/google-calendar.js";
+import { buildBookingText, buildCompletionSmsText } from "./_lib/sms-templates.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
-const FEEDBACK_URL = "https://freshride.no/feedback";
-const OWNER_PHONE = "921 33 900";
-
-function buildCompletionSmsText(name) {
-  const greeting = name ? `Hei ${name}!` : "Hei!";
-  return `${greeting} Bilen din er klar hos FreshRide. Håper du ble fornøyd! Legg gjerne igjen en tilbakemelding: ${FEEDBACK_URL} Mvh William\n\nSpørsmål? Ring William på ${OWNER_PHONE}. Denne SMS-en kan ikke besvares.`;
-}
 
 /* ---------------- About ---------------- */
 async function handleAbout(req, res, supabase) {
@@ -369,6 +363,31 @@ async function handleJobs(req, res, supabase) {
         return res.status(200).json({ ok: true, message });
       } catch (err) {
         console.error("send-test-completion-sms error:", err);
+        return res.status(500).json({ error: "Klarte ikke å sende test-SMS" });
+      }
+    }
+
+    // Same buildBookingText() used for the real booking-confirmation SMS
+    // (book-slot.js) — this just sends it with plausible placeholder data
+    // so William can check the exact current wording whenever it changes.
+    if (action === "send-test-booking-sms") {
+      const { phone } = req.body || {};
+      if (!phone) return res.status(400).json({ error: "Missing phone" });
+      try {
+        const now = new Date();
+        const message = buildBookingText({
+          name: "Test Testesen", phone, services: ["FreshRide Complete"],
+          date: now.toLocaleDateString("no-NO", { day: "numeric", month: "long", year: "numeric" }),
+          time: "12:00", endTime: "13:30", code: "T99",
+        });
+        const ok = await sendTalkdeskSms({
+          toPhone: phone, name: "Test Testesen", date: "", time: "",
+          services: "FreshRide Complete", address: BUSINESS_ADDRESS, message,
+        });
+        if (!ok) return res.status(502).json({ error: "Klarte ikke å sende test-SMS" });
+        return res.status(200).json({ ok: true, message });
+      } catch (err) {
+        console.error("send-test-booking-sms error:", err);
         return res.status(500).json({ error: "Klarte ikke å sende test-SMS" });
       }
     }
