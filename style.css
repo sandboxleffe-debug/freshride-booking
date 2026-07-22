@@ -212,19 +212,18 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-hero-switch .form-check-input:focus { box-shadow: 0 0 0 3px var(--fr-gold-soft); border-color: var(--fr-gold); }
 .fr-hero-switch .form-check-label { font-weight: 600; color: var(--fr-panel-text); cursor: pointer; }
 
-/* Mini 3-day weather strip — Yr-style, simple, mobile-friendly */
+/* Mini 3-day weather strip — a single quiet line, not a boxed widget */
 .fr-mini-weather {
-  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
-  background: var(--fr-panel-bg-2); border: 1px solid var(--fr-panel-border); border-radius: 10px;
-  padding: 0.55rem 0.85rem; margin-bottom: 1rem; font-size: 0.8rem;
+  display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;
+  margin-bottom: 0.7rem; font-size: 0.75rem; color: var(--fr-panel-text-soft);
 }
-.fr-mini-weather-loc { font-weight: 600; color: var(--fr-panel-text); white-space: nowrap; }
-.fr-mini-weather-days { display: flex; gap: 1rem; flex: 1; }
-.fr-mini-weather-day { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; min-width: 2.4rem; }
-.fr-mini-weather-day-label { font-size: 0.72rem; color: var(--fr-panel-text-soft); }
-.fr-mini-weather-emoji { font-size: 1.1rem; line-height: 1; }
-.fr-mini-weather-temp { font-weight: 600; font-size: 0.8rem; color: var(--fr-panel-text); }
-.fr-mini-weather-credit { font-size: 0.68rem; color: var(--fr-panel-text-soft); width: 100%; text-align: right; }
+.fr-mini-weather-loc { white-space: nowrap; }
+.fr-mini-weather-days { display: flex; gap: 0.7rem; }
+.fr-mini-weather-day { display: flex; align-items: center; gap: 0.2rem; white-space: nowrap; }
+.fr-mini-weather-day-label { color: var(--fr-panel-text-soft); }
+.fr-mini-weather-emoji { font-size: 0.85rem; line-height: 1; }
+.fr-mini-weather-temp { color: var(--fr-panel-text-soft); }
+.fr-mini-weather-credit { font-size: 0.68rem; color: var(--fr-panel-text-soft); opacity: 0.75; }
 
 /* Calendar legend */
 .fr-calendar-legend { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-bottom: 1.1rem; font-size: 0.85rem; color: var(--fr-panel-text-soft); }
