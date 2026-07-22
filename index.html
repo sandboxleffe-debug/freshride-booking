@@ -179,7 +179,6 @@
       </div>
       <div class="fr-calendar-grid" id="calendarGrid"></div>
     </div>
-    <p class="fr-weather-attribution">Værvarsel fra <a href="https://www.yr.no" target="_blank" rel="noopener">Yr</a>, levert av Meteorologisk institutt og NRK</p>
 
     <div id="dateHint" class="fr-hint mt-2"></div>
 
@@ -189,9 +188,10 @@
         <span class="fr-step-badge">2</span>
         <h2>🕒 Ledige tider <span id="slotsDateLabel" class="fr-slots-date"></span></h2>
       </div>
+      <p id="slotsWeatherLine" class="fr-slots-weather d-none"></p>
       <div id="list" class="fr-slot-grid"></div>
       <div id="noSlots" class="fr-empty d-none">
-        <p>Ingen ledige tider denne dagen. Prøv en annen dato.</p>
+        <p>Fullbooket dag, finn en annen ledig tid.</p>
       </div>
       <div id="loadingState" class="fr-empty d-none">
         <div class="spinner-border fr-spinner" role="status"></div>
@@ -507,7 +507,11 @@ function formatDateLabel(key) {
 // which move every year) — "M-D" keys. Closed days, same as Sundays.
 const NO_FIXED_HOLIDAYS = new Set(["1-1", "5-1", "5-17", "12-25", "12-26"]);
 
-/* ---------------- Weather (Yr / MET Norway, via our own /api/weather proxy) ---------------- */
+/* ---------------- Weather (Yr / MET Norway, via our own /api/weather proxy) ----------------
+   Shown as a single "emoji + degrees" line at the top of the opened day's
+   slot list (not on the calendar itself — a symbol on every cell turned out
+   to be more visual noise than help), and only for the ~week MET actually
+   forecasts; older/further-out dates just show no line at all. */
 let weatherByDate = {};
 async function loadWeather() {
   try {
@@ -517,12 +521,11 @@ async function loadWeather() {
       weatherByDate = data.days || {};
     }
   } catch (e) {
-    // fail silently — calendar still works fine without weather icons
+    // fail silently — booking still works fine without a weather line
   }
 }
-// Fired once immediately (in parallel with everything else on the page),
-// then awaited inside loadMonthCalendar() so the very first render doesn't
-// race the weather fetch and skip the icons for that pass.
+// Fired once immediately so it's already resolved by the time a customer
+// picks a date, rather than fetching fresh on every single day click.
 const weatherReady = loadWeather();
 
 function weatherEmoji(symbolCode) {
@@ -555,7 +558,6 @@ function changeCalendarMonth(delta) {
 }
 
 async function loadMonthCalendar() {
-  await weatherReady; // avoid a first-render race where weatherByDate is still empty
   const now = new Date();
   if (calendarViewYear === undefined) { calendarViewYear = now.getFullYear(); calendarViewMonth = now.getMonth() + 1; }
   const year = calendarViewYear;
@@ -654,14 +656,6 @@ async function loadMonthCalendar() {
       num.textContent = cellDate.getDate();
       cell.appendChild(num);
 
-      const emoji = !isPast ? weatherEmoji(weatherByDate[key]) : '';
-      if (emoji) {
-        const weatherEl = document.createElement("span");
-        weatherEl.className = "fr-day-weather";
-        weatherEl.textContent = emoji;
-        cell.appendChild(weatherEl);
-      }
-
       if (status && !isClosed) {
         const dot = document.createElement("span");
         dot.className = "fr-day-dot";
@@ -693,6 +687,17 @@ async function loadSlotsForDate(date) {
   document.getElementById("slotsDateLabel").textContent = `— ${formatDateLabel(date)}`;
   setState('loading');
   slotsBlock.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  await weatherReady;
+  const weatherLine = document.getElementById("slotsWeatherLine");
+  const weather = weatherByDate[date];
+  const emoji = weather ? weatherEmoji(weather.symbol) : '';
+  if (weather && emoji && typeof weather.temp === 'number') {
+    weatherLine.innerHTML = `Foreløpig værmelding meldt denne dagen er: ${emoji} ${weather.temp}° <span class="fr-weather-attribution-inline">(<a href="https://www.yr.no" target="_blank" rel="noopener">Yr</a>, Meteorologisk institutt og NRK)</span>`;
+    weatherLine.classList.remove('d-none');
+  } else {
+    weatherLine.classList.add('d-none');
+  }
 
   try {
     const res = await fetch(`/api/public-calendar?view=day&date=${encodeURIComponent(date)}`);

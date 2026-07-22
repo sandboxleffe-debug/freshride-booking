@@ -62,7 +62,9 @@
   });
 
   // =========================================================================
-  // Weather (Yr / MET Norway) — symbol on the day cell, Yr attribution
+  // Weather (Yr / MET Norway) — a single "emoji + degrees" line at the top
+  // of the opened day's slot list (not on the calendar itself — a symbol on
+  // every cell turned out to be more visual noise than help).
   // =========================================================================
   test('weatherEmoji: maps common MET symbol codes to a sensible emoji', () => {
     assertEqual(weatherEmoji('clearsky_day'), '☀️');
@@ -77,43 +79,38 @@
     assertEqual(weatherEmoji('some_unknown_code'), '', 'an unmapped code must render nothing rather than guess');
   });
 
-  test('calendar: shows the weather emoji on days present in weatherByDate, not on past days', async () => {
-    const now = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    const key = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-
-    weatherByDate = { [key(now)]: 'partlycloudy_day' };
-    if (now.getDate() > 1) weatherByDate[key(yesterday)] = 'clearsky_day'; // must be ignored — it's in the past
-
+  test('calendar: day cells never carry a weather badge anymore', async () => {
     calendarViewYear = undefined; calendarViewMonth = undefined;
     await loadMonthCalendar();
-
-    const todayCell = [...document.querySelectorAll('.fr-calendar-day')].find(c => c.classList.contains('fr-day-today'));
-    assert(!!todayCell.querySelector('.fr-day-weather'), 'expected a weather emoji on today');
-    assertEqual(todayCell.querySelector('.fr-day-weather').textContent, '⛅');
-
-    const pastCell = [...document.querySelectorAll('.fr-calendar-day.fr-day-past')][0];
-    if (pastCell) assert(!pastCell.querySelector('.fr-day-weather'), 'a past day must never show a weather emoji, even if weatherByDate has an entry for it');
-
-    weatherByDate = {};
+    assertEqual(document.querySelectorAll('.fr-day-weather').length, 0, 'weather moved to the opened-day panel — the calendar grid itself must stay clean');
   });
 
-  test('calendar: a day with no forecast entry shows no weather emoji (not a blank/broken icon)', async () => {
-    weatherByDate = {};
-    calendarViewYear = undefined; calendarViewMonth = undefined;
-    await loadMonthCalendar();
-    const anyFutureCell = [...document.querySelectorAll('.fr-calendar-day')].find(c => !c.classList.contains('fr-day-past') && !c.classList.contains('fr-day-empty'));
-    assert(!!anyFutureCell, 'expected at least one non-past day cell');
-    assert(!anyFutureCell.querySelector('.fr-day-weather'), 'no forecast data — must not render an empty weather span');
+  test('loadSlotsForDate: shows "emoji + degrees" plus Yr credit when forecast data exists for that day', async () => {
+    weatherByDate = { '2026-07-24': { symbol: 'partlycloudy_day', temp: 18 } };
+    window.fetch = (url) => Promise.resolve(new Response(JSON.stringify({ events: [{ id: 'e1', start: '2026-07-24T10:00:00Z', end: '2026-07-24T11:00:00Z' }] }), { status: 200 }));
+    await loadSlotsForDate('2026-07-24');
+    const line = document.getElementById('slotsWeatherLine');
+    assert(!line.classList.contains('d-none'), 'expected the weather line to show when data exists for the date');
+    assert(line.textContent.includes('⛅'), `expected the emoji in the line, got "${line.textContent}"`);
+    assert(line.textContent.includes('18°'), `expected the temperature in the line, got "${line.textContent}"`);
+    assert(!!line.querySelector('a[href="https://www.yr.no"]'), 'MET Norway terms require crediting Yr wherever the data is shown');
   });
 
-  test('page: credits Yr / Meteorologisk institutt near the calendar', () => {
-    const attribution = document.querySelector('.fr-weather-attribution');
-    assert(!!attribution, 'expected a weather attribution line');
-    assert(attribution.textContent.includes('Meteorologisk institutt'), 'MET Norway terms require crediting the source');
-    const link = attribution.querySelector('a[href="https://www.yr.no"]');
-    assert(!!link, 'expected a link to yr.no');
+  test('loadSlotsForDate: hides the weather line when there is no forecast for that day', async () => {
+    weatherByDate = {};
+    window.fetch = (url) => Promise.resolve(new Response(JSON.stringify({ events: [] }), { status: 200 }));
+    await loadSlotsForDate('2026-08-15'); // well beyond MET's ~9-day range
+    const line = document.getElementById('slotsWeatherLine');
+    assert(line.classList.contains('d-none'), 'a date with no forecast data must not show a stale/blank weather line');
+  });
+
+  test('loadSlotsForDate: a day with zero open slots says "Fullbooket dag", not a generic empty message', async () => {
+    weatherByDate = {};
+    window.fetch = (url) => Promise.resolve(new Response(JSON.stringify({ events: [] }), { status: 200 }));
+    await loadSlotsForDate('2026-07-25');
+    const noSlots = document.getElementById('noSlots');
+    assert(!noSlots.classList.contains('d-none'), 'expected the empty state to show for a day with zero events');
+    assert(noSlots.textContent.includes('Fullbooket dag'), `expected "Fullbooket dag" wording, got "${noSlots.textContent}"`);
   });
 
   test('phone field: strips non-digits and caps at 8', () => {

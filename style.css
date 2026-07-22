@@ -220,9 +220,6 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-dot-orange { background: #D98A15; }
 .fr-dot-red { background: #C63B2E; }
 
-.fr-weather-attribution { font-size: 0.72rem; color: var(--fr-panel-text-soft); margin: 0.4rem 0 0; text-align: right; }
-.fr-weather-attribution a { color: inherit; text-decoration: underline; }
-
 /* Month calendar */
 .fr-calendar { margin-bottom: 0.5rem; }
 .fr-calendar-head {
@@ -257,7 +254,6 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   padding: 0.3rem 0; opacity: 0.7; letter-spacing: 0.02em;
 }
 .fr-calendar-day {
-  position: relative;
   aspect-ratio: 1;
   border-radius: 10px;
   border: 1.5px solid var(--fr-panel-border);
@@ -268,7 +264,6 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   font-size: 0.88rem;
   color: var(--fr-panel-text);
 }
-.fr-day-weather { position: absolute; top: 0.15rem; right: 0.2rem; font-size: 0.7rem; line-height: 1; }
 .fr-calendar-day:hover { transform: translateY(-2px); border-color: var(--fr-gold); }
 .fr-calendar-day.fr-day-empty { visibility: hidden; cursor: default; }
 .fr-calendar-day.fr-day-past { opacity: 0.25; filter: grayscale(0.4); cursor: not-allowed; }
@@ -771,6 +766,9 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-slots-head { margin-bottom: 1rem; }
 .fr-slots-date { font-size: 0.95rem; font-weight: 500; color: var(--fr-panel-text-soft); text-transform: capitalize; }
+.fr-slots-weather { font-size: 0.85rem; color: var(--fr-panel-text-soft); margin: -0.5rem 0 1rem; }
+.fr-weather-attribution-inline { font-size: 0.78rem; }
+.fr-weather-attribution-inline a { color: inherit; text-decoration: underline; }
 
 /* Promo banner — flashy, stands out, sits above everything else */
 .fr-promo-banner {

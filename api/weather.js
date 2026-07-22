@@ -1,5 +1,5 @@
 // api/weather.js — public
-// GET /api/weather -> { days: { "YYYY-MM-DD": "partlycloudy_day", ... } }
+// GET /api/weather -> { days: { "YYYY-MM-DD": { symbol: "partlycloudy_day", temp: 18 }, ... } }
 //
 // Wraps MET Norway's Locationforecast API (the actual data source behind
 // Yr) so the browser never talks to api.met.no directly — that avoids CORS
@@ -22,6 +22,11 @@ function extractSymbol(entry) {
     || d.next_6_hours?.summary?.symbol_code
     || d.next_12_hours?.summary?.symbol_code
     || null;
+}
+
+function extractTemp(entry) {
+  const t = entry.data?.instant?.details?.air_temperature;
+  return typeof t === "number" ? Math.round(t) : null;
 }
 
 export default async function handler(req, res) {
@@ -50,7 +55,7 @@ export default async function handler(req, res) {
     // only returns 6/12-hourly resolution, so this always finds the best
     // available representative symbol for "the weather that day" instead of
     // just grabbing the first entry (which could be a stray 03:00 forecast).
-    const best = {}; // dateKey -> { hourDiff, symbol }
+    const best = {}; // dateKey -> { hourDiff, symbol, temp }
     for (const entry of timeseries) {
       const symbol = extractSymbol(entry);
       if (!symbol) continue;
@@ -61,12 +66,12 @@ export default async function handler(req, res) {
       const dateKey = `${get("year")}-${get("month")}-${get("day")}`;
       const hourDiff = Math.abs(Number(get("hour")) - 12);
       if (!best[dateKey] || hourDiff < best[dateKey].hourDiff) {
-        best[dateKey] = { hourDiff, symbol };
+        best[dateKey] = { hourDiff, symbol, temp: extractTemp(entry) };
       }
     }
 
     const days = {};
-    for (const [date, v] of Object.entries(best)) days[date] = v.symbol;
+    for (const [date, v] of Object.entries(best)) days[date] = { symbol: v.symbol, temp: v.temp };
 
     cache = { data: { days }, expiresAt: Date.now() + 60 * 60 * 1000 };
     res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=3600");
