@@ -4,12 +4,14 @@
 // GET /api/content?type=promotion  -> { active: bool, title?, discount_label?, description? }
 // GET /api/content?type=customer-cars&phone=91234567 -> { cars: string[] } (rate-limited)
 // GET /api/content?type=gallery      -> { images: [{ path, alt }] }
+// GET /api/content?type=discount-code&code=ABCDE -> { valid: bool, percent? } (rate-limited)
 //
 // Merged endpoint to stay within Vercel's function count limit (Hobby: 12).
 
 import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { getCarsByPhone } from "./_lib/customers.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
+import { validateDiscountCode } from "./_lib/discount-codes.js";
 
 function isPromoActive(promo, todayStr) {
   if (promo.status === "forced_on") return true;
@@ -179,6 +181,23 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error("content customer-cars error:", err);
       return res.status(200).json({ cars: [] });
+    }
+  }
+
+  if (type === "discount-code") {
+    // Live "✓ 15% rabatt" check as the customer types a code on the booking
+    // form — read-only, never marks the code as used (book-slot.js does the
+    // real one-time redemption once the booking actually goes through).
+    const { code } = req.query;
+    try {
+      const ip = getClientIp(req);
+      const allowed = await checkRateLimit({ key: `discount-code:${ip}`, maxRequests: 20, windowSeconds: 600 });
+      if (!allowed) return res.status(200).json({ valid: false });
+      const result = await validateDiscountCode(supabase, code);
+      return res.status(200).json(result);
+    } catch (err) {
+      console.error("content discount-code error:", err);
+      return res.status(200).json({ valid: false });
     }
   }
 

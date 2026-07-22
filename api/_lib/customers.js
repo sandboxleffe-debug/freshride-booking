@@ -102,6 +102,30 @@ export async function upsertCustomerCars(supabase, customerNumber, cars) {
   return !error;
 }
 
+// Kunderegister is the master source for a car's spelling — a job's
+// car_type is just a denormalized snapshot taken at booking/logging time.
+// When the admin corrects a typo on the customer card, cascade that same
+// correction across every job row for this customer that still carries the
+// old spelling, so Bookinger/history never drift back out of sync with it.
+export async function renameCarForCustomer(supabase, customerNumber, fromCar, toCar) {
+  const from = (fromCar || "").toString().trim();
+  const to = (toCar || "").toString().trim();
+  if (!customerNumber || !from || !to || from.toLowerCase() === to.toLowerCase()) return;
+  try {
+    const { data, error } = await supabase
+      .from("freshride_jobs")
+      .select("id, car_type")
+      .eq("customer_number", String(customerNumber));
+    if (error || !data) return;
+    const matches = data.filter(r => (r.car_type || "").trim().toLowerCase() === from.toLowerCase());
+    await Promise.all(matches.map(r =>
+      supabase.from("freshride_jobs").update({ car_type: to }).eq("id", r.id)
+    ));
+  } catch (err) {
+    console.error("renameCarForCustomer error:", err);
+  }
+}
+
 // Avatar is saved separately from cars (its own upsert call, omitting the
 // `cars` column) so picking a picture never clobbers the customer's saved
 // car list, and vice versa — PostgREST upsert only touches columns present
@@ -149,7 +173,7 @@ export async function getNextCustomerNumber(supabase) {
 // the moment a customer books) and manually (admin-bookings.js, for
 // bookings made before this existed, or one the admin wants to log ahead
 // of time). Skips if a job for this booking_code already exists.
-export async function createDraftJobLog(supabase, { name, phone, services, jobDate, code, car }) {
+export async function createDraftJobLog(supabase, { name, phone, services, jobDate, code, car, discountCode, discountPercent }) {
   if (code) {
     const { data: existing } = await supabase.from("freshride_jobs").select("id").eq("booking_code", code).limit(1);
     if (existing && existing.length) return { ok: false, reason: "exists" };
@@ -180,6 +204,8 @@ export async function createDraftJobLog(supabase, { name, phone, services, jobDa
     price_paid: 0,
     status: "draft",
     booking_code: code || null,
+    discount_code: discountCode || null,
+    discount_percent: discountPercent || null,
   });
   if (error) return { ok: false, reason: "error" };
 

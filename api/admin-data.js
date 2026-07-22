@@ -1,14 +1,15 @@
 // api/admin-data.js — admin only (x-admin-password header)
 // All content-management CRUD, routed by ?resource=
-//   about | services | reviews | promotions | prices | jobs | customer-cars | expenses | accounting | gallery
+//   about | services | reviews | promotions | prices | jobs | customer-cars | discount-codes | expenses | accounting | gallery
 //
 // Merged into one file to stay within Vercel's function count limit
 // (Hobby plan: 12 functions per deployment).
 
 import { getSupabaseAdmin, checkAdminPassword } from "./_lib/supabase.js";
 import { getVisitorSummary } from "./_lib/analytics.js";
-import { upsertCustomerCars, upsertCustomerAvatar, syncCarToCustomer } from "./_lib/customers.js";
+import { upsertCustomerCars, upsertCustomerAvatar, renameCarForCustomer, syncCarToCustomer } from "./_lib/customers.js";
 import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
+import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode } from "./_lib/discount-codes.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const FEEDBACK_URL = "https://freshride.no/feedback";
@@ -459,11 +460,14 @@ async function handleCustomerCars(req, res, supabase) {
     return res.status(200).json({ cars, avatars });
   }
   if (req.method === "PATCH") {
-    const { customer_number, cars, avatar } = req.body || {};
+    const { customer_number, cars, avatar, carRenames } = req.body || {};
     if (!customer_number) return res.status(400).json({ error: "Missing customer_number" });
     if (cars !== undefined) {
       const ok = await upsertCustomerCars(supabase, customer_number, cars);
       if (!ok) return res.status(500).json({ error: "Klarte ikke å lagre biler" });
+    }
+    if (Array.isArray(carRenames)) {
+      for (const r of carRenames) await renameCarForCustomer(supabase, customer_number, r.from, r.to);
     }
     if (avatar !== undefined) {
       const ok = await upsertCustomerAvatar(supabase, customer_number, avatar);
@@ -603,6 +607,38 @@ async function handleGallery(req, res, supabase) {
   return res.status(405).json({ error: "Method not allowed" });
 }
 
+/* ---------------- Discount codes ---------------- */
+async function handleDiscountCodes(req, res, supabase) {
+  if (req.method === "GET") {
+    try {
+      const codes = await listDiscountCodes(supabase);
+      return res.status(200).json({ codes });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Klarte ikke å hente rabattkoder" });
+    }
+  }
+  if (req.method === "POST") {
+    const { percent } = req.body || {};
+    if (!percent || Number(percent) <= 0) return res.status(400).json({ error: "Ugyldig rabatt" });
+    try {
+      const row = await generateDiscountCode(supabase, percent);
+      return res.status(200).json({ ok: true, code: row.code, percent: row.percent });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Klarte ikke å generere kode" });
+    }
+  }
+  if (req.method === "DELETE") {
+    const { code } = req.body || {};
+    if (!code) return res.status(400).json({ error: "Missing code" });
+    const ok = await deleteUnusedDiscountCode(supabase, code);
+    if (!ok) return res.status(500).json({ error: "Klarte ikke å slette koden" });
+    return res.status(200).json({ ok: true });
+  }
+  return res.status(405).json({ error: "Method not allowed" });
+}
+
 export default async function handler(req, res) {
   if (!checkAdminPassword(req)) {
     return res.status(401).json({ error: "Feil passord" });
@@ -617,6 +653,7 @@ export default async function handler(req, res) {
   if (resource === "promotions") return handlePromotions(req, res, supabase);
   if (resource === "jobs") return handleJobs(req, res, supabase);
   if (resource === "customer-cars") return handleCustomerCars(req, res, supabase);
+  if (resource === "discount-codes") return handleDiscountCodes(req, res, supabase);
   if (resource === "expenses") return handleExpenses(req, res, supabase);
   if (resource === "accounting") return handleAccounting(req, res, supabase);
   if (resource === "notifications") return handleNotifications(req, res, supabase);

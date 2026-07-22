@@ -486,6 +486,160 @@
     assertEqual(sentBody.avatar, 'avatar-1', 'expected the selected avatar key to be sent in the PATCH body');
   });
 
+  // =========================================================================
+  // Kunderegister is the master source for car spelling — correcting a car
+  // there must cascade to every job of that customer carrying the old spelling
+  // =========================================================================
+  test('saveCustomerEditModal: detects a corrected car spelling and sends it as a carRenames entry', async () => {
+    window._frJobs = [
+      { id: 'r1', customer_number: '30', customer_name: 'Rename Testesen', customer_phone: '90000030', status: 'completed', job_date: '2026-07-01' },
+    ];
+    _frCustomerCarsMap = { '30': ['VW golf, kvit'] };
+    _frCustomerAvatarMap = {};
+    openCustomerEdit('30');
+    const carInput = document.querySelector('#custEditCarsList .fr-cust-car-input');
+    carInput.value = 'VW Golf, hvit';
+
+    const origFetch = window.fetch;
+    let sentBody = null;
+    window.fetch = (url, opts) => {
+      if (String(url).includes('customer-cars') && opts && opts.method === 'PATCH') sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    };
+    try {
+      await saveCustomerEditModal();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assert(!!sentBody, 'expected the customer-cars PATCH to fire on save');
+    assertEqual(sentBody.carRenames, [{ from: 'VW golf, kvit', to: 'VW Golf, hvit' }], 'expected the position-aligned text change to be reported as a rename');
+  });
+
+  test('saveCustomerEditModal: adding a new car (no prior entry at that index) is not treated as a rename', async () => {
+    window._frJobs = [
+      { id: 'r2', customer_number: '31', customer_name: 'Ny Bil Testesen', customer_phone: '90000031', status: 'completed', job_date: '2026-07-01' },
+    ];
+    _frCustomerCarsMap = { '31': ['Skoda Octavia'] };
+    _frCustomerAvatarMap = {};
+    openCustomerEdit('31');
+    addCustomerCarRow();
+    const inputs = document.querySelectorAll('#custEditCarsList .fr-cust-car-input');
+    inputs[1].value = 'Tesla Model Y';
+
+    const origFetch = window.fetch;
+    let sentBody = null;
+    window.fetch = (url, opts) => {
+      if (String(url).includes('customer-cars') && opts && opts.method === 'PATCH') sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    };
+    try {
+      await saveCustomerEditModal();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody.carRenames, [], 'a brand-new second car must not be reported as a rename of the first');
+    assertEqual(sentBody.cars, ['Skoda Octavia', 'Tesla Model Y']);
+  });
+
+  // =========================================================================
+  // Rabattkoder: generate/list in Innstillinger, badges on discounted jobs
+  // =========================================================================
+  test('loadDiscountCodesAdmin: renders unused and used codes with distinct status text', async () => {
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      codes: [
+        { code: 'A7K3M', percent: 15, used: false, used_at: null, used_by_customer_number: null },
+        { code: 'ZZ111', percent: 20, used: true, used_at: '2026-07-01', used_by_customer_number: '9' },
+      ],
+    }), { status: 200 }));
+    try {
+      await loadDiscountCodesAdmin();
+    } finally {
+      window.fetch = origFetch;
+    }
+    const rows = document.querySelectorAll('#discountCodeList .fr-service-row');
+    assertEqual(rows.length, 2);
+    assert(rows[0].textContent.includes('Ikke brukt'), 'unused code should say "Ikke brukt"');
+    assert(!!rows[0].querySelector('button'), 'an unused code should offer a delete button');
+    assert(rows[1].textContent.includes('Brukt'), 'used code should say "Brukt"');
+    assert(!rows[1].querySelector('button'), 'a used code must not be deletable');
+  });
+
+  test('generateDiscountCode: sends the gauge percent and shows the returned code', async () => {
+    setGaugeValue('discount', 'discountPct', 25);
+    const origFetch = window.fetch;
+    let sentBody = null;
+    window.fetch = (url, opts) => {
+      if (String(url).includes('discount-codes') && opts && opts.method === 'POST') {
+        sentBody = JSON.parse(opts.body);
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, code: 'Q9F2X', percent: 25 }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ codes: [] }), { status: 200 }));
+    };
+    try {
+      await generateDiscountCode();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody, { percent: 25 });
+    const msg = document.getElementById('discountCodeMsg');
+    assert(msg.textContent.includes('Q9F2X'), `expected the generated code in the message, got "${msg.textContent}"`);
+  });
+
+  test('openJobEdit: shows the discount badge with code and percent when the job has one', () => {
+    window._frJobs = [
+      { id: 'disc1', customer_name: 'Rabatt Testesen', job_date: '2026-07-01', status: 'draft', discount_code: 'A7K3M', discount_percent: 15 },
+      { id: 'disc2', customer_name: 'Ingen Rabatt', job_date: '2026-07-01', status: 'draft' },
+    ];
+    openJobEdit('disc1');
+    const badge = document.getElementById('editJobDiscountBadge');
+    assert(!badge.classList.contains('d-none'), 'expected the discount badge to be visible');
+    assert(badge.textContent.includes('A7K3M') && badge.textContent.includes('15%'), `expected code+percent in badge, got "${badge.textContent}"`);
+
+    openJobEdit('disc2');
+    assert(document.getElementById('editJobDiscountBadge').classList.contains('d-none'), 'a job with no discount must hide the badge');
+  });
+
+  test('buildJobRow: shows a discount flag on the compact row when the job has a discount', () => {
+    const withDiscount = buildJobRow({ id: 'd1', customer_name: 'Rabatt Testesen', job_date: '2026-07-01', price_paid: 500, discount_code: 'A7K3M', discount_percent: 15 }, false);
+    assert(!!withDiscount.querySelector('.fr-campaign-badge[title*="A7K3M"]'), 'expected a discount flag mentioning the code');
+
+    const withoutDiscount = buildJobRow({ id: 'd2', customer_name: 'Ingen Rabatt', job_date: '2026-07-01', price_paid: 500 }, false);
+    assert(!withoutDiscount.querySelector('.fr-campaign-badge[title*="A7K3M"]'), 'a job without a discount must not show the flag');
+  });
+
+  // =========================================================================
+  // Discount code auto-adjusts the suggested price, like an active campaign
+  // (only for a still-priceless draft — never overwrites an already-priced job)
+  // =========================================================================
+  test('openJobEdit: suggests the discounted price for a priceless draft with a discount code', () => {
+    jobServicesCache = [
+      { label: 'FreshRide Interior', price_nok: 500 },
+      { label: 'FreshRide Exterior', price_nok: 300 },
+    ];
+    window._frJobs = [
+      { id: 'auto1', customer_name: 'Auto Rabatt', job_date: '2026-07-01', status: 'draft', price_paid: 0, services: 'FreshRide Interior, FreshRide Exterior', discount_code: 'A7K3M', discount_percent: 20 },
+    ];
+    openJobEdit('auto1');
+    // (500+300) * (1 - 0.20) = 640
+    assertEqual(document.getElementById('editJobPrice').value, '640', 'expected the service sum reduced by the discount percent');
+  });
+
+  test('openJobEdit: never overwrites a price the job already has, even with a discount code', () => {
+    jobServicesCache = [{ label: 'FreshRide Interior', price_nok: 500 }];
+    window._frJobs = [
+      { id: 'auto2', customer_name: 'Allerede Priset', job_date: '2026-07-01', status: 'completed', price_paid: 999, services: 'FreshRide Interior', discount_code: 'A7K3M', discount_percent: 20 },
+    ];
+    openJobEdit('auto2');
+    assertEqual(document.getElementById('editJobPrice').value, '999', 'a completed/already-priced job must keep its saved price, not get recomputed');
+  });
+
+  test('computeServicesBasePrice: returns null (not 0) when no service label matches', () => {
+    jobServicesCache = [{ label: 'FreshRide Interior', price_nok: 500 }];
+    assertEqual(computeServicesBasePrice('Et gammelt tjenestenavn'), null);
+    assertEqual(computeServicesBasePrice(''), null);
+  });
+
   // ---- Run sequentially, in order, and collect results ----
   const results = [];
   for (const { name, fn } of testList) {

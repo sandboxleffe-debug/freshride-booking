@@ -204,6 +204,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 
 .fr-hint { font-size: 0.86rem; color: var(--fr-panel-text-faint); min-height: 1.2rem; }
 .fr-hint-error { color: #C0392B; }
+.fr-hint-ok { color: #2E7D32; font-weight: 600; }
 
 .fr-hero-switch { display: flex; align-items: center; gap: 0.6rem; padding-left: 0; margin: 0.5rem 0; }
 .fr-hero-switch .form-check-input { width: 2.6rem; height: 1.4rem; margin-left: 0; cursor: pointer; }
@@ -230,7 +231,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-cal-nav-btn {
   background: none; border: 1.5px solid var(--fr-panel-border); border-radius: 8px;
   width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-  color: var(--fr-panel-text-soft); font-size: 1.1rem; line-height: 1; cursor: pointer; flex-shrink: 0;
+  color: var(--fr-panel-text); font-size: 1.4rem; font-weight: 700; line-height: 1; cursor: pointer; flex-shrink: 0;
 }
 .fr-cal-nav-btn:hover { background: var(--fr-panel-bg-2); color: var(--fr-panel-text); border-color: var(--fr-gold); }
 .fr-cal-nav-btn:disabled { opacity: 0.3; cursor: default; }
@@ -725,13 +726,15 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   color: var(--fr-text-dark-zone-soft);
   line-height: 1.45;
   margin: 0.4rem 0 0;
-  /* Fixed 3-line clamp — without this, cards with longer text ran to 4
-     lines, changing the whole row's height and nudging the calendar below
-     it up/down every time such a review scrolled into view. */
+  /* Fixed 3-line box — clamp alone only caps the max; a short comment
+     still shrank to 1-2 lines, changing the row's height and nudging the
+     calendar below it up/down every time a shorter review rotated in.
+     min-height reserves the full 3 lines regardless of actual length. */
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  min-height: 4.35em;
 }
 .fr-review-full {
   font-size: 0.82rem;

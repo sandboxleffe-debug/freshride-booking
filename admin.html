@@ -241,7 +241,7 @@
   .fr-cal-nav-btn {
     background: none; border: 1.5px solid var(--fr-panel-border); border-radius: 8px;
     width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-    color: var(--fr-panel-text-soft); font-size: 1.1rem; line-height: 1; cursor: pointer; flex-shrink: 0;
+    color: var(--fr-panel-text); font-size: 1.4rem; font-weight: 700; line-height: 1; cursor: pointer; flex-shrink: 0;
   }
   .fr-cal-nav-btn:hover { background: var(--fr-panel-bg-2); color: var(--fr-panel-text); border-color: var(--fr-gold); }
 
@@ -337,9 +337,9 @@
       <div class="fr-panel">
         <div class="fr-calendar">
           <div class="fr-calendar-head-row">
-            <button class="fr-cal-nav-btn" onclick="changeCalendarMonth(-1)" aria-label="Forrige måned">‹</button>
+            <button class="fr-cal-nav-btn" onclick="changeCalendarMonth(-1)" aria-label="Forrige måned" title="Forrige måned">‹</button>
             <div class="fr-calendar-head" id="calendarMonthLabel"></div>
-            <button class="fr-cal-nav-btn" onclick="changeCalendarMonth(1)" aria-label="Neste måned">›</button>
+            <button class="fr-cal-nav-btn" id="calendarNextBtn" onclick="changeCalendarMonth(1)" aria-label="Neste måned" title="Neste måned">›</button>
           </div>
           <div class="fr-admin-cal-grid" id="calendarGrid"></div>
         </div>
@@ -671,6 +671,34 @@
       </div>
 
       <div class="fr-panel">
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="tag"></span> Ny rabattkode</h2></div>
+        <p class="fr-hint">Genererer en unik 5-tegns kode du kan gi til en enkeltkunde. Koden gjelder kun én gang, og kan skrives inn på booking-siden.</p>
+        <div class="fr-form-row">
+          <label class="fr-label">Rabatt</label>
+          <div class="fr-gauge-row">
+            <div class="fr-gauge-col">
+              <div class="fr-gauge-track" id="discountGaugeTrack">
+                <div class="fr-gauge-band fr-gauge-band-low"></div>
+                <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                <div class="fr-gauge-band fr-gauge-band-high"></div>
+                <div class="fr-gauge-dim" id="discountGaugeDim"></div>
+                <div class="fr-gauge-handle" id="discountGaugeHandle"></div>
+              </div>
+              <div class="fr-gauge-ticks"><span>0</span><span>50</span><span>100</span></div>
+            </div>
+            <div class="fr-gauge-value" id="discountGaugeValueText">0%</div>
+          </div>
+          <input type="hidden" id="discountPct" value="0" />
+        </div>
+        <button class="btn fr-btn-primary w-100" onclick="generateDiscountCode()"><span class="fr-icon" data-fr-icon="tag"></span> Generer kode</button>
+        <div id="discountCodeMsg" class="fr-save-msg"></div>
+      </div>
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>Alle rabattkoder</h2></div>
+        <div id="discountCodeList"></div>
+      </div>
+
+      <div class="fr-panel">
         <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="info"></span> Om oss-innhold</h2></div>
         <label class="fr-label">Overskrift</label>
         <input id="aboutHeadingInput" class="form-control fr-input mb-3" />
@@ -773,7 +801,7 @@
           <input id="editJobServices" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="dollarSign"></span> Pris betalt (kr)</label>
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="dollarSign"></span> Pris betalt (kr) <span id="editJobDiscountBadge" class="fr-campaign-badge d-none"><span class="fr-icon" data-fr-icon="tag"></span></span></label>
           <input type="number" id="editJobPrice" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
@@ -956,7 +984,7 @@ const FR_ICON_MAP = {
   camera: 'Camera', lock: 'Lock', unlock: 'Unlock', save: 'Save', trash: 'Trash2', edit: 'Pencil',
   checkCircle: 'CheckCircle', x: 'X', ban: 'Ban', eye: 'Eye', eyeOff: 'EyeOff',
   trendingUp: 'TrendingUp', trendingDown: 'TrendingDown', barChart: 'BarChart3', bell: 'Bell',
-  home: 'Home', image: 'Image', bag: 'ShoppingBag',
+  home: 'Home', image: 'Image', bag: 'ShoppingBag', tag: 'Tag',
 };
 function frIcon(name) {
   const nodes = window.lucide?.icons?.[FR_ICON_MAP[name] || name];
@@ -1014,8 +1042,10 @@ function enterAdmin() {
   loadPromoAdmin();
   loadCustomerCars();
   loadGalleryAdmin();
+  loadDiscountCodesAdmin();
   initJobFormGauges();
   initPromoGauge();
+  initDiscountGauge();
   loadJobServiceOptions();
   loadJobsAdmin();
   loadExpensesAdmin();
@@ -2102,6 +2132,71 @@ async function deletePromo(id) {
   loadPromoAdmin();
 }
 
+/* ---------------- Rabattkoder (engangskoder, gitt til enkeltkunder) ---------------- */
+function discountCodeStatusHtml(c) {
+  if (!c.used) return `${frIcon('clock')} Ikke brukt`;
+  const when = c.used_at ? fmtDateShort(c.used_at.slice(0, 10)) : '';
+  const who = c.used_by_customer_number ? ` (${formatCustomerId(c.used_by_customer_number)})` : '';
+  return `${frIcon('checkCircle')} Brukt ${when}${who}`;
+}
+
+async function loadDiscountCodesAdmin() {
+  const list = document.getElementById('discountCodeList');
+  if (!list) return;
+  try {
+    const res = await fetch('/api/admin-data?resource=discount-codes', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    const codes = data.codes || [];
+    if (!codes.length) { list.innerHTML = '<p class="fr-empty-day">Ingen rabattkoder opprettet ennå.</p>'; return; }
+    list.innerHTML = codes.map(c => `
+      <div class="fr-service-row">
+        <div>
+          <div class="fr-service-row-label">${c.code} — ${c.percent}%</div>
+          <div class="fr-service-row-desc">${discountCodeStatusHtml(c)}</div>
+        </div>
+        <div class="fr-service-row-actions">
+          ${!c.used ? `<button class="fr-icon-btn" title="Slett" onclick="deleteDiscountCode('${c.code}')">${frIcon('trash')}</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente rabattkoder.</p>';
+  }
+}
+
+async function generateDiscountCode() {
+  const msg = document.getElementById('discountCodeMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  const percent = Number(document.getElementById('discountPct').value) || 0;
+  if (!percent) { msg.textContent = 'Velg en rabatt større enn 0%.'; msg.classList.add('err'); return; }
+  try {
+    const res = await fetch('/api/admin-data?resource=discount-codes', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ percent })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'failed');
+    msg.textContent = `Ny kode: ${data.code} (${data.percent}%) ✓`; msg.classList.add('ok');
+    setGaugeValue('discount', 'discountPct', 0);
+    loadDiscountCodesAdmin();
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å generere kode.'; msg.classList.add('err');
+  }
+}
+
+async function deleteDiscountCode(code) {
+  if (!confirm(`Slette koden ${code}?`)) return;
+  await fetch('/api/admin-data?resource=discount-codes', {
+    method: 'DELETE',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code })
+  });
+  loadDiscountCodesAdmin();
+}
+
 /* ---------------- Regnskap: bilder (komprimering i nettleseren før opplasting) ---------------- */
 // Some phones (notably recent Samsungs) shoot very high-resolution originals
 // and/or save as HEIC/HEIF — the old <img>+dataURL decode path can silently
@@ -2359,6 +2454,14 @@ function setPromoGaugeValue(v) {
   setGaugeValue('promo', 'promoDiscountPct', v);
 }
 
+function initDiscountGauge() {
+  createGauge('discount', {
+    min: 0, max: 100, step: 1, initial: 0,
+    formatValue: v => v + '%',
+    onChange: v => { document.getElementById('discountPct').value = v; },
+  });
+}
+
 function initPromoGauge() {
   createGauge('promo', {
     min: 0, max: 100, step: 1, initial: 0,
@@ -2436,6 +2539,21 @@ function updateJobPriceFromServices() {
     badge.classList.add('d-none');
   }
   document.getElementById('jobPrice').value = sum;
+}
+
+// Looks up each comma-separated service label against the price list so a
+// booked job's price can be suggested the same way "Logg ny jobb" sums
+// checked services — returns null if none of the labels match (old/renamed
+// service, or services list not loaded yet), rather than guessing kr 0.
+function computeServicesBasePrice(servicesStr) {
+  if (!servicesStr || !jobServicesCache.length) return null;
+  const labels = servicesStr.split(',').map(s => s.trim()).filter(Boolean);
+  let sum = 0, matched = false;
+  labels.forEach(label => {
+    const svc = jobServicesCache.find(s => s.label === label);
+    if (svc) { sum += Number(svc.price_nok || 0); matched = true; }
+  });
+  return matched ? sum : null;
 }
 
 /* ---------------- Kundevalg (eksisterende eller ny) ---------------- */
@@ -2620,6 +2738,20 @@ async function saveCustomerEditModal() {
   if (!newNumber || !newName) { msg.textContent = 'Fyll ut navn og kundenummer.'; msg.classList.add('err'); return; }
   const cars = collectCustomerCarValues();
 
+  // Kunderegister is the master source for a car's spelling — if the admin
+  // corrected an existing entry (same position, different text) rather than
+  // adding/removing one, cascade that correction to every job of this
+  // customer that still has the old spelling, so history/Bookinger stay in
+  // sync with the corrected card instead of drifting back out of date.
+  const oldCars = _frCustomerCarsMap[String(editingCustomerNumber)] || [];
+  const carRenames = [];
+  oldCars.forEach((oldVal, i) => {
+    const newVal = cars[i];
+    if (oldVal && newVal && oldVal.trim().toLowerCase() !== newVal.trim().toLowerCase()) {
+      carRenames.push({ from: oldVal, to: newVal });
+    }
+  });
+
   const jobsToUpdate = (window._frJobs || []).filter(j => String(j.customer_number) === String(editingCustomerNumber));
   try {
     await Promise.all(jobsToUpdate.map(j => fetch('/api/admin-data?resource=jobs', {
@@ -2630,7 +2762,7 @@ async function saveCustomerEditModal() {
     await fetch('/api/admin-data?resource=customer-cars', {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_number: newNumber, cars, avatar: _custEditSelectedAvatar })
+      body: JSON.stringify({ customer_number: newNumber, cars, avatar: _custEditSelectedAvatar, carRenames })
     });
     _frCustomerCarsMap[String(newNumber)] = cars;
     _frCustomerAvatarMap[String(newNumber)] = _custEditSelectedAvatar;
@@ -2692,6 +2824,7 @@ function buildJobRow(j, isDraft) {
   row.onclick = () => openJobEdit(j.id);
   const photoIcon = (j.photos && j.photos.length) ? `<span class="fr-job-photo-flag">${frIcon('camera')} ${j.photos.length}</span>` : '';
   const campaignFlag = j.campaign_price ? `<span class="fr-campaign-badge">${frIcon('gift')}</span>` : '';
+  const discountFlag = j.discount_percent ? `<span class="fr-campaign-badge" title="Rabattkode ${j.discount_code || ''} (-${j.discount_percent}%)">${frIcon('tag')}</span>` : '';
   const referenceFlag = j.show_as_reference ? `<span class="fr-job-photo-flag" title="Vises på Resultater-siden">${frIcon('star')}</span>` : '';
   const smsFlag = j.completion_sms_sent_at ? `<span class="fr-job-photo-flag fr-sms-sent-flag" title="Kunde varslet ${new Date(j.completion_sms_sent_at).toLocaleDateString('no-NO')}">${frIcon('bell')}</span>` : '';
   row.innerHTML = `
@@ -2705,7 +2838,7 @@ function buildJobRow(j, isDraft) {
     <div class="fr-job-compact-right">
       ${isDraft
         ? '<span class="fr-draft-badge">Kladd</span>'
-        : `${referenceFlag}${campaignFlag}${smsFlag}${photoIcon}<span class="fr-job-compact-price">kr ${Number(j.price_paid).toLocaleString('no-NO')}</span>`}
+        : `${referenceFlag}${campaignFlag}${discountFlag}${smsFlag}${photoIcon}<span class="fr-job-compact-price">kr ${Number(j.price_paid).toLocaleString('no-NO')}</span>`}
     </div>
   `;
   return row;
@@ -3007,7 +3140,23 @@ function openJobEdit(id) {
     : `${frIcon('save')} Lagre endringer`;
   document.getElementById('editJobCarType').value = job.car_type || '';
   document.getElementById('editJobServices').value = job.services || '';
-  document.getElementById('editJobPrice').value = job.price_paid ?? '';
+
+  // A discount code works like a campaign — the price is auto-adjusted, not
+  // just flagged for the admin to do by hand. Only suggest it for a still-
+  // priceless draft; a job that's already been priced (completed, or
+  // reopened afterward) keeps its saved price untouched.
+  let suggestedPrice = job.price_paid;
+  if (job.status === 'draft' && !job.price_paid && job.discount_percent) {
+    const base = computeServicesBasePrice(job.services);
+    if (base !== null) suggestedPrice = Math.round(base * (1 - job.discount_percent / 100));
+  }
+  document.getElementById('editJobPrice').value = suggestedPrice ?? '';
+
+  const discountBadge = document.getElementById('editJobDiscountBadge');
+  discountBadge.classList.toggle('d-none', !job.discount_percent);
+  if (job.discount_percent) {
+    discountBadge.innerHTML = `${frIcon('tag')} Rabattkode ${job.discount_code || ''} (-${job.discount_percent}%)`;
+  }
   setGaugeValue('editJobSize', 'editJobSize', job.job_size || 5);
   setGaugeValue('editJobTime', 'editJobTimeSpentMinutes', job.time_spent_minutes || 0);
   document.getElementById('editJobNotes').value = job.notes || '';

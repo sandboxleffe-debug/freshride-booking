@@ -173,9 +173,9 @@
 
     <div class="fr-calendar">
       <div class="fr-calendar-head-row">
-        <button class="fr-cal-nav-btn" id="calendarPrevBtn" onclick="changeCalendarMonth(-1)" aria-label="Forrige måned">‹</button>
+        <button class="fr-cal-nav-btn" id="calendarPrevBtn" onclick="changeCalendarMonth(-1)" aria-label="Forrige måned" title="Forrige måned">‹</button>
         <div class="fr-calendar-head" id="calendarMonthLabel"></div>
-        <button class="fr-cal-nav-btn" onclick="changeCalendarMonth(1)" aria-label="Neste måned">›</button>
+        <button class="fr-cal-nav-btn" id="calendarNextBtn" onclick="changeCalendarMonth(1)" aria-label="Neste måned" title="Neste måned">›</button>
       </div>
       <div class="fr-calendar-grid" id="calendarGrid"></div>
     </div>
@@ -233,6 +233,11 @@
         <div class="mb-2">
           <label for="carInput" class="form-label fr-label">🚗 Bil (valgfritt)</label>
           <input id="carInput" class="form-control fr-input" placeholder="F.eks. VW Golf" />
+        </div>
+        <div class="mb-2">
+          <label for="discountCodeInput" class="form-label fr-label">🏷️ Rabattkode (valgfritt)</label>
+          <input id="discountCodeInput" class="form-control fr-input" placeholder="F.eks. A7K3M" maxlength="5" style="text-transform:uppercase;" oninput="onDiscountCodeInput(this.value)" />
+          <p id="discountCodeHint" class="fr-hint mt-1"></p>
         </div>
         <div id="formError" class="fr-form-error d-none">Fyll inn navn og mobilnummer for å fortsette.</div>
       </div>
@@ -412,14 +417,17 @@ async function loadReviews() {
 
     const cardHtml = r => {
       const { preview, hasMore } = splitPreview(r.comment);
+      // The preview <p> always renders (even empty) so every card reserves
+      // the same fixed height — a card with no comment must not be any
+      // shorter than one with a 3-line comment (same layout-jump bug as
+      // the line-clamp above, just triggered by missing text instead of
+      // short text).
       return `
         <div class="fr-review-card" onclick="this.classList.toggle('fr-review-open')">
           <div class="fr-review-stars">${starsHtml(r.rating)}</div>
           <p class="fr-review-name">${r.name || 'Anonym kunde'}</p>
-          ${r.comment ? `
-            <p class="fr-review-preview">${preview}${hasMore ? ' …' : ''}</p>
-            ${hasMore ? `<p class="fr-review-full">${r.comment}</p>` : ''}
-          ` : ''}
+          <p class="fr-review-preview">${preview}${hasMore ? ' …' : ''}</p>
+          ${hasMore ? `<p class="fr-review-full">${r.comment}</p>` : ''}
         </div>
       `;
     };
@@ -769,6 +777,20 @@ function onPhoneInputForCarSuggest() {
 }
 document.getElementById('phone').addEventListener('input', onPhoneInputForCarSuggest);
 
+/* ---------------- Discount code (optional) ----------------
+   Validated exactly once — at the moment of booking submission — never
+   live as the customer types. A per-keystroke live check would let anyone
+   brute-force guess codes for free; checking only when they hit "Bekreft
+   booking" ties every guess to an actual booking attempt, which is both
+   rate-limited (book-slot.js) and far more costly to repeat. */
+function onDiscountCodeInput(rawValue) {
+  const value = rawValue.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const input = document.getElementById('discountCodeInput');
+  if (input.value !== value) input.value = value;
+  document.getElementById('discountCodeHint').textContent = '';
+  document.getElementById('discountCodeHint').className = 'fr-hint mt-1';
+}
+
 /* ---------------- Booking ---------------- */
 async function book() {
   const name = document.getElementById("name").value.trim();
@@ -794,6 +816,36 @@ async function book() {
   }
   if (hasError) return;
 
+  // The discount code (if any) is validated exactly once, right here —
+  // as part of an actual booking attempt, never while typing.
+  const discountHint = document.getElementById('discountCodeHint');
+  const discountCode = document.getElementById('discountCodeInput').value.trim();
+  let validatedDiscountCode;
+  if (discountCode) {
+    bookBtn.disabled = true;
+    bookBtn.textContent = "Sjekker rabattkode …";
+    try {
+      const checkRes = await fetch(`/api/content?type=discount-code&code=${encodeURIComponent(discountCode)}`);
+      const checkData = await checkRes.json();
+      if (!checkData.valid) {
+        discountHint.textContent = 'Ugyldig eller allerede brukt kode.';
+        discountHint.className = 'fr-hint mt-1 fr-hint-error';
+        bookBtn.disabled = false;
+        bookBtn.textContent = "Bekreft booking";
+        return;
+      }
+      validatedDiscountCode = discountCode;
+      discountHint.textContent = `✓ ${checkData.percent}% rabatt`;
+      discountHint.className = 'fr-hint mt-1 fr-hint-ok';
+    } catch (e) {
+      discountHint.textContent = 'Klarte ikke å sjekke rabattkoden. Prøv igjen.';
+      discountHint.className = 'fr-hint mt-1 fr-hint-error';
+      bookBtn.disabled = false;
+      bookBtn.textContent = "Bekreft booking";
+      return;
+    }
+  }
+
   bookBtn.disabled = true;
   bookBtn.textContent = "Booker …";
 
@@ -807,6 +859,7 @@ async function book() {
         phone,
         car: car || undefined,
         services,
+        discountCode: validatedDiscountCode,
         start: selected.start,
         end: selected.end
       })
@@ -822,6 +875,8 @@ async function book() {
     document.getElementById("name").value = "";
     document.getElementById("phone").value = "";
     document.getElementById("carInput").value = "";
+    document.getElementById("discountCodeInput").value = "";
+    document.getElementById("discountCodeHint").textContent = "";
     carSuggestLastPhone = '';
     renderCarSuggestions([]);
     loadSlotsForDate(selected.start.slice(0, 10));

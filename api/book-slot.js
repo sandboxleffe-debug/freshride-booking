@@ -17,6 +17,7 @@ import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
 import { createDraftJobLog } from "./_lib/customers.js";
+import { redeemDiscountCode } from "./_lib/discount-codes.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const SITE_URL = "https://freshride.no";
@@ -130,15 +131,29 @@ async function sendOwnerReminderEmail({ name, phone, services, start, end, code 
 
 // Best-effort wrapper — never blocks the booking itself if the draft
 // job log creation fails for some reason.
-async function createDraftJobLogForBooking({ name, phone, services, start, code, car }) {
+async function createDraftJobLogForBooking({ name, phone, services, start, code, car, discountCode, discountPercent }) {
   try {
     const supabase = getSupabaseAdmin();
     const p = getOsloParts(start);
     const pad = n => String(n).padStart(2, "0");
     const jobDate = `${p.year}-${pad(p.month)}-${pad(p.day)}`;
-    await createDraftJobLog(supabase, { name, phone, services, jobDate, code, car });
+    await createDraftJobLog(supabase, { name, phone, services, jobDate, code, car, discountCode, discountPercent });
   } catch (err) {
     console.error("createDraftJobLogForBooking error:", err);
+  }
+}
+
+// Best-effort, one-time redemption of a customer-typed discount code — a
+// failure here (already used, typo, race) must never fail the booking
+// itself, it just means no discount gets attached to the draft job log.
+async function redeemDiscountCodeForBooking(discountCode, phone) {
+  if (!discountCode) return null;
+  try {
+    const result = await redeemDiscountCode(getSupabaseAdmin(), discountCode, { phone });
+    return result.ok ? result.percent : null;
+  } catch (err) {
+    console.error("redeemDiscountCodeForBooking error:", err);
+    return null;
   }
 }
 
@@ -147,7 +162,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { eventId, name, phone, services, start, end, car } = req.body || {};
+  const { eventId, name, phone, services, start, end, car, discountCode } = req.body || {};
   if (!eventId || !name || !phone || !Array.isArray(services) || services.length === 0) {
     return res.status(400).json({ error: "Missing eventId, name, phone, or services" });
   }
@@ -190,7 +205,12 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Klarte ikke å bekrefte booking" });
   }
 
-  await createDraftJobLogForBooking({ name, phone, services, start, code, car });
+  const redeemedDiscountPercent = await redeemDiscountCodeForBooking(discountCode, phone);
+  await createDraftJobLogForBooking({
+    name, phone, services, start, code, car,
+    discountCode: redeemedDiscountPercent ? discountCode.trim().toUpperCase() : null,
+    discountPercent: redeemedDiscountPercent,
+  });
 
   let smsSent = false;
   try {

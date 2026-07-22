@@ -68,6 +68,71 @@
     assertEqual(el.value, '92133900');
   });
 
+  // =========================================================================
+  // Discount code field on the booking form — validated exactly once, at
+  // booking submission, never live as the customer types (prevents
+  // brute-force guessing via instant per-keystroke feedback).
+  // =========================================================================
+  test('discount code input: uppercases and strips non-alphanumeric characters, no network call', () => {
+    window.fetch = () => { throw new Error('typing in the field must never call the network'); };
+    onDiscountCodeInput('a7-k3 m!');
+    assertEqual(document.getElementById('discountCodeInput').value, 'A7K3M');
+  });
+
+  function setUpValidBookingForm() {
+    document.getElementById('serviceGrid').innerHTML = '<label><input type="checkbox" class="fr-service-checkbox" value="FreshRide Interior" checked></label>';
+    document.getElementById('name').value = 'Ola Testesen';
+    document.getElementById('phone').value = '90000001';
+    selected = { id: 'ev1', start: '2026-07-24T10:00:00Z', end: '2026-07-24T11:00:00Z' };
+  }
+
+  test('book(): a blank discount code never triggers a validate call', async () => {
+    setUpValidBookingForm();
+    document.getElementById('discountCodeInput').value = '';
+    let discountCheckCalled = false;
+    window.fetch = (url) => {
+      if (String(url).includes('discount-code')) discountCheckCalled = true;
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, code: 'X1' }), { status: 200 }));
+    };
+    await book();
+    assert(!discountCheckCalled, 'no discount code typed — must not call the validate endpoint at all');
+  });
+
+  test('book(): a valid code is validated once, then sent along to book-slot', async () => {
+    setUpValidBookingForm();
+    document.getElementById('discountCodeInput').value = 'A7K3M';
+    let discountCheckCount = 0;
+    let bookSlotBody = null;
+    window.fetch = (url, opts) => {
+      const u = String(url);
+      if (u.includes('discount-code')) {
+        discountCheckCount++;
+        assert(u.includes('code=A7K3M'), 'expected the typed code in the validate request');
+        return Promise.resolve(new Response(JSON.stringify({ valid: true, percent: 15 }), { status: 200 }));
+      }
+      bookSlotBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, code: 'X1' }), { status: 200 }));
+    };
+    await book();
+    assertEqual(discountCheckCount, 1, 'expected exactly one validate call for a complete code, not a live stream of them');
+    assertEqual(bookSlotBody.discountCode, 'A7K3M', 'expected the validated code to be forwarded to book-slot.js');
+  });
+
+  test('book(): an invalid/used code blocks the booking with an error, never reaches book-slot', async () => {
+    setUpValidBookingForm();
+    document.getElementById('discountCodeInput').value = 'ZZZZZ';
+    let bookSlotCalled = false;
+    window.fetch = (url) => {
+      if (String(url).includes('discount-code')) return Promise.resolve(new Response(JSON.stringify({ valid: false }), { status: 200 }));
+      bookSlotCalled = true;
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    };
+    await book();
+    assert(!bookSlotCalled, 'an invalid code must stop the booking before it ever reaches book-slot.js');
+    const hint = document.getElementById('discountCodeHint');
+    assert(hint.classList.contains('fr-hint-error'), 'expected an error hint for an invalid/used code');
+  });
+
   window.fetch = origFetch;
 
   const results = [];
