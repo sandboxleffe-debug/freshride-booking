@@ -846,11 +846,12 @@ async function loadServices() {
       const label = document.createElement("label");
       label.className = "fr-service-option";
       const priceHtml = s.price_nok ? `<span class="fr-service-price">kr ${Number(s.price_nok).toLocaleString('no-NO')}</span>` : "";
+      const favoriteHtml = s.label.toLowerCase().includes("complete") ? `<span class="fr-service-favorite">★ Kundefavoritt</span>` : "";
       label.innerHTML = `
         <input type="checkbox" class="fr-service-checkbox" value="${s.label}" data-price="${s.price_nok || 0}">
         <span class="fr-service-option-body">
           <span class="fr-service-option-top">
-            <span class="fr-service-name"><span class="fr-service-icon">${iconForServiceLabel(s.label)}</span>${s.label}</span>
+            <span class="fr-service-name"><span class="fr-service-icon">${iconForServiceLabel(s.label)}</span>${s.label}${favoriteHtml}</span>
             ${priceHtml}
           </span>
           ${s.description ? `<small class="d-block fr-service-sub">${s.description}</small>` : ""}

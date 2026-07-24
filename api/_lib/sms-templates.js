@@ -10,9 +10,26 @@ const SITE_URL = "https://freshride.no";
 const OWNER_PHONE = "921 33 900";
 const FEEDBACK_URL = "https://freshride.no/feedback";
 
-// Sent to the customer the moment they book (book-slot.js), and to William
-// as an owner notification/email using the same wording.
-export function buildBookingText({ name, phone, services, date, time, endTime, code }) {
+// Sent to the customer the moment they book — kept short (kode, tid,
+// tjeneste(r), adresse, kalenderlenke, "kan ikke besvares"). William already
+// knows he sent it, so it skips the name/mobil/date-header a plain
+// confirmation doesn't need repeated back to the customer.
+export function buildBookingTextCustomer({ services, date, time, endTime, code, phone }) {
+  const calendarUrl = `${SITE_URL}/api/calendar-invite?code=${encodeURIComponent(code)}&phone=${encodeURIComponent(phone)}`;
+  return (
+    `Booking bekreftet ✅\n\n` +
+    `Kode: ${code}\n` +
+    `Tid: ${date}, kl. ${time} – ${endTime}\n` +
+    `Tjeneste(r): ${services.join(", ")}\n` +
+    `Adresse: ${BUSINESS_ADDRESS}\n\n` +
+    `Legg til i kalender: ${calendarUrl}\n\n` +
+    `Denne SMS-en kan ikke besvares.`
+  );
+}
+
+// Sent to William (owner SMS/email) — keeps the fuller detail since he
+// needs to know who's coming, not just that someone booked.
+export function buildBookingTextOwner({ name, phone, services, date, time, endTime, code }) {
   const calendarUrl = `${SITE_URL}/api/calendar-invite?code=${encodeURIComponent(code)}&phone=${encodeURIComponent(phone)}`;
   return (
     `Ny booking mottatt\n\n` +
@@ -22,8 +39,7 @@ export function buildBookingText({ name, phone, services, date, time, endTime, c
     `Dato: ${date}\n` +
     `Tid: ${time} – ${endTime}\n` +
     `Tjeneste(r): ${services.join(", ")}\n` +
-    `Adresse: ${BUSINESS_ADDRESS}\n` +
-    `Du får en SMS når bilen er ferdig og klar for henting (når det måtte passe).\n` +
+    `Adresse: ${BUSINESS_ADDRESS}\n\n` +
     `Legg til i kalender: ${calendarUrl}\n\n` +
     `Spørsmål? Ring William på ${OWNER_PHONE}. Denne SMS-en kan ikke besvares.`
   );
@@ -33,5 +49,11 @@ export function buildBookingText({ name, phone, services, date, time, endTime, c
 // once a job is done and the car is ready for pickup.
 export function buildCompletionSmsText(name) {
   const greeting = name ? `Hei ${name}!` : "Hei!";
-  return `${greeting} Bilen din er klar hos FreshRide. Håper du ble fornøyd! Legg gjerne igjen en tilbakemelding: ${FEEDBACK_URL} Mvh William\n\nSpørsmål? Ring William på ${OWNER_PHONE}. Denne SMS-en kan ikke besvares.`;
+  return (
+    `${greeting}\n\n` +
+    `Bilen din er klar hos FreshRide. Håper du ble fornøyd!\n\n` +
+    `Legg gjerne igjen en tilbakemelding: ${FEEDBACK_URL}\n\n` +
+    `Mvh William\n\n` +
+    `Denne SMS-en kan ikke besvares.`
+  );
 }

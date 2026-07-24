@@ -844,6 +844,10 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-service-name { display: flex; align-items: center; gap: 0.4rem; }
 .fr-service-icon { display: flex; flex-shrink: 0; color: var(--fr-gold-deep); }
 .fr-service-icon svg { width: 1.05em; height: 1.05em; }
+.fr-service-favorite {
+  font-size: 0.68rem; font-weight: 700; color: var(--fr-gold-deep); background: var(--fr-gold-soft);
+  padding: 0.1rem 0.4rem; border-radius: 999px; white-space: nowrap;
+}
 
 /* Admin: accounting summary */
 .fr-accounting-summary { display: flex; gap: 0.75rem; flex-wrap: wrap; }
@@ -918,6 +922,12 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-gauge-band-low { left: 0; width: 33.34%; background: var(--fr-gold-bright); }
 .fr-gauge-band-mid { left: 33.34%; width: 33.33%; background: var(--fr-gold); }
 .fr-gauge-band-high { left: 66.67%; width: 33.33%; background: var(--fr-gold-deep); }
+/* "Hvor omfattende var jobben" is the one gauge where green→yellow→red
+   reads more naturally than the shared gold scale — scoped to just these
+   two (Logg ny jobb + job edit), not time-spent/discount/promo gauges. */
+#jobSizeGaugeTrack .fr-gauge-band-low, #editJobSizeGaugeTrack .fr-gauge-band-low { background: #3EA246; }
+#jobSizeGaugeTrack .fr-gauge-band-mid, #editJobSizeGaugeTrack .fr-gauge-band-mid { background: #D98A15; }
+#jobSizeGaugeTrack .fr-gauge-band-high, #editJobSizeGaugeTrack .fr-gauge-band-high { background: #C63B2E; }
 .fr-gauge-dim {
   position: absolute; top: 0; bottom: 0; right: 0; width: 100%;
   background: rgba(8,7,10,0.62);
@@ -957,6 +967,27 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   display: inline-block; background: rgba(230,145,56,0.18); color: #B5651D;
   font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; white-space: nowrap;
 }
+
+/* Collapsed-by-default booking-info fields in the job edit modal — the
+   values are auto-filled from the booking, so they take up space without
+   usually needing a look; expand via the native <summary> toggle. */
+.fr-collapsible-booking-fields { margin-bottom: 0.9rem; }
+.fr-collapsible-booking-fields summary {
+  cursor: pointer; font-weight: 600; font-size: 0.85rem; color: var(--fr-panel-text-soft);
+  padding: 0.5rem 0; list-style: none;
+}
+.fr-collapsible-booking-fields summary::-webkit-details-marker { display: none; }
+.fr-collapsible-booking-fields summary::before { content: '▸ '; }
+.fr-collapsible-booking-fields[open] summary::before { content: '▾ '; }
+.fr-collapsible-booking-fields summary .fr-hint { display: inline; margin-left: 0.3rem; font-weight: 400; }
+.fr-collapsible-booking-fields > .fr-form-row:first-of-type { margin-top: 0.5rem; }
+
+/* Beløp + tips → total (job edit) */
+.fr-job-total-display {
+  font-family: var(--font-display); font-weight: 700; font-size: 1.1rem;
+  color: var(--fr-panel-text); padding: 0.5rem 0;
+}
+.fr-job-total-display.fr-job-total-zero { color: #C63B2E; }
 
 /* "Vis flere" button — needs to read clearly on the light panel background */
 .fr-show-more-btn {
@@ -1036,6 +1067,16 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-btn-outline:hover { border-color: var(--fr-gold); color: var(--fr-panel-text); }
 .fr-btn-outline:disabled { opacity: 0.5; cursor: default; }
 .fr-btn-outline:disabled:hover { border-color: var(--fr-panel-border); color: var(--fr-panel-text-soft); }
+
+/* "Send ferdig-SMS" — a solid, clearly-actionable button (distinct from the
+   dashed-outline secondary style and from the gold Lagre/save button). */
+.fr-btn-notify {
+  border: none; background: #2E6E8E; color: #fff;
+  font-size: 0.85rem; font-weight: 700; padding: 0.6rem 0.9rem; border-radius: 8px; cursor: pointer; width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+}
+.fr-btn-notify:hover { background: #275F7B; }
+.fr-btn-notify:disabled { opacity: 0.5; cursor: default; background: #2E6E8E; }
 
 /* Discount code field — input + explicit "Sjekk kode" button side by side */
 .fr-discount-code-row { display: flex; gap: 0.5rem; }

@@ -18,7 +18,8 @@ import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
 import { createDraftJobLog } from "./_lib/customers.js";
 import { redeemDiscountCode } from "./_lib/discount-codes.js";
-import { buildBookingText } from "./_lib/sms-templates.js";
+import { buildBookingTextCustomer, buildBookingTextOwner } from "./_lib/sms-templates.js";
+import { logNotification } from "./_lib/notifications.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 const OWNER_PHONE = "921 33 900";
@@ -53,22 +54,12 @@ function formatNorwegian(dateTimeStr) {
   return { date, time };
 }
 
-async function logNotification({ channel, recipient, code, name, status }) {
-  try {
-    const supabase = getSupabaseAdmin();
-    await supabase.from("freshride_notifications").insert({
-      channel, recipient, booking_code: code, customer_name: name, status,
-    });
-  } catch (err) {
-    console.error("logNotification error:", err);
-  }
-}
-
 async function sendBookingSms({ phone, name, services, start, end, code }) {
   const { date, time } = formatNorwegian(start);
   const endTime = formatOsloTime(end);
-  const message = buildBookingText({ name, phone, services, date, time, endTime, code });
-  return sendTalkdeskSms({ toPhone: phone, name, time, date, services, address: BUSINESS_ADDRESS, message });
+  const message = buildBookingTextCustomer({ services, phone, date, time, endTime, code });
+  const ok = await sendTalkdeskSms({ toPhone: phone, name, time, date, services, address: BUSINESS_ADDRESS, message });
+  return { ok, message };
 }
 
 // Extra SMS to the business owner's own number(s), if enabled in admin
@@ -85,13 +76,13 @@ async function sendOwnerSms({ name, phone, services, start, end, code }) {
 
     const { date, time } = formatNorwegian(start);
     const endTime = formatOsloTime(end);
-    const message = buildBookingText({ name, phone, services, date, time, endTime, code });
+    const message = buildBookingTextOwner({ name, phone, services, date, time, endTime, code });
 
     const numbers = data.owner_sms_phone.split(",").map(n => n.trim()).filter(Boolean);
     const results = await Promise.all(
       numbers.map(async toPhone => {
         const ok = await sendTalkdeskSms({ toPhone, name, time, date, services, address: BUSINESS_ADDRESS, message });
-        await logNotification({ channel: "sms_eier", recipient: toPhone, code, name, status: ok ? "ok" : "failed" });
+        await logNotification({ channel: "sms_eier", recipient: toPhone, code, name, status: ok ? "ok" : "failed", message });
         return ok;
       })
     );
@@ -105,10 +96,9 @@ async function sendOwnerSms({ name, phone, services, start, end, code }) {
 async function sendOwnerReminderEmail({ name, phone, services, start, end, code }) {
   const { date, time } = formatNorwegian(start);
   const endTime = formatOsloTime(end);
-  return sendOwnerEmail({
-    subject: `Ny booking: ${name} — ${date} kl. ${time}`,
-    text: buildBookingText({ name, phone, services, date, time, endTime, code }),
-  });
+  const message = buildBookingTextOwner({ name, phone, services, date, time, endTime, code });
+  const ok = await sendOwnerEmail({ subject: `Ny booking: ${name} — ${date} kl. ${time}`, text: message });
+  return { ok, message };
 }
 
 // Best-effort wrapper — never blocks the booking itself if the draft
@@ -196,19 +186,23 @@ export default async function handler(req, res) {
 
   let smsSent = false;
   try {
-    smsSent = await sendBookingSms({ phone, name, services, start, end: finalEnd, code });
+    const result = await sendBookingSms({ phone, name, services, start, end: finalEnd, code });
+    smsSent = result.ok;
+    await logNotification({ channel: "sms_kunde", recipient: phone, code, name, status: smsSent ? "ok" : "failed", message: result.message });
   } catch (err) {
     console.error("book-slot sms error:", err);
+    await logNotification({ channel: "sms_kunde", recipient: phone, code, name, status: "failed" });
   }
-  await logNotification({ channel: "sms_kunde", recipient: phone, code, name, status: smsSent ? "ok" : "failed" });
 
   let emailSent = false;
   try {
-    emailSent = await sendOwnerReminderEmail({ name, phone, services, start, end: finalEnd, code });
+    const result = await sendOwnerReminderEmail({ name, phone, services, start, end: finalEnd, code });
+    emailSent = result.ok;
+    await logNotification({ channel: "epost_eier", recipient: "eier", code, name, status: emailSent ? "ok" : "failed", message: result.message });
   } catch (err) {
     console.error("book-slot email error:", err);
+    await logNotification({ channel: "epost_eier", recipient: "eier", code, name, status: "failed" });
   }
-  await logNotification({ channel: "epost_eier", recipient: "eier", code, name, status: emailSent ? "ok" : "failed" });
 
   try {
     await sendOwnerSms({ name, phone, services, start, end: finalEnd, code });

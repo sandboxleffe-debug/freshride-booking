@@ -158,6 +158,24 @@
     assertEqual(missing, [], `expected every label (including an unmapped fallback) to render an icon, missing for: ${missing.join(', ')}`);
   });
 
+  test('loadServices: FreshRide Complete gets a subtle "Kundefavoritt" badge, others do not', async () => {
+    window.fetch = (url) => {
+      if (String(url).includes('type=services')) {
+        return Promise.resolve(new Response(JSON.stringify({ services: [
+          { id: '1', label: 'FreshRide Complete', price_nok: 1200 },
+          { id: '2', label: 'FreshRide Exterior', price_nok: 500 },
+        ] }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+    };
+    await loadServices();
+    const options = Array.from(document.querySelectorAll('.fr-service-name'));
+    const complete = options.find(o => o.textContent.includes('Complete'));
+    const exterior = options.find(o => o.textContent.includes('Exterior'));
+    assert(!!complete.querySelector('.fr-service-favorite'), 'expected FreshRide Complete to show the Kundefavoritt badge');
+    assert(!exterior.querySelector('.fr-service-favorite'), 'expected other services to not show the badge');
+  });
+
   test('build version: fetches the latest commit SHA from GitHub and shows it in the footer', async () => {
     window.fetch = (url) => {
       assert(String(url).includes('api.github.com/repos/sandboxleffe-debug/freshride-booking/commits/main'), 'expected the public GitHub commits API to be called');

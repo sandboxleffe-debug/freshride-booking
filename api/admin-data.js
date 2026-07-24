@@ -11,7 +11,8 @@ import { upsertCustomerCars, upsertCustomerAvatar, renameCarForCustomer, syncCar
 import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode } from "./_lib/discount-codes.js";
 import { getCalendarClient, CALENDAR_ID, findPastBookingByCode } from "./_lib/google-calendar.js";
-import { buildBookingText, buildCompletionSmsText } from "./_lib/sms-templates.js";
+import { buildBookingTextCustomer, buildCompletionSmsText } from "./_lib/sms-templates.js";
+import { logNotification } from "./_lib/notifications.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 
@@ -329,7 +330,7 @@ async function handleJobs(req, res, supabase) {
       if (!jobId) return res.status(400).json({ error: "Missing jobId" });
       try {
         const { data: job, error: getErr } = await supabase.from("freshride_jobs")
-          .select("customer_name, customer_phone, services, job_date").eq("id", jobId).single();
+          .select("customer_name, customer_phone, services, job_date, booking_code").eq("id", jobId).single();
         if (getErr || !job) return res.status(404).json({ error: "Fant ikke jobben" });
         if (!job.customer_phone) return res.status(400).json({ error: "Kunden mangler mobilnummer" });
 
@@ -338,6 +339,10 @@ async function handleJobs(req, res, supabase) {
           toPhone: job.customer_phone, name: job.customer_name,
           date: job.job_date || "", time: "", services: job.services || "",
           address: BUSINESS_ADDRESS, message,
+        });
+        await logNotification({
+          channel: "sms_ferdig", recipient: job.customer_phone, code: job.booking_code,
+          name: job.customer_name, status: ok ? "ok" : "failed", message,
         });
         if (!ok) return res.status(502).json({ error: "Klarte ikke å sende SMS" });
 
@@ -367,16 +372,17 @@ async function handleJobs(req, res, supabase) {
       }
     }
 
-    // Same buildBookingText() used for the real booking-confirmation SMS
-    // (book-slot.js) — this just sends it with plausible placeholder data
-    // so William can check the exact current wording whenever it changes.
+    // Same buildBookingTextCustomer() used for the real booking-confirmation
+    // SMS a customer receives (book-slot.js) — this just sends it with
+    // plausible placeholder data so William can check the exact current
+    // wording whenever it changes.
     if (action === "send-test-booking-sms") {
       const { phone } = req.body || {};
       if (!phone) return res.status(400).json({ error: "Missing phone" });
       try {
         const now = new Date();
-        const message = buildBookingText({
-          name: "Test Testesen", phone, services: ["FreshRide Complete"],
+        const message = buildBookingTextCustomer({
+          phone, services: ["FreshRide Complete"],
           date: now.toLocaleDateString("no-NO", { day: "numeric", month: "long", year: "numeric" }),
           time: "12:00", endTime: "13:30", code: "T99",
         });
@@ -408,7 +414,7 @@ async function handleJobs(req, res, supabase) {
   }
 
   if (req.method === "PATCH") {
-    const { id, customer_name, customer_number, customer_phone, car_type, services, price_paid, notes, job_size, time_spent_minutes, job_date, campaign_price, status, reference_product_name, show_as_reference } = req.body || {};
+    const { id, customer_name, customer_number, customer_phone, car_type, services, price_paid, tip_amount, notes, job_size, time_spent_minutes, job_date, campaign_price, status, reference_product_name, show_as_reference } = req.body || {};
     if (!id) return res.status(400).json({ error: "Missing id" });
     const updates = {};
     if (customer_name !== undefined) updates.customer_name = customer_name;
@@ -417,6 +423,7 @@ async function handleJobs(req, res, supabase) {
     if (car_type !== undefined) updates.car_type = car_type;
     if (services !== undefined) updates.services = services;
     if (price_paid !== undefined) updates.price_paid = price_paid;
+    if (tip_amount !== undefined) updates.tip_amount = tip_amount;
     if (notes !== undefined) updates.notes = notes;
     if (job_size !== undefined) updates.job_size = job_size;
     if (time_spent_minutes !== undefined) updates.time_spent_minutes = time_spent_minutes;

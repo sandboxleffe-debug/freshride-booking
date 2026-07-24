@@ -50,6 +50,11 @@
   }
   .fr-admin-title { font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; color: var(--fr-text-dark-zone); margin: 0; }
   .fr-admin-subtitle { font-size: 0.8rem; color: var(--fr-text-dark-zone-faint); margin: 0; }
+  .fr-admin-weather { display: flex; gap: 0.85rem; }
+  .fr-admin-weather-day { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; min-width: 2.4rem; }
+  .fr-admin-weather-label { font-size: 0.68rem; color: var(--fr-text-dark-zone-faint); }
+  .fr-admin-weather-emoji { font-size: 1.15rem; line-height: 1; }
+  .fr-admin-weather-temp { font-weight: 700; font-size: 0.8rem; color: var(--fr-text-dark-zone); }
   .fr-admin-range { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
   .fr-range-btn {
     flex: 1; background: rgba(246,242,231,0.08); border: 1px solid var(--fr-line-dark-zone);
@@ -119,9 +124,34 @@
   .fr-list-row-code { font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; color: var(--fr-gold-deep); background: var(--fr-gold-soft); padding: 0.1rem 0.4rem; border-radius: 6px; }
   .fr-list-row-code.fr-list-row-customer { color: #2E6E8E; background: rgba(46,110,142,0.14); }
   .fr-list-row-open { color: #2E7D32; font-weight: 600; font-size: 0.82rem; }
+  .fr-list-row-completed { border-left: 3px solid #3EA246; padding-left: calc(0.8rem - 3px); }
+  .fr-list-row-upcoming { border-left: 3px solid #D98A15; padding-left: calc(0.8rem - 3px); }
+  .fr-completed-check { display: inline-flex; color: #3EA246; vertical-align: -0.15em; }
+  .fr-completed-check svg { width: 1em; height: 1em; }
+  .fr-booked-service {
+    display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.3rem;
+    font-size: 0.82rem; font-weight: 600; color: var(--fr-gold-bright);
+  }
+  .fr-booked-service svg { width: 1em; height: 1em; flex-shrink: 0; }
+  .fr-list-section-total { float: right; color: var(--fr-gold-bright); font-weight: 700; text-transform: none; letter-spacing: normal; }
   .fr-notif-icons { display: flex; gap: 0.3rem; flex-shrink: 0; }
   .fr-notif-chip { font-size: 1.05rem; line-height: 1; }
   .fr-notif-chip-bad { filter: grayscale(1); opacity: 0.35; }
+  .fr-notif-view-btn {
+    display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;
+    background: none; border: 1.5px solid var(--fr-line-dark-zone); color: var(--fr-text-dark-zone-soft);
+    font-size: 0.78rem; font-weight: 600; padding: 0.3rem 0.6rem; border-radius: 8px; cursor: pointer;
+  }
+  .fr-notif-view-btn svg { width: 0.9em; height: 0.9em; }
+  .fr-notif-view-btn:hover { border-color: var(--fr-gold); color: var(--fr-text-dark-zone); }
+  .fr-notif-message-block { margin-bottom: 1rem; }
+  .fr-notif-message-block:last-child { margin-bottom: 0; }
+  .fr-notif-message-label { font-weight: 600; font-size: 0.85rem; color: var(--fr-panel-text); margin-bottom: 0.3rem; }
+  .fr-notif-message-text {
+    white-space: pre-wrap; font-family: inherit; font-size: 0.85rem; color: var(--fr-panel-text-soft);
+    background: var(--fr-panel-bg-2); border: 1px solid var(--fr-panel-border); border-radius: 8px;
+    padding: 0.7rem 0.85rem; margin: 0;
+  }
   .fr-list-section-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fr-text-dark-zone-faint); margin: 1.2rem 0 0.5rem; }
   /* #list (Oversikt) sits outside .fr-panel on the dark background — but
      #jobsList sits inside a light .fr-panel, where the faint light-on-light
@@ -271,7 +301,16 @@
   .fr-cal-nav-btn:disabled { background: var(--fr-panel-border); color: var(--fr-panel-text-soft); cursor: default; }
   .fr-cal-nav-btn:disabled:hover { filter: none; }
 
-  .fr-login-input { width: 100%; margin-bottom: 0.9rem; }
+  .fr-login-input { width: 100%; margin-bottom: 0.9rem; padding-right: 2.6rem; }
+  .fr-login-pw-wrap { position: relative; }
+  .fr-login-pw-wrap .fr-login-input { margin-bottom: 0.9rem; }
+  .fr-login-pw-toggle {
+    position: absolute; top: 0; right: 0; height: calc(100% - 0.9rem); width: 2.6rem;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: none; color: var(--fr-panel-text-soft); cursor: pointer;
+  }
+  .fr-login-pw-toggle:hover { color: var(--fr-panel-text); }
+  .fr-login-pw-toggle svg { width: 1.15rem; height: 1.15rem; }
   .fr-login-error { color: #FF8A7A; font-size: 0.85rem; margin-top: 0.6rem; min-height: 1.1rem; }
   .fr-login-loading { height: 3px; border-radius: 2px; background: rgba(0,0,0,0.08); overflow: hidden; margin-top: 0.7rem; }
   .fr-login-loading-fill { height: 100%; width: 35%; background: var(--fr-gold); border-radius: 2px; animation: fr-login-loading-slide 1s ease-in-out infinite; }
@@ -298,7 +337,10 @@
   <div id="loginView" class="fr-panel fr-admin-login">
     <img src="assets/freshride-logo.png" alt="FreshRide" class="fr-login-logo" />
     <p class="fr-label mb-2"><span class="fr-icon" data-fr-icon="lock"></span> PASSORD</p>
-    <input type="password" id="pw" class="form-control fr-input fr-login-input" placeholder="Skriv inn passord" onkeydown="if(event.key==='Enter') login()" />
+    <div class="fr-login-pw-wrap">
+      <input type="password" id="pw" class="form-control fr-input fr-login-input" placeholder="Skriv inn passord" onkeydown="if(event.key==='Enter') login()" />
+      <button type="button" class="fr-login-pw-toggle" id="pwToggleBtn" onclick="togglePasswordVisibility()" aria-label="Vis passord" title="Vis passord"><span data-fr-icon="eye"></span></button>
+    </div>
     <button class="btn fr-btn-primary w-100" id="loginBtn" onclick="login()">Logg inn</button>
     <div id="loginLoadingBar" class="fr-login-loading d-none"><div class="fr-login-loading-fill"></div></div>
     <div id="loginError" class="fr-login-error"></div>
@@ -314,6 +356,7 @@
           <p class="fr-admin-subtitle">Oversikt over bestillinger</p>
         </div>
       </div>
+      <div id="adminWeatherStrip" class="fr-admin-weather d-none"></div>
     </div>
 
     <div class="fr-admin-tabs">
@@ -807,33 +850,44 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
       </div>
       <div class="modal-body">
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
-          <input type="date" id="editJobDate" class="form-control fr-input" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="user"></span> Kundenavn</label>
-          <input id="editJobCustomer" class="form-control fr-input" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label">Kundenummer</label>
-          <input id="editJobCustomerNumber" class="form-control fr-input" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="phone"></span> Mobilnummer</label>
-          <input id="editJobCustomerPhone" class="form-control fr-input" type="tel" inputmode="numeric" maxlength="8" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="car"></span> Biltype</label>
-          <input id="editJobCarType" class="form-control fr-input" />
-        </div>
+        <details class="fr-collapsible-booking-fields">
+          <summary>Bookinginfo <span class="fr-hint">(fylt inn automatisk — trykk for å vise/endre)</span></summary>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
+            <input type="date" id="editJobDate" class="form-control fr-input" />
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="user"></span> Kundenavn</label>
+            <input id="editJobCustomer" class="form-control fr-input" />
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label">Kundenummer</label>
+            <input id="editJobCustomerNumber" class="form-control fr-input" />
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="phone"></span> Mobilnummer</label>
+            <input id="editJobCustomerPhone" class="form-control fr-input" type="tel" inputmode="numeric" maxlength="8" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label"><span class="fr-icon" data-fr-icon="car"></span> Biltype</label>
+            <input id="editJobCarType" class="form-control fr-input" />
+          </div>
+        </details>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="droplet"></span> Tjeneste(r)</label>
           <input id="editJobServices" class="form-control fr-input" />
         </div>
         <div class="fr-form-row">
-          <label class="fr-label"><span class="fr-icon" data-fr-icon="dollarSign"></span> Pris betalt (kr) <span id="editJobDiscountBadge" class="fr-campaign-badge d-none"><span class="fr-icon" data-fr-icon="tag"></span></span></label>
-          <input type="number" id="editJobPrice" class="form-control fr-input" />
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="dollarSign"></span> Beløp fra booking (kr) <span id="editJobDiscountBadge" class="fr-campaign-badge d-none"><span class="fr-icon" data-fr-icon="tag"></span></span></label>
+          <input type="number" id="editJobAmount" class="form-control fr-input" oninput="updateJobEditTotal()" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label"><span class="fr-icon" data-fr-icon="gift"></span> Tips (kr)</label>
+          <input type="number" id="editJobTip" class="form-control fr-input" value="0" oninput="updateJobEditTotal()" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Totalt</label>
+          <div class="fr-job-total-display" id="editJobTotalDisplay">kr 0</div>
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="sliders"></span> Hvor omfattende var jobben? Velg på skala fra 1–10</label>
@@ -875,7 +929,6 @@
         </div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="camera"></span> Før/etter-bildepar (Resultater-siden)</label>
-          <p class="fr-hint">Hvert par er samme kameravinkel/posisjon. Last opp begge sider, eller én om gangen — de matches automatisk til samme par.</p>
           <div id="editJobPhotoPairs" class="fr-photo-pairs"></div>
           <button type="button" class="fr-btn-outline mt-2" onclick="addEmptyPhotoPair()">
             <span class="fr-icon" data-fr-icon="plusCircle"></span> Nytt bildepar
@@ -896,7 +949,7 @@
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="bell"></span> Varsle kunde</label>
           <p class="fr-hint" id="editJobSmsStatus"></p>
-          <button type="button" class="fr-btn-outline" id="editJobSmsBtn" onclick="sendCompletionSms()">
+          <button type="button" class="fr-btn-notify" id="editJobSmsBtn" onclick="sendCompletionSms()">
             <span class="fr-icon" data-fr-icon="bell"></span> Send "jobben er ferdig"-SMS
           </button>
         </div>
@@ -991,6 +1044,21 @@
   </div>
 </div>
 
+<!-- Se hva som faktisk ble sendt (varslingslogg) -->
+<div class="modal fade" id="notifMessageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content fr-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title"><span class="fr-icon" data-fr-icon="eye"></span> Sendt melding</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
+      </div>
+      <div class="modal-body">
+        <div id="notifMessageModalBody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Photo lightbox -->
 <div class="modal fade" id="lightboxModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -1016,6 +1084,7 @@ const FR_ICON_MAP = {
   checkCircle: 'CheckCircle', x: 'X', ban: 'Ban', eye: 'Eye', eyeOff: 'EyeOff',
   trendingUp: 'TrendingUp', trendingDown: 'TrendingDown', barChart: 'BarChart3', bell: 'Bell',
   home: 'Home', image: 'Image', bag: 'ShoppingBag', tag: 'Tag', alertTriangle: 'TriangleAlert',
+  diamond: 'Gem', shield: 'ShieldCheck', sparkle: 'Sparkle',
 };
 function frIcon(name) {
   const nodes = window.lucide?.icons?.[FR_ICON_MAP[name] || name];
@@ -1037,6 +1106,16 @@ const editModal = new bootstrap.Modal(document.getElementById('editModal'));
 
 function getPw() { return sessionStorage.getItem('fr_admin_pw') || ''; }
 function authHeaders() { return { 'x-admin-password': getPw() }; }
+
+function togglePasswordVisibility() {
+  const input = document.getElementById('pw');
+  const btn = document.getElementById('pwToggleBtn');
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  btn.innerHTML = frIcon(showing ? 'eye' : 'eyeOff');
+  btn.setAttribute('aria-label', showing ? 'Vis passord' : 'Skjul passord');
+  btn.title = showing ? 'Vis passord' : 'Skjul passord';
+}
 
 async function login() {
   const pw = document.getElementById('pw').value;
@@ -1067,6 +1146,7 @@ function enterAdmin() {
   document.getElementById('loginView').classList.add('d-none');
   document.getElementById('adminView').classList.remove('d-none');
   loadMonthCalendar();
+  loadAdminWeather();
   fetchOverview();
   loadServicesAdmin();
   loadReviewsAdmin();
@@ -1165,6 +1245,50 @@ const DOW_LABELS = ["Man","Tir","Ons","Tor","Fre","Lør","Søn"];
 
 function toDateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/* ---------------- Weather (Yr / MET Norway) — 3-day strip in the header ----------------
+   Same /api/weather proxy and emoji mapping as the public booking page. */
+function weatherEmoji(symbolCode) {
+  if (!symbolCode) return '';
+  const code = symbolCode.replace(/_day|_night|_polartwilight/, '');
+  if (code.includes('thunder')) return '⛈️';
+  if (code.includes('fog')) return '🌫️';
+  if (code.includes('sleet')) return '🌨️';
+  if (code.includes('snow')) return '❄️';
+  if (code.includes('rain')) return '🌧️';
+  if (code === 'cloudy') return '☁️';
+  if (code === 'partlycloudy') return '⛅';
+  if (code === 'fair') return '🌤️';
+  if (code === 'clearsky') return '☀️';
+  return '';
+}
+
+async function loadAdminWeather() {
+  const box = document.getElementById('adminWeatherStrip');
+  try {
+    const res = await fetch('/api/weather');
+    if (!res.ok) return;
+    const data = await res.json();
+    const weatherByDate = data.days || {};
+    const now = new Date();
+    const cols = [];
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(now); d.setDate(now.getDate() + i);
+      const w = weatherByDate[toDateKey(d)];
+      const dow = (d.getDay() + 6) % 7;
+      cols.push({ label: i === 0 ? 'I dag' : DOW_LABELS[dow], weather: w });
+    }
+    if (!cols.some(c => c.weather)) { box.classList.add('d-none'); return; }
+    box.innerHTML = cols.map(c => `
+      <div class="fr-admin-weather-day">
+        <span class="fr-admin-weather-label">${c.label}</span>
+        <span class="fr-admin-weather-emoji">${c.weather ? weatherEmoji(c.weather.symbol) : '–'}</span>
+        <span class="fr-admin-weather-temp">${c.weather && typeof c.weather.temp === 'number' ? c.weather.temp + '°' : ''}</span>
+      </div>
+    `).join('');
+    box.classList.remove('d-none');
+  } catch (e) { /* silent — cosmetic only */ }
 }
 
 let calendarViewYear, calendarViewMonth; // 1-indexed month; defaults to the current month on first load
@@ -1292,13 +1416,29 @@ const LIST_OPEN_PAGE_SIZE = 3; // "Ledige tider" is a quick glance, not a browse
 let listBookedShown = LIST_PAGE_SIZE;
 let listOpenShown = LIST_OPEN_PAGE_SIZE;
 
+// Same icon heuristic as the booking form's service list (index.html), so
+// the icon here always matches what the customer saw when picking it.
+function iconForServiceLabel(label) {
+  const l = (label || "").toLowerCase();
+  if (l.includes("premium")) return frIcon("diamond");
+  if (l.includes("interior+") || l.includes("interior +")) return frIcon("sparkle");
+  if (l.includes("complete")) return frIcon("shield");
+  if (l.includes("exterior")) return frIcon("car");
+  return frIcon("droplet");
+}
+
 function bookedRowHtml(b) {
+  const firstService = (b.services || '').split(',')[0].trim();
+  const serviceHtml = b.services
+    ? `<span class="fr-booked-service">${iconForServiceLabel(firstService)}${b.services}</span>`
+    : '';
   return `
-    <div class="fr-list-row">
+    <div class="fr-list-row fr-list-row-upcoming">
       <div class="fr-list-row-when">${fmtDateShort(b.start)} · ${fmtTime(b.start)}</div>
       <div class="fr-list-row-body">
         <div class="fr-list-row-name">${b.name} ${b.code ? `<span class="fr-list-row-code">${b.code}</span>` : ''}${b.customerNumber ? ` <span class="fr-list-row-code fr-list-row-customer">${formatCustomerId(b.customerNumber)}</span>` : ''}</div>
-        <div class="fr-list-row-meta">${b.phone}${b.car ? ' · ' + b.car : ''}${b.services ? ' · ' + b.services : ''}</div>
+        <div class="fr-list-row-meta">${b.phone}${b.car ? ' · ' + b.car : ''}</div>
+        ${serviceHtml}
       </div>
     </div>
   `;
@@ -1370,10 +1510,10 @@ function renderList(days) {
 const RECENT_COMPLETED_COUNT = 5;
 function completedRowHtml(j) {
   return `
-    <div class="fr-list-row" style="cursor:default">
+    <div class="fr-list-row fr-list-row-completed" style="cursor:default">
       <div class="fr-list-row-when">${formatDateNO(j.job_date)}</div>
       <div class="fr-list-row-body">
-        <div class="fr-list-row-name">${j.customer_name || ''}</div>
+        <div class="fr-list-row-name"><span class="fr-completed-check">${frIcon('checkCircle')}</span> ${j.customer_name || ''}</div>
         <div class="fr-list-row-meta">${j.car_type ? j.car_type + ' · ' : ''}${j.services || ''}</div>
       </div>
       <div class="fr-list-row-price">kr ${Number(j.price_paid || 0).toLocaleString('no-NO')}</div>
@@ -1385,8 +1525,10 @@ function renderCompletedSection() {
   if (!container) return; // Oversikt tab hasn't rendered its list yet
   const jobs = (window._frJobs || []).filter(j => j.status !== 'draft').sort((a, b) => (b.job_date || '').localeCompare(a.job_date || ''));
   if (!jobs.length) { container.innerHTML = ''; return; }
-  const label = `${frIcon('checkCircle')} Siste fullførte prosjekter`;
-  container.innerHTML = `<div class="fr-list-section-label">${label}</div>${jobs.slice(0, RECENT_COMPLETED_COUNT).map(completedRowHtml).join('')}`;
+  const visible = jobs.slice(0, RECENT_COMPLETED_COUNT);
+  const total = visible.reduce((sum, j) => sum + Number(j.price_paid || 0), 0);
+  const label = `${frIcon('checkCircle')} Siste fullførte prosjekter <span class="fr-list-section-total">kr ${total.toLocaleString('no-NO')}</span>`;
+  container.innerHTML = `<div class="fr-list-section-label">${label}</div>${visible.map(completedRowHtml).join('')}`;
 }
 
 /* ---------------- Completion-SMS reminder (VIKTIG MELDING) ----------------
@@ -2455,6 +2597,7 @@ const jobEditModal = new bootstrap.Modal(document.getElementById('jobEditModal')
 const lightboxModal = new bootstrap.Modal(document.getElementById('lightboxModal'));
 const customerEditModal = new bootstrap.Modal(document.getElementById('customerEditModal'));
 const serviceEditModal = new bootstrap.Modal(document.getElementById('serviceEditModal'));
+const notifMessageModal = new bootstrap.Modal(document.getElementById('notifMessageModal'));
 let editingServiceId = null;
 
 const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
@@ -3207,6 +3350,17 @@ function updateJobReferenceCheckboxState(job) {
     : 'Last opp minst ett komplett bildepar (før + etter) for å kunne vise denne jobben som referanse.';
 }
 
+// Beløp (booking) + tips → totalen som faktisk lagres som price_paid.
+// Rødt når totalen er 0, så et glemt beløp er umulig å overse.
+function updateJobEditTotal() {
+  const amount = Number(document.getElementById('editJobAmount').value) || 0;
+  const tip = Number(document.getElementById('editJobTip').value) || 0;
+  const total = amount + tip;
+  const el = document.getElementById('editJobTotalDisplay');
+  el.textContent = `kr ${total.toLocaleString('no-NO')}`;
+  el.classList.toggle('fr-job-total-zero', total === 0);
+}
+
 function openJobEdit(id) {
   const job = (window._frJobs || []).find(j => j.id === id);
   if (!job) return;
@@ -3223,16 +3377,21 @@ function openJobEdit(id) {
   document.getElementById('editJobCarType').value = job.car_type || '';
   document.getElementById('editJobServices').value = job.services || '';
 
-  // A discount code works like a campaign — the price is auto-adjusted, not
-  // just flagged for the admin to do by hand. Only suggest it for a still-
-  // priceless draft; a job that's already been priced (completed, or
-  // reopened afterward) keeps its saved price untouched.
-  let suggestedPrice = job.price_paid;
-  if (job.status === 'draft' && !job.price_paid && job.discount_percent) {
+  // The booking amount is auto-suggested from the chosen services (and
+  // discount code, if any) — like a campaign price — so it doesn't have to
+  // be typed by hand every time. Only for a still-priceless draft; a job
+  // that's already been priced (completed, or reopened afterward) keeps
+  // its saved amount untouched. Tips are stored separately (tip_amount) so
+  // the booking amount always reflects just the service price.
+  const tipAmount = Number(job.tip_amount) || 0;
+  let suggestedAmount = (job.price_paid || 0) - tipAmount;
+  if (job.status === 'draft' && !job.price_paid) {
     const base = computeServicesBasePrice(job.services);
-    if (base !== null) suggestedPrice = Math.round(base * (1 - job.discount_percent / 100));
+    if (base !== null) suggestedAmount = job.discount_percent ? Math.round(base * (1 - job.discount_percent / 100)) : base;
   }
-  document.getElementById('editJobPrice').value = suggestedPrice ?? '';
+  document.getElementById('editJobAmount').value = suggestedAmount || '';
+  document.getElementById('editJobTip').value = tipAmount || '';
+  updateJobEditTotal();
 
   const discountBadge = document.getElementById('editJobDiscountBadge');
   discountBadge.classList.toggle('d-none', !job.discount_percent);
@@ -3298,7 +3457,8 @@ async function saveJobEdit() {
         customer_phone: document.getElementById('editJobCustomerPhone').value.trim() || null,
         car_type: document.getElementById('editJobCarType').value.trim(),
         services: document.getElementById('editJobServices').value.trim(),
-        price_paid: Number(document.getElementById('editJobPrice').value),
+        price_paid: (Number(document.getElementById('editJobAmount').value) || 0) + (Number(document.getElementById('editJobTip').value) || 0),
+        tip_amount: Number(document.getElementById('editJobTip').value) || 0,
         job_size: Number(document.getElementById('editJobSize').value),
         time_spent_minutes: Number(document.getElementById('editJobTimeSpentMinutes').value) || null,
         notes: document.getElementById('editJobNotes').value.trim(),
@@ -3443,7 +3603,8 @@ async function loadAboutAdmin() {
 
 // One row per booking (not per channel) — 💬 SMS til kunde, 📱 SMS til deg, 📧 e-post til deg.
 // Multiple sms_eier rows (flere eier-numre) collapse to "ok" if any of them lykkes.
-const NOTIF_CHANNEL_ICONS = { sms_kunde: '💬', sms_eier: '📱', epost_eier: '📧' };
+const NOTIF_CHANNEL_ICONS = { sms_kunde: '💬', sms_eier: '📱', epost_eier: '📧', sms_ferdig: '🔔' };
+const NOTIF_CHANNEL_LABELS = { sms_kunde: 'SMS til kunde (booking)', sms_eier: 'SMS til deg', epost_eier: 'E-post til deg', sms_ferdig: 'SMS til kunde (ferdig)' };
 let notifShowAll = false;
 const NOTIF_PAGE_SIZE = 5;
 
@@ -3454,12 +3615,13 @@ function groupNotifications(rows) {
     const key = n.booking_code || `_${n.id}`;
     let g = byCode.get(key);
     if (!g) {
-      g = { code: n.booking_code, time: n.created_at, name: n.customer_name, channels: {} };
+      g = { code: n.booking_code, time: n.created_at, name: n.customer_name, channels: {}, messages: {} };
       byCode.set(key, g);
       groups.push(g);
     }
     const wasOk = g.channels[n.channel];
     g.channels[n.channel] = wasOk === undefined ? n.status === 'ok' : wasOk || n.status === 'ok';
+    if (n.message) g.messages[n.channel] = n.message;
   });
   return groups;
 }
@@ -3479,13 +3641,14 @@ function renderNotifications() {
     return `<span class="fr-notif-chip${ok ? '' : ' fr-notif-chip-bad'}" title="${ok ? 'OK' : 'Feilet'}">${NOTIF_CHANNEL_ICONS[channel]}</span>`;
   };
 
-  box.innerHTML = visible.map(g => `
+  box.innerHTML = visible.map((g, i) => `
     <div class="fr-list-row">
       <div class="fr-list-row-when">${fmtDateShort(g.time)} ${fmtTime(g.time)}</div>
       <div class="fr-list-row-body">
         <div class="fr-list-row-name">${g.name || ''}${g.code ? ` <span class="fr-list-row-code">${g.code}</span>` : ''}</div>
       </div>
-      <div class="fr-notif-icons">${chip(g, 'sms_kunde')}${chip(g, 'sms_eier')}${chip(g, 'epost_eier')}</div>
+      <div class="fr-notif-icons">${chip(g, 'sms_kunde')}${chip(g, 'sms_eier')}${chip(g, 'epost_eier')}${chip(g, 'sms_ferdig')}</div>
+      ${Object.keys(g.messages).length ? `<button type="button" class="fr-notif-view-btn" onclick="showNotifMessages(${i})" title="Se hva som ble sendt">${frIcon('eye')} Se</button>` : ''}
     </div>`).join('');
 
   if (groups.length > NOTIF_PAGE_SIZE) {
@@ -3495,6 +3658,19 @@ function renderNotifications() {
     btn.onclick = () => { notifShowAll = !notifShowAll; renderNotifications(); };
     box.appendChild(btn);
   }
+}
+
+function showNotifMessages(index) {
+  const groups = notifShowAll ? window._frNotifGroups : (window._frNotifGroups || []).slice(0, NOTIF_PAGE_SIZE);
+  const g = groups[index];
+  if (!g) return;
+  document.getElementById('notifMessageModalBody').innerHTML = Object.entries(g.messages).map(([channel, msg]) => `
+    <div class="fr-notif-message-block">
+      <div class="fr-notif-message-label">${NOTIF_CHANNEL_ICONS[channel]} ${NOTIF_CHANNEL_LABELS[channel] || channel}</div>
+      <pre class="fr-notif-message-text">${msg.replace(/</g, '&lt;')}</pre>
+    </div>
+  `).join('') || '<p class="fr-hint">Ingen meldingstekst lagret for dette varselet.</p>';
+  notifMessageModal.show();
 }
 
 async function loadNotifications() {

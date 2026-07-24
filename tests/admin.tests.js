@@ -335,7 +335,29 @@
     ];
     renderCompletedSection();
     const names = Array.from(document.querySelectorAll('#listCompletedSection .fr-list-row-name')).map(el => el.textContent.trim());
-    assertEqual(names, ['Nyest', 'Eldst'], 'draft jobs excluded, newest completed job first');
+    assert(names[0].includes('Nyest') && names[1].includes('Eldst'), `draft jobs excluded, newest completed job first, got ${JSON.stringify(names)}`);
+  });
+
+  test('oversikt: completed rows show a green checkmark + green border, and the total of the visible ones', () => {
+    const el = document.getElementById('list');
+    el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
+    window._frJobs = [
+      { id: 'j3', status: 'completed', job_date: '2026-07-10', customer_name: 'Eldst', price_paid: 100 },
+      { id: 'j4', status: 'completed', job_date: '2026-07-15', customer_name: 'Nyest', price_paid: 200 },
+    ];
+    renderCompletedSection();
+    const rows = document.querySelectorAll('#listCompletedSection .fr-list-row-completed');
+    assertEqual(rows.length, 2, 'expected both completed rows to carry the green-border class');
+    assert(!!rows[0].querySelector('.fr-completed-check svg'), 'expected a checkmark icon on each completed row');
+    const label = document.querySelector('#listCompletedSection .fr-list-section-label');
+    assert(label.innerHTML.includes('kr 300'), `expected the total of the visible completed jobs (100+200), got "${label.innerHTML}"`);
+  });
+
+  test('bookedRowHtml: shows the service with a matching icon, and an orange upcoming-border class', () => {
+    const html = bookedRowHtml({ start: '2026-07-24T10:00:00Z', name: 'Ola Testesen', phone: '90000001', car: 'VW Golf', services: 'FreshRide Complete', code: 'T01' });
+    assert(html.includes('fr-list-row-upcoming'), 'expected the orange booked-not-completed border class');
+    assert(html.includes('fr-booked-service'), 'expected the service to be shown in its own highlighted element');
+    assert(html.includes('<svg'), 'expected a service icon rendered alongside the service name');
   });
 
   // =========================================================================
@@ -656,7 +678,7 @@
   // Discount code auto-adjusts the suggested price, like an active campaign
   // (only for a still-priceless draft — never overwrites an already-priced job)
   // =========================================================================
-  test('openJobEdit: suggests the discounted price for a priceless draft with a discount code', () => {
+  test('openJobEdit: suggests the discounted amount for a priceless draft with a discount code', () => {
     jobServicesCache = [
       { label: 'FreshRide Interior', price_nok: 500 },
       { label: 'FreshRide Exterior', price_nok: 300 },
@@ -666,16 +688,79 @@
     ];
     openJobEdit('auto1');
     // (500+300) * (1 - 0.20) = 640
-    assertEqual(document.getElementById('editJobPrice').value, '640', 'expected the service sum reduced by the discount percent');
+    assertEqual(document.getElementById('editJobAmount').value, '640', 'expected the service sum reduced by the discount percent');
+    assertEqual(document.getElementById('editJobTotalDisplay').textContent, 'kr 640', 'total should equal the amount when no tip is set');
   });
 
-  test('openJobEdit: never overwrites a price the job already has, even with a discount code', () => {
+  test('openJobEdit: suggests the plain service sum for a priceless draft with no discount code', () => {
+    jobServicesCache = [
+      { label: 'FreshRide Interior', price_nok: 500 },
+      { label: 'FreshRide Exterior', price_nok: 300 },
+    ];
+    window._frJobs = [
+      { id: 'auto3', customer_name: 'Ingen Rabatt Auto', job_date: '2026-07-01', status: 'draft', price_paid: 0, services: 'FreshRide Interior, FreshRide Exterior' },
+    ];
+    openJobEdit('auto3');
+    assertEqual(document.getElementById('editJobAmount').value, '800', 'expected the plain service sum with no discount to apply');
+  });
+
+  test('openJobEdit: never overwrites an amount the job already has, even with a discount code', () => {
     jobServicesCache = [{ label: 'FreshRide Interior', price_nok: 500 }];
     window._frJobs = [
-      { id: 'auto2', customer_name: 'Allerede Priset', job_date: '2026-07-01', status: 'completed', price_paid: 999, services: 'FreshRide Interior', discount_code: 'A7K3M', discount_percent: 20 },
+      { id: 'auto2', customer_name: 'Allerede Priset', job_date: '2026-07-01', status: 'completed', price_paid: 999, tip_amount: 0, services: 'FreshRide Interior', discount_code: 'A7K3M', discount_percent: 20 },
     ];
     openJobEdit('auto2');
-    assertEqual(document.getElementById('editJobPrice').value, '999', 'a completed/already-priced job must keep its saved price, not get recomputed');
+    assertEqual(document.getElementById('editJobAmount').value, '999', 'a completed/already-priced job must keep its saved amount, not get recomputed');
+  });
+
+  test('openJobEdit: splits a saved price_paid back into amount + tip', () => {
+    jobServicesCache = [];
+    window._frJobs = [
+      { id: 'auto4', customer_name: 'Med Tips', job_date: '2026-07-01', status: 'completed', price_paid: 700, tip_amount: 100, services: '' },
+    ];
+    openJobEdit('auto4');
+    assertEqual(document.getElementById('editJobAmount').value, '600', 'amount should be price_paid minus the stored tip');
+    assertEqual(document.getElementById('editJobTip').value, '100');
+  });
+
+  test('updateJobEditTotal: sums amount + tip, and turns red when the total is 0', () => {
+    document.getElementById('editJobAmount').value = '500';
+    document.getElementById('editJobTip').value = '50';
+    updateJobEditTotal();
+    assertEqual(document.getElementById('editJobTotalDisplay').textContent, 'kr 550');
+    assert(!document.getElementById('editJobTotalDisplay').classList.contains('fr-job-total-zero'));
+
+    document.getElementById('editJobAmount').value = '';
+    document.getElementById('editJobTip').value = '';
+    updateJobEditTotal();
+    assertEqual(document.getElementById('editJobTotalDisplay').textContent, 'kr 0');
+    assert(document.getElementById('editJobTotalDisplay').classList.contains('fr-job-total-zero'), 'a zero total must be flagged in red');
+  });
+
+  test('saveJobEdit: sends price_paid as amount+tip, and tip_amount separately', async () => {
+    window._frJobs = [{ id: 'saveTip1', booking_code: 'S01', customer_phone: null, completion_sms_sent_at: '2026-01-01T00:00:00Z', completion_notice_dismissed: false }];
+    editingJobId = 'saveTip1';
+    document.getElementById('editJobCustomerPhone').value = '';
+    document.getElementById('editJobAmount').value = '500';
+    document.getElementById('editJobTip').value = '100';
+    document.getElementById('editJobServices').value = 'FreshRide Interior';
+    document.getElementById('editJobCustomer').value = 'Med Tips';
+    document.getElementById('editJobCustomerNumber').value = '';
+    document.getElementById('editJobDate').value = '2026-07-01';
+
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      if (opts && opts.method === 'PATCH') sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    };
+    try {
+      await saveJobEdit();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody.price_paid, 600, 'expected price_paid to be amount + tip');
+    assertEqual(sentBody.tip_amount, 100);
   });
 
   test('computeServicesBasePrice: returns null (not 0) when no service label matches', () => {
