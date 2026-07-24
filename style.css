@@ -415,7 +415,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   align-items: center;
   text-align: center;
   gap: 0.7rem;
-  background: linear-gradient(155deg, rgba(246,242,231,0.1), rgba(232,185,35,0.1));
+  background: linear-gradient(155deg, rgba(246,242,231,0.1), rgba(232,185,35,0.1)), rgba(8,7,10,0.55);
   border: 1.5px solid rgba(232,185,35,0.4);
   border-radius: 16px;
   padding: 1.3rem 0.7rem;
@@ -447,7 +447,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-step-card-link:hover {
   border-color: var(--fr-gold);
-  background: linear-gradient(155deg, rgba(246,242,231,0.12), rgba(232,185,35,0.2));
+  background: linear-gradient(155deg, rgba(246,242,231,0.12), rgba(232,185,35,0.2)), rgba(8,7,10,0.6);
   transform: translateY(-3px);
   box-shadow: 0 14px 32px -16px rgba(232,185,35,0.65);
 }
