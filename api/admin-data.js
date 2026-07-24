@@ -11,7 +11,7 @@ import { upsertCustomerCars, upsertCustomerAvatar, renameCarForCustomer, syncCar
 import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode } from "./_lib/discount-codes.js";
 import { getCalendarClient, CALENDAR_ID, findPastBookingByCode } from "./_lib/google-calendar.js";
-import { buildBookingTextCustomer, buildCompletionSmsText } from "./_lib/sms-templates.js";
+import { buildBookingTextCustomer, buildCompletionSmsText, buildThanksSmsText } from "./_lib/sms-templates.js";
 import { logNotification } from "./_lib/notifications.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
@@ -352,6 +352,58 @@ async function handleJobs(req, res, supabase) {
       } catch (err) {
         console.error("send-completion-sms error:", err);
         return res.status(500).json({ error: "Klarte ikke å sende SMS" });
+      }
+    }
+
+    // Used when William already told the customer in person/phone/Messenger
+    // that the car is ready — sends just a thank-you + feedback link instead
+    // of the "bilen er klar" message, but still counts as the customer
+    // having been notified (same completion_sms_sent_at field), so it
+    // correctly clears the VIKTIG MELDING reminder too.
+    if (action === "send-thanks-sms") {
+      const { jobId } = req.body || {};
+      if (!jobId) return res.status(400).json({ error: "Missing jobId" });
+      try {
+        const { data: job, error: getErr } = await supabase.from("freshride_jobs")
+          .select("customer_name, customer_phone, services, job_date, booking_code").eq("id", jobId).single();
+        if (getErr || !job) return res.status(404).json({ error: "Fant ikke jobben" });
+        if (!job.customer_phone) return res.status(400).json({ error: "Kunden mangler mobilnummer" });
+
+        const message = buildThanksSmsText(job.customer_name);
+        const ok = await sendTalkdeskSms({
+          toPhone: job.customer_phone, name: job.customer_name,
+          date: job.job_date || "", time: "", services: job.services || "",
+          address: BUSINESS_ADDRESS, message,
+        });
+        await logNotification({
+          channel: "sms_takk", recipient: job.customer_phone, code: job.booking_code,
+          name: job.customer_name, status: ok ? "ok" : "failed", message,
+        });
+        if (!ok) return res.status(502).json({ error: "Klarte ikke å sende SMS" });
+
+        const sentAt = new Date().toISOString();
+        await supabase.from("freshride_jobs").update({ completion_sms_sent_at: sentAt }).eq("id", jobId);
+        return res.status(200).json({ ok: true, sentAt });
+      } catch (err) {
+        console.error("send-thanks-sms error:", err);
+        return res.status(500).json({ error: "Klarte ikke å sende SMS" });
+      }
+    }
+
+    if (action === "send-test-thanks-sms") {
+      const { phone } = req.body || {};
+      if (!phone) return res.status(400).json({ error: "Missing phone" });
+      try {
+        const message = buildThanksSmsText("Test Testesen");
+        const ok = await sendTalkdeskSms({
+          toPhone: phone, name: "Test Testesen", date: "", time: "",
+          services: "Test", address: BUSINESS_ADDRESS, message,
+        });
+        if (!ok) return res.status(502).json({ error: "Klarte ikke å sende test-SMS" });
+        return res.status(200).json({ ok: true, message });
+      } catch (err) {
+        console.error("send-test-thanks-sms error:", err);
+        return res.status(500).json({ error: "Klarte ikke å sende test-SMS" });
       }
     }
 

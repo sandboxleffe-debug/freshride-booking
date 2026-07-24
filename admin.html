@@ -134,6 +134,11 @@
   }
   .fr-booked-service svg { width: 1em; height: 1em; flex-shrink: 0; }
   .fr-list-section-total { float: right; color: var(--fr-gold-bright); font-weight: 700; text-transform: none; letter-spacing: normal; }
+  .fr-week-divider {
+    font-size: 0.7rem; color: var(--fr-text-dark-zone-faint); text-transform: uppercase; letter-spacing: 0.05em;
+    margin: 0.6rem 0 0.35rem; padding-top: 0.5rem; border-top: 1px dashed var(--fr-line-dark-zone);
+  }
+  .fr-week-divider:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
   .fr-notif-icons { display: flex; gap: 0.3rem; flex-shrink: 0; }
   .fr-notif-chip { font-size: 1.05rem; line-height: 1; }
   .fr-notif-chip-bad { filter: grayscale(1); opacity: 0.35; }
@@ -693,8 +698,11 @@
         <button class="fr-btn-outline mb-2" id="testBookingSmsBtn" onclick="sendTestBookingSms()">
           <span class="fr-icon" data-fr-icon="calendar"></span> Test: bekreftelse ved booking
         </button>
-        <button class="fr-btn-outline" id="testSmsBtn" onclick="sendTestCompletionSms()">
+        <button class="fr-btn-outline mb-2" id="testSmsBtn" onclick="sendTestCompletionSms()">
           <span class="fr-icon" data-fr-icon="bell"></span> Test: "jobben er ferdig"
+        </button>
+        <button class="fr-btn-outline" id="testThanksSmsBtn" onclick="sendTestThanksSms()">
+          <span class="fr-icon" data-fr-icon="checkCircle"></span> Test: takk (avtalt utenom SMS)
         </button>
         <div id="testSmsMsg" class="fr-save-msg"></div>
       </div>
@@ -951,6 +959,9 @@
           <p class="fr-hint" id="editJobSmsStatus"></p>
           <button type="button" class="fr-btn-notify" id="editJobSmsBtn" onclick="sendCompletionSms()">
             <span class="fr-icon" data-fr-icon="bell"></span> Send "jobben er ferdig"-SMS
+          </button>
+          <button type="button" class="fr-btn-outline mt-2" id="editJobThanksBtn" onclick="sendThanksSms()" title="Bruk denne hvis alt allerede er avtalt med kunden utenom SMS">
+            <span class="fr-icon" data-fr-icon="checkCircle"></span> Send takk (avtalt utenom SMS)
           </button>
         </div>
 
@@ -1520,6 +1531,23 @@ function completedRowHtml(j) {
     </div>
   `;
 }
+// Groups completed jobs by the Monday of their week, so it's immediately
+// clear which ones happened in the same week rather than just a flat list
+// of dates the admin has to compare by eye.
+function mondayOfWeek(dateStr) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  const dow = (d.getDay() + 6) % 7; // 0 = Monday
+  d.setDate(d.getDate() - dow);
+  return d;
+}
+function weekRangeLabel(monday) {
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  if (monday.getMonth() === sunday.getMonth()) {
+    return `${monday.getDate()}.–${sunday.getDate()}. ${MONTH_LABELS[monday.getMonth()].slice(0, 3)}`;
+  }
+  return `${monday.getDate()}. ${MONTH_LABELS[monday.getMonth()].slice(0, 3)} – ${sunday.getDate()}. ${MONTH_LABELS[sunday.getMonth()].slice(0, 3)}`;
+}
+
 function renderCompletedSection() {
   const container = document.getElementById('listCompletedSection');
   if (!container) return; // Oversikt tab hasn't rendered its list yet
@@ -1528,7 +1556,22 @@ function renderCompletedSection() {
   const visible = jobs.slice(0, RECENT_COMPLETED_COUNT);
   const total = visible.reduce((sum, j) => sum + Number(j.price_paid || 0), 0);
   const label = `${frIcon('checkCircle')} Siste fullførte prosjekter <span class="fr-list-section-total">kr ${total.toLocaleString('no-NO')}</span>`;
-  container.innerHTML = `<div class="fr-list-section-label">${label}</div>${visible.map(completedRowHtml).join('')}`;
+
+  let rowsHtml = '';
+  let lastWeekKey = null;
+  visible.forEach(j => {
+    if (j.job_date) {
+      const monday = mondayOfWeek(j.job_date);
+      const weekKey = toDateKey(monday);
+      if (weekKey !== lastWeekKey) {
+        rowsHtml += `<div class="fr-week-divider">Uke ${weekRangeLabel(monday)}</div>`;
+        lastWeekKey = weekKey;
+      }
+    }
+    rowsHtml += completedRowHtml(j);
+  });
+
+  container.innerHTML = `<div class="fr-list-section-label">${label}</div>${rowsHtml}`;
 }
 
 /* ---------------- Completion-SMS reminder (VIKTIG MELDING) ----------------
@@ -3415,6 +3458,7 @@ function openJobEdit(id) {
 function renderJobSmsStatus(job) {
   const statusEl = document.getElementById('editJobSmsStatus');
   const btn = document.getElementById('editJobSmsBtn');
+  const thanksBtn = document.getElementById('editJobThanksBtn');
   if (job.completion_sms_sent_at) {
     const d = new Date(job.completion_sms_sent_at);
     statusEl.innerHTML = `${frIcon('checkCircle')} Varslet ${d.toLocaleDateString('no-NO')} kl. ${d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })}`;
@@ -3425,6 +3469,8 @@ function renderJobSmsStatus(job) {
   }
   btn.disabled = !job.customer_phone;
   btn.title = job.customer_phone ? '' : 'Kunden mangler mobilnummer';
+  thanksBtn.disabled = !job.customer_phone;
+  thanksBtn.title = job.customer_phone ? 'Bruk denne hvis alt allerede er avtalt med kunden utenom SMS' : 'Kunden mangler mobilnummer';
 }
 
 async function saveJobEdit() {
@@ -3502,6 +3548,39 @@ async function sendCompletionSms() {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'send-completion-sms', jobId: editingJobId })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Klarte ikke å sende SMS.');
+
+    const job = (window._frJobs || []).find(j => j.id === editingJobId);
+    if (job) job.completion_sms_sent_at = data.sentAt;
+    renderJobSmsStatus(job || { customer_phone: true, completion_sms_sent_at: data.sentAt });
+    renderJobsList();
+    loadCompletionAlerts();
+    msg.textContent = 'SMS sendt ✓'; msg.classList.add('ok');
+  } catch (e) {
+    msg.textContent = e.message || 'Klarte ikke å sende SMS.'; msg.classList.add('err');
+    btn.disabled = false;
+  }
+}
+
+// Same flow as sendCompletionSms(), but for when everything was already
+// arranged with the customer outside SMS — sends the shorter thank-you
+// text instead, and marks the same completion_sms_sent_at field so the
+// VIKTIG MELDING reminder still clears correctly.
+async function sendThanksSms() {
+  const btn = document.getElementById('editJobThanksBtn');
+  const msg = document.getElementById('editJobMsg');
+  if (btn.disabled) return;
+  if (!confirm('Sende en takke-SMS til kunden (uten "jobben er ferdig"-teksten)?')) return;
+  btn.disabled = true;
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  try {
+    const res = await fetch('/api/admin-data?resource=jobs', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send-thanks-sms', jobId: editingJobId })
     });
     if (res.status === 401) return handleAuthExpired();
     const data = await res.json().catch(() => ({}));
@@ -3843,6 +3922,7 @@ async function sendTestSms(action, btnId) {
 }
 function sendTestCompletionSms() { return sendTestSms('send-test-completion-sms', 'testSmsBtn'); }
 function sendTestBookingSms() { return sendTestSms('send-test-booking-sms', 'testBookingSmsBtn'); }
+function sendTestThanksSms() { return sendTestSms('send-test-thanks-sms', 'testThanksSmsBtn'); }
 
 async function saveAbout() {
   const heading = document.getElementById('aboutHeadingInput').value.trim();

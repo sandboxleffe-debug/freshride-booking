@@ -52,6 +52,25 @@
     assertEqual(imgs.length, 6, '3 source images doubled to 6');
   });
 
+  test('the two doubled halves still match each other exactly (shuffle happens once, before doubling)', () => {
+    const imgs = Array.from(document.querySelectorAll('#galleryTrack img'));
+    const firstHalf = imgs.slice(0, 3).map(i => i.src);
+    const secondHalf = imgs.slice(3, 6).map(i => i.src);
+    assertEqual(firstHalf, secondHalf, 'both halves must be identical, whatever order the shuffle picked, or the loop seam would be visible');
+  });
+
+  test('shuffleArray: preserves length and elements, reorders across enough tries', () => {
+    const arr = [1, 2, 3, 4, 5, 6, 7, 8];
+    let sawDifferentOrder = false;
+    for (let i = 0; i < 30; i++) {
+      const shuffled = shuffleArray(arr);
+      assertEqual(shuffled.length, arr.length);
+      assertEqual(shuffled.slice().sort((a, b) => a - b), arr, 'must contain exactly the same elements');
+      if (JSON.stringify(shuffled) !== JSON.stringify(arr)) sawDifferentOrder = true;
+    }
+    assert(sawDifferentOrder, 'expected at least one different ordering across 30 shuffles — otherwise it is not actually random');
+  });
+
   test('clicking an image opens the lightbox with that image', async () => {
     const img = document.querySelector('#galleryTrack img');
     img.click();

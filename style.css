@@ -120,7 +120,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 
 .fr-hero-copy {
-  padding: 1.75rem 0 2rem;
+  padding: 1.75rem 0 1.25rem;
   border-bottom: 1px solid var(--fr-line-dark-zone);
 }
 .fr-eyebrow {
@@ -153,7 +153,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-hero-contact a { color: var(--fr-gold); text-decoration: none; font-weight: 600; }
 
 /* Main / panels — deliberately LIGHT, floating over the dark page */
-.fr-main { padding: 2.5rem 0 4rem; }
+.fr-main { padding: 1.25rem 0 4rem; }
 .fr-panel {
   background: var(--fr-panel-bg);
   border: 1px solid var(--fr-panel-border);
@@ -688,21 +688,22 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-gallery-img {
   flex: 0 0 auto;
-  height: 200px;
+  height: 280px;
   width: auto;
   border-radius: 14px;
   object-fit: cover;
-  border: 1px solid var(--fr-line-dark-zone);
+  border: 2px solid var(--fr-gold);
+  box-shadow: 0 2px 12px rgba(232, 185, 35, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   cursor: pointer;
-  transition: transform 0.25s ease, border-color 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .fr-gallery-img:hover {
   transform: translateY(-4px);
-  border-color: var(--fr-gold);
+  box-shadow: 0 10px 24px rgba(232, 185, 35, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 @media (max-width: 576px) {
-  .fr-gallery-img { height: 150px; }
+  .fr-gallery-img { height: 210px; }
 }
 
 /* Reviews rotator — shows a small, uniform batch at a time and fades to the next */

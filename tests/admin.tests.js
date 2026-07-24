@@ -338,6 +338,38 @@
     assert(names[0].includes('Nyest') && names[1].includes('Eldst'), `draft jobs excluded, newest completed job first, got ${JSON.stringify(names)}`);
   });
 
+  test('renderCompletedSection: shows the total income of the visible rows', () => {
+    const el = document.getElementById('list');
+    el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
+    window._frJobs = [
+      { id: 't1', status: 'completed', job_date: '2026-07-10', customer_name: 'A', price_paid: 100 },
+      { id: 't2', status: 'completed', job_date: '2026-07-11', customer_name: 'B', price_paid: 250 },
+    ];
+    renderCompletedSection();
+    const total = document.querySelector('#listCompletedSection .fr-list-section-total');
+    assert(!!total, 'expected a total sum element');
+    assert(total.textContent.includes('350'), `expected the sum of visible rows (350), got "${total.textContent}"`);
+  });
+
+  test('renderCompletedSection: groups jobs into the same week under one divider, separate weeks get their own', () => {
+    const el = document.getElementById('list');
+    el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
+    window._frJobs = [
+      { id: 'w1', status: 'completed', job_date: '2026-07-24', customer_name: 'Fredag', price_paid: 100 }, // week Mon20-Sun26 jul
+      { id: 'w2', status: 'completed', job_date: '2026-07-22', customer_name: 'Onsdag', price_paid: 100 }, // same week
+      { id: 'w3', status: 'completed', job_date: '2026-07-15', customer_name: 'ForrigeUke', price_paid: 100 }, // week Mon13-Sun19 jul
+    ];
+    renderCompletedSection();
+    const dividers = document.querySelectorAll('#listCompletedSection .fr-week-divider');
+    assertEqual(dividers.length, 2, 'expected exactly 2 week dividers for jobs spanning 2 distinct weeks');
+    // Both same-week jobs must sit inside the first divider's group, i.e. before the second divider in DOM order.
+    const container = document.getElementById('listCompletedSection');
+    const children = Array.from(container.children);
+    const firstDividerIdx = children.indexOf(dividers[0]);
+    const secondDividerIdx = children.indexOf(dividers[1]);
+    assert(secondDividerIdx - firstDividerIdx === 3, 'expected exactly the 2 same-week rows between the two dividers (divider + 2 rows before the next divider)');
+  });
+
   test('oversikt: completed rows show a green checkmark + green border, and the total of the visible ones', () => {
     const el = document.getElementById('list');
     el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
@@ -650,6 +682,56 @@
     window.fetch = () => { throw new Error('must not call the network with a blank phone'); };
     await sendTestBookingSms();
     assert(document.getElementById('testSmsMsg').classList.contains('err'), 'expected an error message for a blank phone');
+  });
+
+  test('sendTestThanksSms: sends the send-test-thanks-sms action with the typed phone', async () => {
+    document.getElementById('testSmsPhoneInput').value = '92133900';
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, message: 'x' }), { status: 200 }));
+    };
+    try {
+      await sendTestThanksSms();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody, { action: 'send-test-thanks-sms', phone: '92133900' });
+  });
+
+  // =========================================================================
+  // "Send takk" — for jobs William already closed out with the customer
+  // outside SMS. Same completion_sms_sent_at bookkeeping as the full
+  // "jobben er ferdig" SMS, so the VIKTIG MELDING reminder still clears.
+  // =========================================================================
+  test('sendThanksSms: sends send-thanks-sms and records completion_sms_sent_at like the full completion SMS', async () => {
+    window._frJobs = [{ id: 'jThanks1', customer_name: 'Takk Testesen', customer_phone: '90000010', booking_code: 'X10', completion_sms_sent_at: null, completion_notice_dismissed: false }];
+    editingJobId = 'jThanks1';
+    renderJobSmsStatus(window._frJobs[0]);
+    assert(!document.getElementById('editJobThanksBtn').disabled, 'thanks button should be enabled when the customer has a phone');
+
+    window.confirm = () => true;
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, sentAt: '2026-07-24T12:00:00Z' }), { status: 200 }));
+    };
+    try {
+      await sendThanksSms();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody, { action: 'send-thanks-sms', jobId: 'jThanks1' });
+    assertEqual(window._frJobs[0].completion_sms_sent_at, '2026-07-24T12:00:00Z', 'expected the same field the full completion SMS uses, so the reminder system stays consistent');
+    assert(document.getElementById('editJobSmsStatus').textContent.includes('Varslet'), 'expected the shared notified status to update');
+  });
+
+  test('sendThanksSms/sendCompletionSms: both buttons disable when the customer has no phone', () => {
+    renderJobSmsStatus({ customer_phone: null, completion_sms_sent_at: null });
+    assert(document.getElementById('editJobSmsBtn').disabled, 'ferdig-SMS button must disable with no phone');
+    assert(document.getElementById('editJobThanksBtn').disabled, 'takk-SMS button must disable with no phone');
   });
 
   test('openJobEdit: shows the discount badge with code and percent when the job has one', () => {

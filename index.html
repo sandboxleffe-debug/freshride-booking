@@ -361,11 +361,22 @@ function openGalleryLightbox(src) {
   galleryLightboxModal.show();
 }
 
+// Fisher-Yates — used so the gallery doesn't always show images in the
+// same fixed upload order every time the page loads.
+function shuffleArray(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 async function loadGallery() {
   try {
     const res = await fetch('/api/content?type=gallery');
     const data = await res.json();
-    const images = data.images || [];
+    const images = shuffleArray(data.images || []);
     if (!images.length) return;
     const track = document.getElementById('galleryTrack');
     const wrap = document.querySelector('.fr-gallery-track-wrap');

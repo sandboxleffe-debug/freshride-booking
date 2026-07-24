@@ -57,3 +57,20 @@ export function buildCompletionSmsText(name) {
     `Denne SMS-en kan ikke besvares.`
   );
 }
+
+// Sent manually by William (admin-data.js "send-thanks-sms" action) when
+// everything — including telling the customer the car is ready — was
+// already handled outside SMS (in person, phone call, Messenger). Skips
+// the "bilen er klar" line since that would be stale/redundant hours after
+// the fact; just a thank-you + feedback nudge. Counts as the customer
+// having been notified, same as the full completion SMS.
+export function buildThanksSmsText(name) {
+  const greeting = name ? `Hei ${name}!` : "Hei!";
+  return (
+    `${greeting}\n\n` +
+    `Tusen takk for oppdraget hos FreshRide!\n\n` +
+    `Legg gjerne igjen en tilbakemelding: ${FEEDBACK_URL}\n\n` +
+    `Mvh William\n\n` +
+    `Denne SMS-en kan ikke besvares.`
+  );
+}
