@@ -42,8 +42,45 @@ export async function deleteUnusedDiscountCode(supabase, code) {
     .from("freshride_discount_codes")
     .delete()
     .eq("code", (code || "").toUpperCase())
-    .eq("used", false);
+    .eq("used", false)
+    .is("given_away_at", null);
   return !error;
+}
+
+export async function getDiscountCodeInfo(supabase, code) {
+  const clean = (code || "").trim().toUpperCase();
+  if (!clean) return null;
+  const { data } = await supabase
+    .from("freshride_discount_codes")
+    .select("code, percent, used, given_away_at")
+    .eq("code", clean)
+    .maybeSingle();
+  return data || null;
+}
+
+// Marks a code as handed to a specific customer (e.g. attached to a
+// thank-you SMS) without redeeming it — the customer still types it in at
+// booking time to actually get the discount (see redeemDiscountCode). The
+// atomic WHERE (not used, not already given away) means the same code can
+// never be handed to two customers by mistake — it really is one-time-use,
+// just with two steps: given away, then redeemed.
+export async function markDiscountCodeGivenAway(supabase, code, { customerNumber, name } = {}) {
+  const clean = (code || "").trim().toUpperCase();
+  if (!clean) return { ok: false };
+  const { data, error } = await supabase
+    .from("freshride_discount_codes")
+    .update({
+      given_away_at: new Date().toISOString(),
+      given_to_customer_number: customerNumber || null,
+      given_to_name: name || null,
+    })
+    .eq("code", clean)
+    .eq("used", false)
+    .is("given_away_at", null)
+    .select()
+    .maybeSingle();
+  if (error || !data) return { ok: false };
+  return { ok: true };
 }
 
 // Read-only check for the booking form to show a live "✓ 15% rabatt" as the

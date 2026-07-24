@@ -9,9 +9,9 @@ import { getSupabaseAdmin, checkAdminPassword } from "./_lib/supabase.js";
 import { getVisitorSummary } from "./_lib/analytics.js";
 import { upsertCustomerCars, upsertCustomerAvatar, renameCarForCustomer, syncCarToCustomer } from "./_lib/customers.js";
 import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
-import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode } from "./_lib/discount-codes.js";
+import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode, getDiscountCodeInfo, markDiscountCodeGivenAway } from "./_lib/discount-codes.js";
 import { getCalendarClient, CALENDAR_ID, findPastBookingByCode } from "./_lib/google-calendar.js";
-import { buildBookingTextCustomer, buildCompletionSmsText, buildThanksSmsText } from "./_lib/sms-templates.js";
+import { buildBookingTextCustomer, buildCompletionSmsText, buildThanksSmsText, buildThanksSmsTextWithDiscount } from "./_lib/sms-templates.js";
 import { logNotification } from "./_lib/notifications.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
@@ -361,15 +361,28 @@ async function handleJobs(req, res, supabase) {
     // having been notified (same completion_sms_sent_at field), so it
     // correctly clears the VIKTIG MELDING reminder too.
     if (action === "send-thanks-sms") {
-      const { jobId } = req.body || {};
+      const { jobId, discountCode } = req.body || {};
       if (!jobId) return res.status(400).json({ error: "Missing jobId" });
       try {
         const { data: job, error: getErr } = await supabase.from("freshride_jobs")
-          .select("customer_name, customer_phone, services, job_date, booking_code").eq("id", jobId).single();
+          .select("customer_name, customer_phone, customer_number, services, job_date, booking_code").eq("id", jobId).single();
         if (getErr || !job) return res.status(404).json({ error: "Fant ikke jobben" });
         if (!job.customer_phone) return res.status(400).json({ error: "Kunden mangler mobilnummer" });
 
-        const message = buildThanksSmsText(job.customer_name);
+        let message;
+        if (discountCode) {
+          // Re-check right before sending — even though the picker only ever
+          // offers still-available codes, this closes the gap if two tabs
+          // (or two clicks) tried to hand out the same code at once.
+          const info = await getDiscountCodeInfo(supabase, discountCode);
+          if (!info || info.used || info.given_away_at) {
+            return res.status(409).json({ error: "Rabattkoden er ikke lenger tilgjengelig" });
+          }
+          message = buildThanksSmsTextWithDiscount(job.customer_name, info.code, info.percent);
+        } else {
+          message = buildThanksSmsText(job.customer_name);
+        }
+
         const ok = await sendTalkdeskSms({
           toPhone: job.customer_phone, name: job.customer_name,
           date: job.job_date || "", time: "", services: job.services || "",
@@ -380,6 +393,11 @@ async function handleJobs(req, res, supabase) {
           name: job.customer_name, status: ok ? "ok" : "failed", message,
         });
         if (!ok) return res.status(502).json({ error: "Klarte ikke å sende SMS" });
+
+        if (discountCode) {
+          const given = await markDiscountCodeGivenAway(supabase, discountCode, { customerNumber: job.customer_number, name: job.customer_name });
+          if (!given.ok) console.error("send-thanks-sms: SMS sent but failed to mark code given away:", discountCode);
+        }
 
         const sentAt = new Date().toISOString();
         await supabase.from("freshride_jobs").update({ completion_sms_sent_at: sentAt }).eq("id", jobId);

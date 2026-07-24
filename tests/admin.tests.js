@@ -448,6 +448,24 @@
   });
 
   // =========================================================================
+  // Omsetning: a little money-rain splash when revealing the figures
+  // =========================================================================
+  test('toggleAccountingReveal: spawns a money-rain splash on reveal, not on hide', () => {
+    document.querySelectorAll('.fr-money-rain').forEach(el => el.remove());
+    accValuesVisible = false;
+    toggleAccountingReveal(); // hide -> reveal
+    assertEqual(accValuesVisible, true);
+    const rain = document.querySelector('.fr-money-rain');
+    assert(!!rain, 'expected a money-rain burst when revealing');
+    assertEqual(rain.querySelectorAll('.fr-money-rain-item').length, 24);
+
+    document.querySelectorAll('.fr-money-rain').forEach(el => el.remove());
+    toggleAccountingReveal(); // reveal -> hide
+    assertEqual(accValuesVisible, false);
+    assert(!document.querySelector('.fr-money-rain'), 'hiding the figures again must not spawn another splash');
+  });
+
+  // =========================================================================
   // Phone fields: digits-only, max 8 characters
   // =========================================================================
   test('phone fields: strip non-digits and cap at 8 characters on input', () => {
@@ -704,34 +722,106 @@
   // "Send takk" — for jobs William already closed out with the customer
   // outside SMS. Same completion_sms_sent_at bookkeeping as the full
   // "jobben er ferdig" SMS, so the VIKTIG MELDING reminder still clears.
+  // Now opens a picker first, offering to attach a still-available discount
+  // code (e.g. rewarding a loyal customer) before the SMS actually sends.
   // =========================================================================
-  test('sendThanksSms: sends send-thanks-sms and records completion_sms_sent_at like the full completion SMS', async () => {
+  test('sendThanksSms: opens the discount-attach picker, offering only still-available codes', async () => {
     window._frJobs = [{ id: 'jThanks1', customer_name: 'Takk Testesen', customer_phone: '90000010', booking_code: 'X10', completion_sms_sent_at: null, completion_notice_dismissed: false }];
     editingJobId = 'jThanks1';
     renderJobSmsStatus(window._frJobs[0]);
     assert(!document.getElementById('editJobThanksBtn').disabled, 'thanks button should be enabled when the customer has a phone');
 
-    window.confirm = () => true;
-    let sentBody = null;
     const origFetch = window.fetch;
-    window.fetch = (url, opts) => {
-      sentBody = JSON.parse(opts.body);
-      return Promise.resolve(new Response(JSON.stringify({ ok: true, sentAt: '2026-07-24T12:00:00Z' }), { status: 200 }));
-    };
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      codes: [
+        { code: 'A7K3M', percent: 15, used: false, given_away_at: null },
+        { code: 'ZZ111', percent: 20, used: true, given_away_at: null },
+        { code: 'B2X9P', percent: 10, used: false, given_away_at: '2026-07-01T10:00:00Z', given_to_name: 'Noen Andre' },
+      ],
+    }), { status: 200 }));
     try {
       await sendThanksSms();
     } finally {
       window.fetch = origFetch;
     }
-    assertEqual(sentBody, { action: 'send-thanks-sms', jobId: 'jThanks1' });
+    const options = Array.from(document.getElementById('thanksDiscountCodeSelect').options).map(o => o.value);
+    assertEqual(options, ['', 'A7K3M'], 'expected "no code" plus only the one still-available code');
+  });
+
+  test('sendThanksSms/confirmSendThanksSms: sends send-thanks-sms with the chosen discountCode and records completion_sms_sent_at', async () => {
+    window._frJobs = [{ id: 'jThanks2', customer_name: 'Takk Testesen', customer_phone: '90000010', booking_code: 'X10', completion_sms_sent_at: null, completion_notice_dismissed: false }];
+    editingJobId = 'jThanks2';
+    renderJobSmsStatus(window._frJobs[0]);
+
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ codes: [{ code: 'A7K3M', percent: 15, used: false, given_away_at: null }] }), { status: 200 }));
+    await sendThanksSms();
+    document.getElementById('thanksDiscountCodeSelect').value = 'A7K3M';
+
+    let sentBody = null;
+    window.fetch = (url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, sentAt: '2026-07-24T12:00:00Z' }), { status: 200 }));
+    };
+    try {
+      await confirmSendThanksSms();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody, { action: 'send-thanks-sms', jobId: 'jThanks2', discountCode: 'A7K3M' });
     assertEqual(window._frJobs[0].completion_sms_sent_at, '2026-07-24T12:00:00Z', 'expected the same field the full completion SMS uses, so the reminder system stays consistent');
     assert(document.getElementById('editJobSmsStatus').textContent.includes('Varslet'), 'expected the shared notified status to update');
+  });
+
+  test('confirmSendThanksSms: "Ingen rabattkode" sends no discountCode at all', async () => {
+    window._frJobs = [{ id: 'jThanks3', customer_name: 'Uten Kode', customer_phone: '90000012', completion_sms_sent_at: null, completion_notice_dismissed: false }];
+    editingJobId = 'jThanks3';
+    document.getElementById('thanksDiscountCodeSelect').innerHTML = '<option value="">Ingen rabattkode</option>';
+
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, sentAt: 'x' }), { status: 200 }));
+    };
+    try {
+      await confirmSendThanksSms();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody, { action: 'send-thanks-sms', jobId: 'jThanks3' }, 'discountCode key must be entirely absent, not an empty string');
   });
 
   test('sendThanksSms/sendCompletionSms: both buttons disable when the customer has no phone', () => {
     renderJobSmsStatus({ customer_phone: null, completion_sms_sent_at: null });
     assert(document.getElementById('editJobSmsBtn').disabled, 'ferdig-SMS button must disable with no phone');
     assert(document.getElementById('editJobThanksBtn').disabled, 'takk-SMS button must disable with no phone');
+  });
+
+  // =========================================================================
+  // Discount codes list — three distinct states, only "Ikke brukt" is
+  // deletable or offered in the thank-you picker; "Gitt bort" is a new
+  // in-between state (handed to a customer, not yet redeemed at booking).
+  // =========================================================================
+  test('loadDiscountCodesAdmin: shows "Gitt bort" distinctly from "Brukt", neither deletable', async () => {
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      codes: [
+        { code: 'A7K3M', percent: 15, used: false, given_away_at: null },
+        { code: 'ZZ111', percent: 20, used: true, used_at: '2026-07-01', used_by_customer_number: '9' },
+        { code: 'B2X9P', percent: 10, used: false, given_away_at: '2026-07-05T10:00:00Z', given_to_name: 'Kari' },
+      ],
+    }), { status: 200 }));
+    try {
+      await loadDiscountCodesAdmin();
+    } finally {
+      window.fetch = origFetch;
+    }
+    const rows = document.querySelectorAll('#discountCodeList .fr-service-row');
+    assertEqual(rows.length, 3);
+    assert(rows[0].textContent.includes('Ikke brukt') && !!rows[0].querySelector('button'), 'unused code: deletable');
+    assert(rows[1].textContent.includes('Brukt') && !rows[1].querySelector('button'), 'redeemed code: not deletable');
+    assert(rows[2].textContent.includes('Gitt bort') && rows[2].textContent.includes('Kari') && !rows[2].querySelector('button'), 'given-away code: shows recipient, not deletable');
   });
 
   test('openJobEdit: shows the discount badge with code and percent when the job has one', () => {

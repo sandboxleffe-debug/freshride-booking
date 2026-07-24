@@ -109,6 +109,14 @@
   }
   .fr-reveal-btn:hover { background: var(--fr-panel-bg-2); color: var(--fr-panel-text); }
 
+  /* Money-rain splash — triggered when revealing Omsetning figures */
+  .fr-money-rain { position: fixed; inset: 0; pointer-events: none; z-index: 9999; overflow: hidden; }
+  .fr-money-rain-item { position: absolute; top: -10%; line-height: 1; animation: fr-money-fall linear forwards; }
+  @keyframes fr-money-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(360deg); opacity: 0.9; }
+  }
+
   /* Compact flat list — no heavy day separation */
   .fr-list-row {
     display: flex; align-items: center; gap: 0.7rem;
@@ -1065,6 +1073,29 @@
       </div>
       <div class="modal-body">
         <div id="notifMessageModalBody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- "Send takk" — offer to attach one of the still-available discount codes -->
+<div class="modal fade" id="discountAttachModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content fr-modal">
+      <div class="modal-header border-0">
+        <h5 class="modal-title"><span class="fr-icon" data-fr-icon="gift"></span> Takk-SMS til kunden</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
+      </div>
+      <div class="modal-body">
+        <p class="fr-hint">Vil du legge ved en rabattkode til denne kunden, f.eks. som takk for at de er en trofast kunde?</p>
+        <label class="fr-label">Rabattkode</label>
+        <select id="thanksDiscountCodeSelect" class="form-control fr-input mb-2"></select>
+        <div id="discountAttachMsg" class="fr-save-msg"></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn fr-btn-primary w-100" id="discountAttachSendBtn" onclick="confirmSendThanksSms()">
+          <span class="fr-icon" data-fr-icon="checkCircle"></span> Send SMS
+        </button>
       </div>
     </div>
   </div>
@@ -2400,11 +2431,23 @@ async function deletePromo(id) {
 
 /* ---------------- Rabattkoder (engangskoder, gitt til enkeltkunder) ---------------- */
 function discountCodeStatusHtml(c) {
-  if (!c.used) return `${frIcon('clock')} Ikke brukt`;
-  const when = c.used_at ? fmtDateShort(c.used_at.slice(0, 10)) : '';
-  const who = c.used_by_customer_number ? ` (${formatCustomerId(c.used_by_customer_number)})` : '';
-  return `${frIcon('checkCircle')} Brukt ${when}${who}`;
+  if (c.used) {
+    const when = c.used_at ? fmtDateShort(c.used_at.slice(0, 10)) : '';
+    const who = c.used_by_customer_number ? ` (${formatCustomerId(c.used_by_customer_number)})` : '';
+    return `${frIcon('checkCircle')} Brukt ${when}${who}`;
+  }
+  if (c.given_away_at) {
+    const when = fmtDateShort(c.given_away_at.slice(0, 10));
+    const who = c.given_to_name ? ` til ${c.given_to_name}` : '';
+    return `${frIcon('gift')} Gitt bort ${when}${who}`;
+  }
+  return `${frIcon('clock')} Ikke brukt`;
 }
+
+// Only a code that's neither redeemed nor already handed to a customer is
+// still free to give away or delete — this is what keeps a one-time code
+// from ever going to two people.
+function isDiscountCodeAvailable(c) { return !c.used && !c.given_away_at; }
 
 async function loadDiscountCodesAdmin() {
   const list = document.getElementById('discountCodeList');
@@ -2414,6 +2457,7 @@ async function loadDiscountCodesAdmin() {
     if (res.status === 401) return handleAuthExpired();
     const data = await res.json();
     const codes = data.codes || [];
+    window._frDiscountCodes = codes;
     if (!codes.length) { list.innerHTML = '<p class="fr-empty-day">Ingen rabattkoder opprettet ennå.</p>'; return; }
     list.innerHTML = codes.map(c => `
       <div class="fr-service-row">
@@ -2422,7 +2466,7 @@ async function loadDiscountCodesAdmin() {
           <div class="fr-service-row-desc">${discountCodeStatusHtml(c)}</div>
         </div>
         <div class="fr-service-row-actions">
-          ${!c.used ? `<button class="fr-icon-btn" title="Slett" onclick="deleteDiscountCode('${c.code}')">${frIcon('trash')}</button>` : ''}
+          ${isDiscountCodeAvailable(c) ? `<button class="fr-icon-btn" title="Slett" onclick="deleteDiscountCode('${c.code}')">${frIcon('trash')}</button>` : ''}
         </div>
       </div>
     `).join('');
@@ -2542,8 +2586,31 @@ function renderAccountingSummary() {
 }
 
 function toggleAccountingReveal() {
+  const revealing = !accValuesVisible;
   accValuesVisible = !accValuesVisible;
   renderAccountingSummary();
+  if (revealing) spawnMoneyRain(); // little celebratory splash on the "reveal" click, not on hide
+}
+
+// Purely decorative — a burst of falling money emoji, like a game bonus
+// screen. Elements are absolutely positioned and self-remove once the CSS
+// fall animation finishes, so nothing lingers in the DOM.
+function spawnMoneyRain() {
+  const MONEY_EMOJI = ['💰', '💵', '🪙', '💸'];
+  const container = document.createElement('div');
+  container.className = 'fr-money-rain';
+  for (let i = 0; i < 24; i++) {
+    const el = document.createElement('span');
+    el.className = 'fr-money-rain-item';
+    el.textContent = MONEY_EMOJI[Math.floor(Math.random() * MONEY_EMOJI.length)];
+    el.style.left = `${Math.random() * 100}%`;
+    el.style.animationDelay = `${Math.random() * 0.4}s`;
+    el.style.animationDuration = `${1.6 + Math.random() * 1.2}s`;
+    el.style.fontSize = `${1.2 + Math.random() * 1.4}rem`;
+    container.appendChild(el);
+  }
+  document.body.appendChild(container);
+  setTimeout(() => container.remove(), 3200);
 }
 
 async function loadAnalyticsSummary() {
@@ -2641,6 +2708,7 @@ const lightboxModal = new bootstrap.Modal(document.getElementById('lightboxModal
 const customerEditModal = new bootstrap.Modal(document.getElementById('customerEditModal'));
 const serviceEditModal = new bootstrap.Modal(document.getElementById('serviceEditModal'));
 const notifMessageModal = new bootstrap.Modal(document.getElementById('notifMessageModal'));
+const discountAttachModal = new bootstrap.Modal(document.getElementById('discountAttachModal'));
 let editingServiceId = null;
 
 const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
@@ -3569,18 +3637,52 @@ async function sendCompletionSms() {
 // arranged with the customer outside SMS — sends the shorter thank-you
 // text instead, and marks the same completion_sms_sent_at field so the
 // VIKTIG MELDING reminder still clears correctly.
+// "Send takk" now opens a small picker first — William may want to attach
+// one of the still-available discount codes (e.g. rewarding a loyal
+// customer) before the SMS actually goes out.
 async function sendThanksSms() {
   const btn = document.getElementById('editJobThanksBtn');
-  const msg = document.getElementById('editJobMsg');
   if (btn.disabled) return;
-  if (!confirm('Sende en takke-SMS til kunden (uten "jobben er ferdig"-teksten)?')) return;
+  await openDiscountAttachModal();
+}
+
+async function openDiscountAttachModal() {
+  const select = document.getElementById('thanksDiscountCodeSelect');
+  const msg = document.getElementById('discountAttachMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  select.innerHTML = '<option value="">Ingen rabattkode</option>';
+  try {
+    const res = await fetch('/api/admin-data?resource=discount-codes', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    const available = (data.codes || []).filter(isDiscountCodeAvailable);
+    available.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.code;
+      opt.textContent = `${c.code} — ${c.percent}%`;
+      select.appendChild(opt);
+    });
+  } catch (e) { /* selection just falls back to "Ingen rabattkode" */ }
+  discountAttachModal.show();
+}
+
+async function confirmSendThanksSms() {
+  const sendBtn = document.getElementById('discountAttachSendBtn');
+  const modalMsg = document.getElementById('discountAttachMsg');
+  const btn = document.getElementById('editJobThanksBtn');
+  const msg = document.getElementById('editJobMsg');
+  if (sendBtn.disabled) return;
+  const discountCode = document.getElementById('thanksDiscountCodeSelect').value || undefined;
+
+  sendBtn.disabled = true;
   btn.disabled = true;
+  modalMsg.textContent = ''; modalMsg.className = 'fr-save-msg';
   msg.textContent = ''; msg.className = 'fr-save-msg';
   try {
     const res = await fetch('/api/admin-data?resource=jobs', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'send-thanks-sms', jobId: editingJobId })
+      body: JSON.stringify({ action: 'send-thanks-sms', jobId: editingJobId, discountCode })
     });
     if (res.status === 401) return handleAuthExpired();
     const data = await res.json().catch(() => ({}));
@@ -3591,10 +3693,14 @@ async function sendThanksSms() {
     renderJobSmsStatus(job || { customer_phone: true, completion_sms_sent_at: data.sentAt });
     renderJobsList();
     loadCompletionAlerts();
+    if (discountCode) loadDiscountCodesAdmin(); // reflect the new "Gitt bort" status right away
+    discountAttachModal.hide();
     msg.textContent = 'SMS sendt ✓'; msg.classList.add('ok');
   } catch (e) {
-    msg.textContent = e.message || 'Klarte ikke å sende SMS.'; msg.classList.add('err');
+    modalMsg.textContent = e.message || 'Klarte ikke å sende SMS.'; modalMsg.classList.add('err');
     btn.disabled = false;
+  } finally {
+    sendBtn.disabled = false;
   }
 }
 

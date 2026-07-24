@@ -74,3 +74,18 @@ export function buildThanksSmsText(name) {
     `Denne SMS-en kan ikke besvares.`
   );
 }
+
+// Same as buildThanksSmsText, but for a loyal/returning customer William
+// wants to reward with one of the discount codes generated in Innstillinger
+// — the code is still one-time-use, redeemed like any other at booking.
+export function buildThanksSmsTextWithDiscount(name, code, percent) {
+  const greeting = name ? `Hei ${name}!` : "Hei!";
+  return (
+    `${greeting}\n\n` +
+    `Tusen takk for oppdraget hos FreshRide! Kom gjerne igjen.\n\n` +
+    `Legger ved en rabattkode du kan bruke på neste booking: ${code} (-${percent}%)\n\n` +
+    `Legg gjerne igjen en tilbakemelding: ${FEEDBACK_URL}\n\n` +
+    `Mvh William\n\n` +
+    `Denne SMS-en kan ikke besvares.`
+  );
+}
