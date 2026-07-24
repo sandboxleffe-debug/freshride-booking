@@ -270,6 +270,46 @@
   });
 
   // =========================================================================
+  // Opprett tid: week-strip quick-pick + "Neste uke" paging button — the
+  // strip used to only ever show the current week, so near the end of the
+  // week there was no easy way to set up next week's availability.
+  // =========================================================================
+  test('createWeekStrip: "Neste uke" pages the strip forward 7 days and updates the label', () => {
+    document.getElementById('createDate').valueAsDate = new Date();
+    createWeekOffset = 0;
+    renderCreateWeekStrip();
+    const before = Array.from(document.querySelectorAll('#createWeekStrip .fr-tl-week-day-num')).map(e => e.textContent);
+    assertEqual(document.getElementById('createWeekStripLabel').textContent, 'Denne uken');
+
+    changeCreateWeek(1);
+    const after = Array.from(document.querySelectorAll('#createWeekStrip .fr-tl-week-day-num')).map(e => e.textContent);
+    assertEqual(document.getElementById('createWeekStripLabel').textContent, 'Neste uke');
+    assert(JSON.stringify(before) !== JSON.stringify(after), 'expected a different set of 7 dates after paging forward a week');
+
+    changeCreateWeek(-1);
+    assertEqual(document.getElementById('createWeekStripLabel').textContent, 'Denne uken', 'paging back should return to this week');
+  });
+
+  test('createWeekStrip: clicking a day in the "next week" view selects that date and keeps the strip on next week', async () => {
+    document.getElementById('createDate').valueAsDate = new Date();
+    createWeekOffset = 0;
+    renderCreateWeekStrip();
+    changeCreateWeek(1);
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ available: [], booked: [] }), { status: 200 }));
+    try {
+      const dayBtn = document.querySelectorAll('#createWeekStrip .fr-tl-week-day')[2];
+      const expectedDate = dayBtn.querySelector('.fr-tl-week-day-num').textContent;
+      dayBtn.click();
+      await new Promise(r => setTimeout(r, 0));
+      assertEqual(document.getElementById('createDate').value.slice(-2).replace(/^0/, ''), expectedDate, 'expected the clicked day to become the selected date');
+      assertEqual(document.getElementById('createWeekStripLabel').textContent, 'Neste uke', 'strip must stay on "next week" after selecting a day in it');
+    } finally {
+      window.fetch = origFetch;
+    }
+  });
+
+  // =========================================================================
   // Gallery grid — no description field, ordering controls present
   // =========================================================================
   test('gallery: renders a thumb + move/delete controls per image, no alt input', () => {

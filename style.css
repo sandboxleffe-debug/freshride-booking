@@ -34,7 +34,7 @@ body {
   color: var(--fr-text-dark-zone);
   margin: 0;
   -webkit-font-smoothing: antialiased;
-  background: var(--fr-black) url("assets/page-bg.jpg") center center / cover no-repeat fixed;
+  background: var(--fr-black) url("assets/page-bg2.png") center center / cover no-repeat fixed;
   position: relative;
 }
 /* iOS Safari handles background-attachment: fixed poorly (jank/battery) — scroll on mobile */

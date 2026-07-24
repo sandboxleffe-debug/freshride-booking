@@ -226,6 +226,16 @@
   .fr-tl-dot-new { background: rgba(232,185,35,0.4); border: 1.5px solid var(--fr-gold); }
   .fr-tl-weekday { font-size: 0.85rem; font-weight: 600; color: var(--fr-panel-text-soft); margin-top: 0.35rem; }
 
+  .fr-tl-week-nav { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.4rem; }
+  .fr-tl-week-nav-label { font-size: 0.78rem; font-weight: 600; color: var(--fr-panel-text-soft); }
+  .fr-tl-week-nav-btn {
+    background: var(--fr-panel-bg-2); border: 1.5px solid var(--fr-panel-border); border-radius: 8px;
+    padding: 0.3rem 0.65rem; font-size: 0.78rem; font-weight: 600; color: var(--fr-panel-text-soft); cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .fr-tl-week-nav-btn:hover { border-color: var(--fr-gold); color: var(--fr-panel-text); }
+  .fr-tl-week-nav-btn-next { border-color: rgba(232,185,35,0.55); color: var(--fr-panel-text); }
+
   .fr-tl-week-strip { display: flex; gap: 0.35rem; margin-bottom: 0.5rem; }
   .fr-tl-week-day {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
@@ -443,6 +453,11 @@
         <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="plusCircle"></span> Opprett ledig tid</h2></div>
         <div class="fr-form-row">
           <label class="fr-label"><span class="fr-icon" data-fr-icon="calendar"></span> Dato</label>
+          <div class="fr-tl-week-nav">
+            <button type="button" class="fr-tl-week-nav-btn" onclick="changeCreateWeek(-1)" aria-label="Forrige uke">‹</button>
+            <span id="createWeekStripLabel" class="fr-tl-week-nav-label">Denne uken</span>
+            <button type="button" class="fr-tl-week-nav-btn fr-tl-week-nav-btn-next" onclick="changeCreateWeek(1)">Neste uke ›</button>
+          </div>
           <div id="createWeekStrip" class="fr-tl-week-strip"></div>
           <input type="date" id="createDate" class="form-control fr-input" onchange="loadCreateDayTimeline()" />
           <div id="createDateWeekday" class="fr-tl-weekday"></div>
@@ -1801,21 +1816,33 @@ function updateCreateDateWeekday() {
   label.textContent = `${cap} ${d.getDate()}. ${MONTH_LABELS[d.getMonth()]}`;
 }
 
-// Quick-pick strip for the current week (Mon-Sun), shown above the date
-// field — the native date picker still works too, this is just a shortcut
-// for the common case of picking a day this week.
+// Quick-pick strip, shown above the date field — the native date picker
+// still works too, this is just a shortcut for the common case of picking
+// a day this week or next. createWeekOffset tracks how many weeks forward
+// (or back) from "this week" the strip is currently showing; the "Neste
+// uke" button lets William page ahead to set up next week's availability
+// without hunting through the native calendar picker.
 function toDateKeyLocal(d) {
   const pad = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+let createWeekOffset = 0;
+
+function mondayOf(d) {
+  const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
+  const m = new Date(d);
+  m.setDate(d.getDate() - dow);
+  m.setHours(0, 0, 0, 0);
+  return m;
 }
 
 function renderCreateWeekStrip() {
   const stripEl = document.getElementById('createWeekStrip');
   if (!stripEl) return;
   const now = new Date();
-  const dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - dow);
+  const monday = mondayOf(now);
+  monday.setDate(monday.getDate() + createWeekOffset * 7);
 
   const selectedKey = document.getElementById('createDate').value;
   const todayKey = toDateKeyLocal(now);
@@ -1834,6 +1861,19 @@ function renderCreateWeekStrip() {
     </button>`;
   }
   stripEl.innerHTML = html;
+
+  const label = document.getElementById('createWeekStripLabel');
+  if (label) {
+    label.textContent = createWeekOffset === 0 ? 'Denne uken'
+      : createWeekOffset === 1 ? 'Neste uke'
+      : createWeekOffset === -1 ? 'Forrige uke'
+      : `Uke ${createWeekOffset > 0 ? '+' : ''}${createWeekOffset}`;
+  }
+}
+
+function changeCreateWeek(delta) {
+  createWeekOffset += delta;
+  renderCreateWeekStrip();
 }
 
 function selectCreateWeekDay(key) {
@@ -1845,6 +1885,14 @@ async function loadCreateDayTimeline() {
   const date = document.getElementById('createDate').value;
   const box = document.getElementById('createDayTimeline');
   updateCreateDateWeekday();
+  // Keep the week strip pinned to whichever week the selected date falls
+  // in — covers both picking a date via the native picker (which should
+  // jump the strip to that week) and clicking a day inside the strip
+  // itself (a no-op here, since that day is already in the shown week).
+  if (date) {
+    const selDate = new Date(date + 'T00:00:00');
+    createWeekOffset = Math.round((mondayOf(selDate) - mondayOf(new Date())) / (7 * 86400000));
+  }
   renderCreateWeekStrip();
   if (!date) { box.innerHTML = ''; return; }
   box.innerHTML = '<p class="fr-hint">Henter dagen …</p>';
