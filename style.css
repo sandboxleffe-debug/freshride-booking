@@ -969,6 +969,16 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; white-space: nowrap;
 }
 
+/* Kunderegister loyalty tiers — bronse (2 jobber), sølv (3), gull (4+) */
+.fr-tier-badge {
+  display: inline-flex; align-items: center; gap: 0.2rem;
+  font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; white-space: nowrap;
+}
+.fr-tier-badge svg { width: 0.85em; height: 0.85em; }
+.fr-tier-bronze { background: rgba(181,101,29,0.16); color: #B5651D; }
+.fr-tier-silver { background: rgba(148,163,184,0.22); color: #64748B; }
+.fr-tier-gold { background: var(--fr-gold-soft); color: var(--fr-gold-deep); }
+
 /* Collapsed-by-default booking-info fields in the job edit modal — the
    values are auto-filled from the booking, so they take up space without
    usually needing a look; expand via the native <summary> toggle. */
@@ -1068,6 +1078,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-btn-outline:hover { border-color: var(--fr-gold); color: var(--fr-panel-text); }
 .fr-btn-outline:disabled { opacity: 0.5; cursor: default; }
 .fr-btn-outline:disabled:hover { border-color: var(--fr-panel-border); color: var(--fr-panel-text-soft); }
+.fr-testsms-btn { justify-content: flex-start; }
 
 /* "Send ferdig-SMS" — a solid, clearly-actionable button (distinct from the
    dashed-outline secondary style and from the gold Lagre/save button). */

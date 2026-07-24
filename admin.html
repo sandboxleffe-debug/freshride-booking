@@ -718,15 +718,18 @@
         <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="bell"></span> Test SMS til kunder</h2></div>
         <p class="fr-hint">Send de faktiske meldingene kunder får, til ditt eget nummer — for å se nøyaktig hvordan de ser ut akkurat nå.</p>
         <label class="fr-label mt-2">Mobilnummer</label>
-        <input id="testSmsPhoneInput" class="form-control fr-input mb-2" type="tel" inputmode="numeric" maxlength="8" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
-        <button class="fr-btn-outline mb-2" id="testBookingSmsBtn" onclick="sendTestBookingSms()">
+        <input id="testSmsPhoneInput" class="form-control fr-input mb-2" type="tel" inputmode="numeric" maxlength="8" value="47464544" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
+        <button class="fr-btn-outline fr-testsms-btn mb-2" id="testBookingSmsBtn" onclick="sendTestBookingSms()">
           <span class="fr-icon" data-fr-icon="calendar"></span> Test: bekreftelse ved booking
         </button>
-        <button class="fr-btn-outline mb-2" id="testSmsBtn" onclick="sendTestCompletionSms()">
+        <button class="fr-btn-outline fr-testsms-btn mb-2" id="testSmsBtn" onclick="sendTestCompletionSms()">
           <span class="fr-icon" data-fr-icon="bell"></span> Test: "jobben er ferdig"
         </button>
-        <button class="fr-btn-outline" id="testThanksSmsBtn" onclick="sendTestThanksSms()">
+        <button class="fr-btn-outline fr-testsms-btn mb-2" id="testThanksSmsBtn" onclick="sendTestThanksSms()">
           <span class="fr-icon" data-fr-icon="checkCircle"></span> Test: takk (avtalt utenom SMS)
+        </button>
+        <button class="fr-btn-outline fr-testsms-btn" id="testThanksDiscountBtn" onclick="sendTestThanksSmsWithDiscount()">
+          <span class="fr-icon" data-fr-icon="gift"></span> Test: takk + rabattkode
         </button>
         <div id="testSmsMsg" class="fr-save-msg"></div>
       </div>
@@ -1103,7 +1106,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Lukk"></button>
       </div>
       <div class="modal-body">
-        <p class="fr-hint">Vil du legge ved en rabattkode til denne kunden, f.eks. som takk for at de er en trofast kunde?</p>
+        <p class="fr-hint" id="discountAttachHint">Vil du legge ved en rabattkode til denne kunden, f.eks. som takk for at de er en trofast kunde?</p>
         <label class="fr-label">Rabattkode</label>
         <select id="thanksDiscountCodeSelect" class="form-control fr-input mb-2"></select>
         <div id="discountAttachMsg" class="fr-save-msg"></div>
@@ -2996,6 +2999,16 @@ function customerInitials(name) {
   return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
 }
 
+// Loyalty tier by total job count — a quick visual cue in Kunderegister for
+// who's a repeat customer, no separate tracking needed since c.jobCount is
+// already computed for the "X jobber" detail line.
+function customerTierBadgeHtml(jobCount) {
+  if (jobCount >= 4) return `<span class="fr-tier-badge fr-tier-gold">${frIcon('star')} Gullkunde</span>`;
+  if (jobCount === 3) return `<span class="fr-tier-badge fr-tier-silver">${frIcon('star')} Sølvkunde</span>`;
+  if (jobCount === 2) return `<span class="fr-tier-badge fr-tier-bronze">${frIcon('star')} Bronsekunde</span>`;
+  return '';
+}
+
 const FR_AVATARS = ['avatar-1', 'avatar-2'];
 function customerAvatarHtml(c) {
   const avatar = _frCustomerAvatarMap[String(c.number)];
@@ -3021,6 +3034,7 @@ function renderCustomersAdmin() {
       <div class="fr-customer-row-body">
         <div class="fr-customer-row-name">${(c.name || '').replace(/</g, '&lt;')} <span class="fr-list-row-code fr-list-row-customer">${formatCustomerId(c.number)}</span></div>
         <div class="fr-customer-row-details">
+          ${customerTierBadgeHtml(c.jobCount) ? `<div class="fr-customer-row-detail">${customerTierBadgeHtml(c.jobCount)}</div>` : ''}
           ${c.phone ? `<div class="fr-customer-row-detail">${frIcon('phone')} ${c.phone}</div>` : ''}
           ${cars.length ? `<div class="fr-customer-row-detail">${frIcon('car')} ${cars.join(', ')}</div>` : ''}
           <div class="fr-customer-row-detail">${frIcon('checkCircle')} ${c.jobCount} jobb${c.jobCount === 1 ? '' : 'er'}</div>
@@ -3689,9 +3703,25 @@ async function sendCompletionSms() {
 // "Send takk" now opens a small picker first — William may want to attach
 // one of the still-available discount codes (e.g. rewarding a loyal
 // customer) before the SMS actually goes out.
+// Which flow opened the discount picker — 'job' sends the real thank-you
+// SMS for an actual job (and marks the code "gitt bort"), 'test' just
+// previews the wording to William's own Test SMS number and never touches
+// any code's given-away status.
+let discountAttachContext = 'job';
+
 async function sendThanksSms() {
   const btn = document.getElementById('editJobThanksBtn');
   if (btn.disabled) return;
+  discountAttachContext = 'job';
+  document.getElementById('discountAttachHint').textContent =
+    'Vil du legge ved en rabattkode til denne kunden, f.eks. som takk for at de er en trofast kunde?';
+  await openDiscountAttachModal();
+}
+
+async function sendTestThanksSmsWithDiscount() {
+  discountAttachContext = 'test';
+  document.getElementById('discountAttachHint').textContent =
+    'Se nøyaktig hvordan takk-SMS-en ser ut med en rabattkode lagt ved — sendes kun til Test SMS-nummeret, koden markeres ikke som gitt bort.';
   await openDiscountAttachModal();
 }
 
@@ -3718,14 +3748,41 @@ async function openDiscountAttachModal() {
 async function confirmSendThanksSms() {
   const sendBtn = document.getElementById('discountAttachSendBtn');
   const modalMsg = document.getElementById('discountAttachMsg');
-  const btn = document.getElementById('editJobThanksBtn');
-  const msg = document.getElementById('editJobMsg');
   if (sendBtn.disabled) return;
   const discountCode = document.getElementById('thanksDiscountCodeSelect').value || undefined;
-
   sendBtn.disabled = true;
-  btn.disabled = true;
   modalMsg.textContent = ''; modalMsg.className = 'fr-save-msg';
+
+  if (discountAttachContext === 'test') {
+    const phone = document.getElementById('testSmsPhoneInput').value.trim();
+    if (!phone) {
+      modalMsg.textContent = 'Fyll inn et mobilnummer i Test SMS-feltet først.'; modalMsg.classList.add('err');
+      sendBtn.disabled = false;
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin-data?resource=jobs', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send-test-thanks-sms', phone, discountCode })
+      });
+      if (res.status === 401) return handleAuthExpired();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Klarte ikke å sende test-SMS.');
+      discountAttachModal.hide();
+      const testMsg = document.getElementById('testSmsMsg');
+      testMsg.textContent = 'Test-SMS sendt ✓'; testMsg.className = 'fr-save-msg ok';
+    } catch (e) {
+      modalMsg.textContent = e.message || 'Klarte ikke å sende test-SMS.'; modalMsg.classList.add('err');
+    } finally {
+      sendBtn.disabled = false;
+    }
+    return;
+  }
+
+  const btn = document.getElementById('editJobThanksBtn');
+  const msg = document.getElementById('editJobMsg');
+  btn.disabled = true;
   msg.textContent = ''; msg.className = 'fr-save-msg';
   try {
     const res = await fetch('/api/admin-data?resource=jobs', {

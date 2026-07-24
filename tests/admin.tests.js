@@ -567,6 +567,41 @@
   });
 
   // =========================================================================
+  // Kunderegister: loyalty tier badge by total job count — 2 jobber =
+  // bronse, 3 = sølv, 4+ = gull, and no badge at all below 2.
+  // =========================================================================
+  test('customerTierBadgeHtml: bronse at 2, sølv at 3, gull at 4+, nothing below 2', () => {
+    assertEqual(customerTierBadgeHtml(0), '');
+    assertEqual(customerTierBadgeHtml(1), '');
+    assert(customerTierBadgeHtml(2).includes('Bronsekunde'));
+    assert(customerTierBadgeHtml(3).includes('Sølvkunde'));
+    assert(customerTierBadgeHtml(4).includes('Gullkunde'));
+    assert(customerTierBadgeHtml(9).includes('Gullkunde'), '4 or more should all be gull');
+  });
+
+  test('renderCustomersAdmin: shows the right tier badge per customer, and none for a 1-job customer', () => {
+    window._frJobs = [
+      { id: 't1', customer_number: '40', customer_name: 'En Jobb', status: 'completed', job_date: '2026-07-01' },
+      { id: 't2', customer_number: '41', customer_name: 'Bronse Kunde', status: 'completed', job_date: '2026-07-01' },
+      { id: 't3', customer_number: '41', customer_name: 'Bronse Kunde', status: 'completed', job_date: '2026-07-02' },
+      { id: 't4', customer_number: '42', customer_name: 'Gull Kunde', status: 'completed', job_date: '2026-07-01' },
+      { id: 't5', customer_number: '42', customer_name: 'Gull Kunde', status: 'completed', job_date: '2026-07-02' },
+      { id: 't6', customer_number: '42', customer_name: 'Gull Kunde', status: 'completed', job_date: '2026-07-03' },
+      { id: 't7', customer_number: '42', customer_name: 'Gull Kunde', status: 'completed', job_date: '2026-07-04' },
+    ];
+    _frCustomerCarsMap = {};
+    _frCustomerAvatarMap = {};
+    renderCustomersAdmin();
+    const rows = Array.from(document.querySelectorAll('.fr-customer-row'));
+    const rowEn = rows.find(r => r.textContent.includes('En Jobb'));
+    const rowBronse = rows.find(r => r.textContent.includes('Bronse Kunde'));
+    const rowGull = rows.find(r => r.textContent.includes('Gull Kunde'));
+    assert(!rowEn.querySelector('.fr-tier-badge'), 'a 1-job customer must not show any tier badge');
+    assert(!!rowBronse.querySelector('.fr-tier-bronze'), 'expected the bronze tier class for 2 jobs');
+    assert(!!rowGull.querySelector('.fr-tier-gold'), 'expected the gold tier class for 4 jobs');
+  });
+
+  // =========================================================================
   // Kunderegister: per-customer avatar picker (choose between two portraits
   // or fall back to the colored-initials circle)
   // =========================================================================
@@ -720,6 +755,16 @@
   // Test SMS til kunder — lets William preview the exact current wording of
   // every customer-facing SMS from his own phone, whenever it changes.
   // =========================================================================
+  test('Test SMS panel: phone field defaults to 47464544, and every test button is left-aligned', () => {
+    assertEqual(document.getElementById('testSmsPhoneInput').value, '47464544', 'expected a sensible default test number pre-filled');
+    const ids = ['testBookingSmsBtn', 'testSmsBtn', 'testThanksSmsBtn', 'testThanksDiscountBtn'];
+    for (const id of ids) {
+      const btn = document.getElementById(id);
+      assert(!!btn, `expected #${id} to exist`);
+      assertEqual(getComputedStyle(btn).justifyContent, 'flex-start', `#${id} should be left-aligned, not centered`);
+    }
+  });
+
   test('sendTestBookingSms: sends the send-test-booking-sms action with the typed phone', async () => {
     document.getElementById('testSmsPhoneInput').value = '92133900';
     let sentBody = null;
@@ -854,6 +899,65 @@
     renderJobSmsStatus({ customer_phone: null, completion_sms_sent_at: null });
     assert(document.getElementById('editJobSmsBtn').disabled, 'ferdig-SMS button must disable with no phone');
     assert(document.getElementById('editJobThanksBtn').disabled, 'takk-SMS button must disable with no phone');
+  });
+
+  // =========================================================================
+  // Test SMS: "Test: takk + rabattkode" — lets William preview the
+  // discount-attached thank-you wording on his own phone, no real job
+  // needed, and it must never mark any code as given away.
+  // =========================================================================
+  test('sendTestThanksSmsWithDiscount: opens the same picker in "test" mode, with a test-specific hint', async () => {
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      codes: [{ code: 'A7K3M', percent: 15, used: false, given_away_at: null }],
+    }), { status: 200 }));
+    try {
+      await sendTestThanksSmsWithDiscount();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assert(document.getElementById('discountAttachHint').textContent.includes('Test SMS'), 'expected the hint to mention this is just a test send');
+    const options = Array.from(document.getElementById('thanksDiscountCodeSelect').options).map(o => o.value);
+    assertEqual(options, ['', 'A7K3M']);
+  });
+
+  test('confirmSendThanksSms (test mode): sends send-test-thanks-sms with the Test SMS phone + discountCode, updates testSmsMsg', async () => {
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ codes: [{ code: 'A7K3M', percent: 15, used: false, given_away_at: null }] }), { status: 200 }));
+    await sendTestThanksSmsWithDiscount();
+    window.fetch = origFetch;
+
+    document.getElementById('testSmsPhoneInput').value = '47464544';
+    document.getElementById('thanksDiscountCodeSelect').value = 'A7K3M';
+
+    let sentBody = null;
+    window.fetch = (url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, message: 'x' }), { status: 200 }));
+    };
+    try {
+      await confirmSendThanksSms();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody, { action: 'send-test-thanks-sms', phone: '47464544', discountCode: 'A7K3M' });
+    assert(document.getElementById('testSmsMsg').textContent.includes('sendt'), 'expected a success message in the Test SMS panel');
+  });
+
+  test('confirmSendThanksSms (test mode): a blank Test SMS phone shows an error and never calls the network', async () => {
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ codes: [] }), { status: 200 }));
+    await sendTestThanksSmsWithDiscount();
+    window.fetch = origFetch;
+
+    document.getElementById('testSmsPhoneInput').value = '';
+    window.fetch = () => { throw new Error('must not call the network with a blank phone'); };
+    await confirmSendThanksSms();
+    window.fetch = origFetch;
+    assert(document.getElementById('discountAttachMsg').classList.contains('err'), 'expected an inline error in the modal for a blank phone');
+
+    // restore for later tests that rely on the default test phone
+    document.getElementById('testSmsPhoneInput').value = '47464544';
   });
 
   // =========================================================================

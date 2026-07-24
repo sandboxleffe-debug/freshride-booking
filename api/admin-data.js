@@ -409,10 +409,17 @@ async function handleJobs(req, res, supabase) {
     }
 
     if (action === "send-test-thanks-sms") {
-      const { phone } = req.body || {};
+      const { phone, discountCode } = req.body || {};
       if (!phone) return res.status(400).json({ error: "Missing phone" });
       try {
-        const message = buildThanksSmsText("Test Testesen");
+        let message;
+        if (discountCode) {
+          const info = await getDiscountCodeInfo(supabase, discountCode);
+          if (!info) return res.status(404).json({ error: "Fant ikke rabattkoden" });
+          message = buildThanksSmsTextWithDiscount("Test Testesen", info.code, info.percent);
+        } else {
+          message = buildThanksSmsText("Test Testesen");
+        }
         const ok = await sendTalkdeskSms({
           toPhone: phone, name: "Test Testesen", date: "", time: "",
           services: "Test", address: BUSINESS_ADDRESS, message,
