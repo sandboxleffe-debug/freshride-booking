@@ -119,7 +119,7 @@
 
   /* Compact flat list — no heavy day separation */
   .fr-list-row {
-    display: flex; align-items: center; gap: 0.7rem;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 0.7rem;
     background: var(--fr-panel-bg-2); border: 1px solid var(--fr-panel-border); border-radius: 10px;
     padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.15s ease;
   }
@@ -147,6 +147,7 @@
     margin: 0.6rem 0 0.35rem; padding-top: 0.5rem; border-top: 1px dashed var(--fr-line-dark-zone);
   }
   .fr-week-divider:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  .fr-notif-row-actions { flex-basis: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; margin-top: 0.4rem; }
   .fr-notif-icons { display: flex; gap: 0.3rem; flex-shrink: 0; }
   .fr-notif-chip { font-size: 1.05rem; line-height: 1; }
   .fr-notif-chip-bad { filter: grayscale(1); opacity: 0.35; }
@@ -3880,8 +3881,10 @@ function renderNotifications() {
       <div class="fr-list-row-body">
         <div class="fr-list-row-name">${g.name || ''}${g.code ? ` <span class="fr-list-row-code">${g.code}</span>` : ''}</div>
       </div>
-      <div class="fr-notif-icons">${chip(g, 'sms_kunde')}${chip(g, 'sms_eier')}${chip(g, 'epost_eier')}${chip(g, 'sms_ferdig')}</div>
-      ${Object.keys(g.messages).length ? `<button type="button" class="fr-notif-view-btn" onclick="showNotifMessages(${i})" title="Se hva som ble sendt">${frIcon('eye')} Se</button>` : ''}
+      <div class="fr-notif-row-actions">
+        <div class="fr-notif-icons">${chip(g, 'sms_kunde')}${chip(g, 'sms_eier')}${chip(g, 'epost_eier')}${chip(g, 'sms_ferdig')}</div>
+        ${Object.keys(g.messages).length ? `<button type="button" class="fr-notif-view-btn" onclick="showNotifMessages(${i})" title="Se hva som ble sendt">${frIcon('eye')} Se</button>` : ''}
+      </div>
     </div>`).join('');
 
   if (groups.length > NOTIF_PAGE_SIZE) {

@@ -452,6 +452,24 @@
   });
 
   // =========================================================================
+  // Varslingslogg: emoji-chips + "Se"-knapp må ikke klemmes inn på samme
+  // linje som navn/kode — de brekker ned på en egen linje under.
+  // =========================================================================
+  test('renderNotifications: chips + "Se"-button sit in their own wrapping row, not squeezed against the name', () => {
+    window._frNotifGroups = [
+      { time: '2026-07-24T12:00:00Z', name: 'Kari Testesen Lang Etternavn', code: 'X10', channels: { sms_kunde: true, sms_ferdig: true }, messages: { sms_kunde: 'hei', sms_ferdig: 'ferdig' } },
+    ];
+    renderNotifications();
+    const row = document.querySelector('#notificationsLog .fr-list-row');
+    assert(!!row, 'expected a rendered notification row');
+    const actions = row.querySelector('.fr-notif-row-actions');
+    assert(!!actions, 'expected a dedicated actions wrapper for the chips + button');
+    assert(actions.contains(row.querySelector('.fr-notif-icons')), 'chips must live inside the actions wrapper');
+    assert(actions.contains(row.querySelector('.fr-notif-view-btn')), '"Se" button must live inside the actions wrapper');
+    assertEqual(getComputedStyle(actions).flexBasis, '100%', 'actions wrapper must force itself onto its own line');
+  });
+
+  // =========================================================================
   // Besøkende i dag: gridlines, total, click-for-value, GA link
   // =========================================================================
   test('visitor chart: renders gridlines, total, and updates value on bar click', () => {
