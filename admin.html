@@ -1043,7 +1043,10 @@
           <div><span class="fr-acc-label">Totalt brukt</span><span class="fr-acc-value" id="custEditTotalSpent">–</span></div>
           <div><span class="fr-acc-label">Vervet</span><span class="fr-acc-value" id="custEditReferralCount">–</span></div>
         </div>
-        <p class="fr-hint mt-1" id="custEditReferralCode"></p>
+        <div class="fr-referral-box" id="custEditReferralBox" onclick="copyReferralCode()" title="Trykk for å kopiere">
+          <span class="fr-referral-box-label">🎁 Vervekode</span>
+          <span class="fr-referral-box-code" id="custEditReferralCode">–</span>
+        </div>
         <div class="fr-form-row">
           <label class="fr-label">Jobbhistorikk</label>
           <div id="custEditHistory" class="fr-cust-history"></div>
@@ -3107,11 +3110,22 @@ function renderReferralCodeLine(referral) {
   const codeEl = document.getElementById('custEditReferralCode');
   if (referral?.code) {
     codeEl.textContent = referral.percent > 0
-      ? `Vervekode: ${referral.code} (${referral.percent}% klar til neste vask)`
-      : `Vervekode: ${referral.code}`;
+      ? `${referral.code} — ${referral.percent}% klar til neste vask`
+      : referral.code;
   } else {
     codeEl.textContent = '';
   }
+}
+
+function copyReferralCode() {
+  const codeEl = document.getElementById('custEditReferralCode');
+  const code = (codeEl.textContent || '').split(' — ')[0].trim();
+  if (!code || code === '–') return;
+  navigator.clipboard?.writeText(code).then(() => {
+    const box = document.getElementById('custEditReferralBox');
+    box.classList.add('fr-referral-box-copied');
+    setTimeout(() => box.classList.remove('fr-referral-box-copied'), 1200);
+  }).catch(() => {});
 }
 
 // Fetches (creating if needed) a customer's permanent referral code — used

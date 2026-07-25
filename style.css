@@ -1128,6 +1128,18 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-customer-row-detail svg { width: 0.85em; height: 0.85em; flex-shrink: 0; }
 .fr-customer-referral { color: var(--fr-gold); font-weight: 600; }
+
+.fr-referral-box {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.6rem;
+  margin-top: 0.6rem; padding: 0.6rem 0.9rem; border-radius: 10px;
+  background: var(--fr-gold-soft); border: 1.5px dashed var(--fr-gold);
+  cursor: pointer; transition: background 0.15s ease;
+}
+.fr-referral-box:hover { background: rgba(232,185,35,0.22); }
+.fr-referral-box-label { font-size: 0.78rem; font-weight: 600; color: var(--fr-panel-text-faint); white-space: nowrap; }
+.fr-referral-box-code { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.03em; color: var(--fr-gold-deep); text-align: right; }
+.fr-referral-box-copied { background: rgba(94,142,78,0.25) !important; border-color: #5E8E4E !important; }
+.fr-referral-box-copied .fr-referral-box-code::after { content: ' ✓ kopiert'; font-size: 0.75rem; font-weight: 600; color: #5E8E4E; letter-spacing: normal; }
 .fr-customer-chevron { flex-shrink: 0; color: var(--fr-panel-text-faint); display: flex; }
 .fr-customer-chevron svg { width: 1.1em; height: 1.1em; }
 
