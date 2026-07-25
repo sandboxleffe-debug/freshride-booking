@@ -211,6 +211,26 @@
     assert(panel.classList.contains('fr-tab-slide-left'), 'expected backward slide class');
   });
 
+  // =========================================================================
+  // Nav icon sizes must never change on active/inactive — that used to
+  // resize the icon-box, which shifted the whole tab row/bottom nav
+  // ("menyen hopper rundt") just from switching tabs.
+  // =========================================================================
+  test('showTab: desktop tab-bar and mobile bottom-nav icon boxes keep the same size whether active or not', () => {
+    showTab('overview');
+    const deskIcon = document.querySelector('.fr-tab-btn[data-tab="customers"] .fr-icon');
+    const deskBefore = getComputedStyle(deskIcon).width + 'x' + getComputedStyle(deskIcon).height;
+    const bnavIcon = document.querySelector('.fr-bnav-btn[data-tab="customers"] .fr-bnav-icon');
+    const bnavBefore = bnavIcon ? getComputedStyle(bnavIcon).width + 'x' + getComputedStyle(bnavIcon).height : null;
+
+    showTab('customers');
+    const deskAfter = getComputedStyle(deskIcon).width + 'x' + getComputedStyle(deskIcon).height;
+    const bnavAfter = bnavIcon ? getComputedStyle(bnavIcon).width + 'x' + getComputedStyle(bnavIcon).height : null;
+
+    assertEqual(deskAfter, deskBefore, 'desktop tab icon box must not resize when its tab becomes active');
+    if (bnavIcon) assertEqual(bnavAfter, bnavBefore, 'bottom-nav icon circle must not resize when its tab becomes active');
+  });
+
   test('swipe gesture: swiping left on the wrap moves to the next tab', () => {
     showTab('accounting');
     const wrap = document.querySelector('.fr-admin-wrap');
