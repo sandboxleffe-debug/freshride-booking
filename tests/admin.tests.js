@@ -786,16 +786,48 @@
     assert(document.getElementById('custEditReferralCode').textContent.includes('15%'), 'expected the earned tier % to show');
   });
 
-  test('openCustomerEdit: blank referral fields for a customer who has never referred anyone', () => {
+  test('openCustomerEdit: auto-fetches/generates a referral code on open when the customer has none yet', async () => {
     window._frJobs = [
       { id: 'ref3', customer_number: '52', customer_name: 'Ingen Verving', status: 'completed', job_date: '2026-07-01' },
     ];
     _frCustomerCarsMap = {};
     _frCustomerAvatarMap = {};
     _frCustomerReferralMap = {};
-    openCustomerEdit('52');
-    assertEqual(document.getElementById('custEditReferralCount').textContent, '0');
-    assertEqual(document.getElementById('custEditReferralCode').textContent, '', 'no code generated yet for this customer client-side, so nothing to show');
+    const origFetch = window.fetch;
+    window.fetch = (url) => {
+      if (String(url).includes('referral-code')) {
+        return Promise.resolve(new Response(JSON.stringify({ code: 'VNEW1', pending: 0, lifetime: 0, percent: 0 }), { status: 200 }));
+      }
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    };
+    try {
+      openCustomerEdit('52');
+      assertEqual(document.getElementById('custEditReferralCount').textContent, '0');
+      assertEqual(document.getElementById('custEditReferralCode').textContent, 'Henter vervekode …', 'expected a loading placeholder while the code is being fetched/created');
+      await _frLastEnsureReferralPromise;
+    } finally {
+      window.fetch = origFetch;
+    }
+    assert(document.getElementById('custEditReferralCode').textContent.includes('VNEW1'), 'expected the freshly created code to appear once fetched');
+  });
+
+  test('openCustomerEdit: does not re-fetch a referral code the customer already has', () => {
+    window._frJobs = [
+      { id: 'ref4', customer_number: '53', customer_name: 'Har Kode', status: 'completed', job_date: '2026-07-01' },
+    ];
+    _frCustomerCarsMap = {};
+    _frCustomerAvatarMap = {};
+    _frCustomerReferralMap = { '53': { code: 'VOLD1', pending: 0, lifetime: 0, percent: 0 } };
+    let fetchCalled = false;
+    const origFetch = window.fetch;
+    window.fetch = (url) => { fetchCalled = String(url).includes('referral-code'); return Promise.resolve(new Response('{}', { status: 200 })); };
+    try {
+      openCustomerEdit('53');
+    } finally {
+      window.fetch = origFetch;
+    }
+    assert(!fetchCalled, 'a customer who already has a code must not trigger another lookup');
+    assert(document.getElementById('custEditReferralCode').textContent.includes('VOLD1'), 'expected the existing code to show immediately');
   });
 
   // =========================================================================

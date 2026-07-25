@@ -3103,6 +3103,40 @@ function customerReferralHtml(number) {
   return `<div class="fr-customer-row-detail fr-customer-referral">${frIcon('star')} ${r.lifetime} vervet${readyText}</div>`;
 }
 
+function renderReferralCodeLine(referral) {
+  const codeEl = document.getElementById('custEditReferralCode');
+  if (referral?.code) {
+    codeEl.textContent = referral.percent > 0
+      ? `Vervekode: ${referral.code} (${referral.percent}% klar til neste vask)`
+      : `Vervekode: ${referral.code}`;
+  } else {
+    codeEl.textContent = '';
+  }
+}
+
+// Fetches (creating if needed) a customer's permanent referral code — used
+// so Kunderegister can show/tell someone their code even if they've never
+// had a completion/thanks SMS sent, which is otherwise the only place a
+// code gets generated.
+let _frLastEnsureReferralPromise = null;
+async function ensureReferralCode(number) {
+  try {
+    const res = await fetch('/api/admin-data?resource=referral-code', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_number: number }),
+    });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    if (!data.code) return;
+    _frCustomerReferralMap[String(number)] = { code: data.code, pending: data.pending, lifetime: data.lifetime, percent: data.percent };
+    if (String(editingCustomerNumber) === String(number)) {
+      document.getElementById('custEditReferralCount').textContent = data.lifetime;
+      renderReferralCodeLine(_frCustomerReferralMap[String(number)]);
+    }
+  } catch (e) { /* silent — card just keeps showing "Henter vervekode …" */ }
+}
+
 function customerCarRowHtml(value) {
   return `
     <div class="fr-cust-car-row">
@@ -3165,13 +3199,14 @@ function openCustomerEdit(number) {
   document.getElementById('custEditTotalSpent').textContent = `kr ${c.totalSpent.toLocaleString('no-NO')}`;
   const referral = _frCustomerReferralMap[String(c.number)];
   document.getElementById('custEditReferralCount').textContent = referral ? referral.lifetime : 0;
-  const codeEl = document.getElementById('custEditReferralCode');
-  if (referral?.code) {
-    codeEl.textContent = referral.percent > 0
-      ? `Vervekode: ${referral.code} (${referral.percent}% klar til neste vask)`
-      : `Vervekode: ${referral.code}`;
-  } else {
-    codeEl.textContent = '';
+  renderReferralCodeLine(referral);
+  // Codes are normally only generated as a side effect of sending a
+  // completion/thanks SMS — a customer who hasn't had one sent yet would
+  // otherwise show no code at all here, with no way for William to tell
+  // them what it is. Fetch-or-create it the moment their card is opened.
+  if (!referral?.code) {
+    document.getElementById('custEditReferralCode').textContent = 'Henter vervekode …';
+    _frLastEnsureReferralPromise = ensureReferralCode(c.number);
   }
   renderCustomerCarRows(_frCustomerCarsMap[String(c.number)] || []);
   renderCustomerHistory(c.number);

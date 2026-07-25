@@ -617,6 +617,34 @@ async function handleCustomerCars(req, res, supabase) {
   return res.status(405).json({ error: "Method not allowed" });
 }
 
+// Lets the admin look up (and lazily create) a customer's referral code on
+// demand from Kunderegister, so William can tell someone their code even if
+// they've never been sent a completion/thanks SMS yet — that's the only
+// other place a code otherwise gets generated.
+async function handleReferralCode(req, res, supabase) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  const { customer_number } = req.body || {};
+  if (!customer_number) return res.status(400).json({ error: "Missing customer_number" });
+  try {
+    const referral = await buildReferralForCustomer(supabase, customer_number);
+    if (!referral) return res.status(500).json({ error: "Klarte ikke å lage vervekode" });
+    const { data } = await supabase
+      .from("freshride_customers")
+      .select("referral_pending_count, referral_lifetime_count")
+      .eq("customer_number", String(customer_number))
+      .maybeSingle();
+    return res.status(200).json({
+      code: referral.code,
+      percent: referral.percent,
+      pending: data?.referral_pending_count || 0,
+      lifetime: data?.referral_lifetime_count || 0,
+    });
+  } catch (err) {
+    console.error("referral-code error:", err);
+    return res.status(500).json({ error: "Klarte ikke å lage vervekode" });
+  }
+}
+
 /* ---------------- Expenses ---------------- */
 async function handleExpenses(req, res, supabase) {
   if (req.method === "GET") {
@@ -843,6 +871,7 @@ export default async function handler(req, res) {
   if (resource === "jobs") return handleJobs(req, res, supabase);
   if (resource === "completion-alerts") return handleCompletionAlerts(req, res, supabase);
   if (resource === "customer-cars") return handleCustomerCars(req, res, supabase);
+  if (resource === "referral-code") return handleReferralCode(req, res, supabase);
   if (resource === "discount-codes") return handleDiscountCodes(req, res, supabase);
   if (resource === "expenses") return handleExpenses(req, res, supabase);
   if (resource === "accounting") return handleAccounting(req, res, supabase);
