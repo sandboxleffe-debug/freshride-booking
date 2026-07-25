@@ -231,6 +231,28 @@
     if (bnavIcon) assertEqual(bnavAfter, bnavBefore, 'bottom-nav icon circle must not resize when its tab becomes active');
   });
 
+  test('showTab: no tab ever causes horizontal page overflow (that shifts fixed-position elements like the bottom nav)', () => {
+    FR_TAB_ORDER.forEach(t => {
+      showTab(t);
+      assertEqual(document.documentElement.scrollWidth, document.documentElement.clientWidth, `tab "${t}" caused horizontal overflow`);
+    });
+  });
+
+  test('showTab: the fixed bottom nav sits at the exact same position on every tab (no horizontal-overflow-driven jump)', () => {
+    const nav = document.querySelector('.fr-bnav');
+    if (!nav || getComputedStyle(nav).display === 'none') return; // desktop viewport in this test run — bottom nav is hidden above 720px
+    const positions = FR_TAB_ORDER.map(t => {
+      showTab(t);
+      const r = nav.getBoundingClientRect();
+      return { tab: t, top: Math.round(r.top), height: Math.round(r.height) };
+    });
+    const first = positions[0];
+    positions.forEach(p => {
+      assertEqual(p.top, first.top, `bottom nav top shifted on tab "${p.tab}" vs "${first.tab}" — got ${JSON.stringify(positions)}`);
+      assertEqual(p.height, first.height, `bottom nav height shifted on tab "${p.tab}"`);
+    });
+  });
+
   test('swipe gesture: swiping left on the wrap moves to the next tab', () => {
     showTab('accounting');
     const wrap = document.querySelector('.fr-admin-wrap');

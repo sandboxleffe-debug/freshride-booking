@@ -26,7 +26,16 @@
 
 * { box-sizing: border-box; }
 
-html, body { height: 100%; }
+/* overflow-x: hidden here is load-bearing, not decorative — any element
+   anywhere on the page that's ever briefly wider than the viewport (a
+   render mid-fetch, an untruncated label, a future addition) used to
+   create real horizontal overflow, and that shifts what a fixed
+   position:fixed; bottom:0 element like the admin bottom nav measures as
+   its containing block — the actual cause behind the bottom nav "jumping"
+   on some tabs but not others. Elements that legitimately need horizontal
+   scroll (e.g. the gallery strip) still get it via their own scoped
+   overflow-x, independent of this. */
+html, body { height: 100%; overflow-x: hidden; }
 html { scroll-behavior: smooth; }
 
 body {
@@ -36,6 +45,7 @@ body {
   -webkit-font-smoothing: antialiased;
   background: var(--fr-black) url("assets/page-bg2.png") center center / cover no-repeat fixed;
   position: relative;
+  max-width: 100vw;
 }
 /* iOS Safari handles background-attachment: fixed poorly (jank/battery) — scroll on mobile */
 @media (max-width: 768px) {
@@ -578,24 +588,37 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-tab-btn .fr-icon svg { width: 17px; height: 17px; }
 .fr-tab-btn.active .fr-icon { background: rgba(8,7,10,0.15); }
 
-/* Mobile bottom icon nav — hidden on desktop, replaces the wrapping tab-button row on small screens */
+/* Mobile bottom icon nav — hidden on desktop, replaces the wrapping tab-button row on small screens.
+   Rebuilt to be structurally immune to layout shift on tab switch: every
+   button has the exact same fixed box (height, icon size, label box), and
+   nothing that toggles with .active is allowed to touch layout — only
+   background/color/box-shadow, plus a transform (which never affects flow)
+   for the raised center button. Previously that button used a negative
+   margin-top to "float" above the row, and a negative margin on a flex
+   child can nudge the flex container's own height depending on exactly
+   which sibling states are active — a subtle, load-order-dependent cause
+   of "some tabs jump, some don't" that a transform sidesteps entirely. */
 .fr-bnav { display: none; }
 @media (max-width: 720px) {
   .fr-admin-tabs { display: none; }
   .fr-admin-wrap { padding-bottom: 7.5rem; }
   .fr-bnav {
     display: flex;
+    align-items: stretch;
     position: fixed;
     left: 0; right: 0; bottom: 0;
     z-index: 1000;
+    height: calc(4.3rem + env(safe-area-inset-bottom));
     background: var(--fr-black);
     border-top: 1px solid var(--fr-line-dark-zone);
     box-shadow: 0 -4px 16px rgba(0,0,0,0.35);
-    padding: 0.3rem 0.1rem calc(0.3rem + env(safe-area-inset-bottom));
+    padding: 0 0.1rem env(safe-area-inset-bottom);
   }
   .fr-bnav-btn {
     flex: 1 1 0;
     min-width: 0;
+    max-width: 100%;
+    height: 100%;
     background: none;
     border: none;
     display: flex;
@@ -603,21 +626,22 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
     align-items: center;
     justify-content: center;
     gap: 0.15rem;
-    padding: 0.35rem 0.05rem;
+    padding: 0 0.05rem;
     color: var(--fr-text-dark-zone-faint);
     font-size: 0.56rem;
     font-weight: 600;
     border-radius: 12px;
     cursor: pointer;
     white-space: nowrap;
+    overflow: hidden;
   }
-  /* Fixed icon-circle size regardless of active state — it used to only
-     grow when active, which changed that one button's height and shifted
-     the whole bottom row (the classic "menu jumps around" bug). Now every
-     non-main button reserves the same 2.5rem circle up front; activating
-     just adds a background/border, never changes the box size. */
+  .fr-bnav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  /* Every icon circle reserves the exact same box up front — activating
+     (or being the always-bigger center button) only changes paint
+     (background/border/shadow), never width/height/margin. */
   .fr-bnav-icon {
     display: flex; align-items: center; justify-content: center; color: var(--fr-gold);
+    flex-shrink: 0;
     width: 2.5rem; height: 2.5rem; border-radius: 50%; border: 1.5px solid transparent;
     transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   }
@@ -629,14 +653,14 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
     box-shadow: inset 0 1px 3px rgba(255,255,255,0.4), 0 2px 6px rgba(232,185,35,0.3);
   }
 
-  /* Center "Innstillinger" button — bigger, raised, always in focus */
-  .fr-bnav-btn-main { overflow: visible; }
+  /* Center "Innstillinger" button — visually bigger and raised, but purely
+     via transform/scale (paint-only, zero layout impact) so it can never
+     shift its own row or its neighbors regardless of load order or which
+     tab is active. */
   .fr-bnav-btn-main .fr-bnav-icon {
-    width: 3.1rem; height: 3.1rem;
-    margin-top: -1.3rem;
+    transform: scale(1.24) translateY(-0.85rem);
     background: var(--fr-gold);
     color: var(--fr-black);
-    border-radius: 50%;
     box-shadow: 0 4px 14px rgba(0,0,0,0.4);
   }
   #adminView .fr-bnav-btn-main .fr-bnav-icon svg { width: 30px; height: 30px; }
