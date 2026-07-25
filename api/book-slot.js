@@ -16,8 +16,9 @@ import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
-import { createDraftJobLog } from "./_lib/customers.js";
+import { createDraftJobLog, findCustomerByPhone } from "./_lib/customers.js";
 import { redeemDiscountCode } from "./_lib/discount-codes.js";
+import { redeemReferralCode } from "./_lib/referral-codes.js";
 import { buildBookingTextCustomer, buildBookingTextOwner } from "./_lib/sms-templates.js";
 import { logNotification } from "./_lib/notifications.js";
 
@@ -103,13 +104,13 @@ async function sendOwnerReminderEmail({ name, phone, services, start, end, code 
 
 // Best-effort wrapper — never blocks the booking itself if the draft
 // job log creation fails for some reason.
-async function createDraftJobLogForBooking({ name, phone, services, start, code, car, discountCode, discountPercent }) {
+async function createDraftJobLogForBooking({ name, phone, services, start, code, car, discountCode, discountPercent, referredBy }) {
   try {
     const supabase = getSupabaseAdmin();
     const p = getOsloParts(start);
     const pad = n => String(n).padStart(2, "0");
     const jobDate = `${p.year}-${pad(p.month)}-${pad(p.day)}`;
-    await createDraftJobLog(supabase, { name, phone, services, jobDate, code, car, discountCode, discountPercent });
+    await createDraftJobLog(supabase, { name, phone, services, jobDate, code, car, discountCode, discountPercent, referredBy });
   } catch (err) {
     console.error("createDraftJobLogForBooking error:", err);
   }
@@ -125,6 +126,24 @@ async function redeemDiscountCodeForBooking(discountCode, phone) {
     return result.ok ? result.percent : null;
   } catch (err) {
     console.error("redeemDiscountCodeForBooking error:", err);
+    return null;
+  }
+}
+
+// Falls back to a personal "tips en venn" referral code when the typed code
+// isn't a normal one-time discount code. Either credits whoever owns the
+// code (a brand-new customer typing a friend's code — no discount for
+// them), or lets the owner cash in their own earned tier discount. Never
+// fails the booking either way.
+async function redeemReferralCodeForBooking(discountCode, phone) {
+  if (!discountCode) return null;
+  try {
+    const supabase = getSupabaseAdmin();
+    const match = await findCustomerByPhone(supabase, phone);
+    const result = await redeemReferralCode(supabase, discountCode, { customerNumber: match ? match.customer_number : null });
+    return result.ok ? result : null;
+  } catch (err) {
+    console.error("redeemReferralCodeForBooking error:", err);
     return null;
   }
 }
@@ -177,11 +196,21 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Klarte ikke å bekrefte booking" });
   }
 
-  const redeemedDiscountPercent = await redeemDiscountCodeForBooking(discountCode, phone);
+  let redeemedDiscountPercent = await redeemDiscountCodeForBooking(discountCode, phone);
+  let referredBy = null;
+  if (!redeemedDiscountPercent && discountCode) {
+    const referralResult = await redeemReferralCodeForBooking(discountCode, phone);
+    if (referralResult?.kind === "owner" && referralResult.percent > 0) {
+      redeemedDiscountPercent = referralResult.percent;
+    } else if (referralResult?.kind === "referred") {
+      referredBy = referralResult.referrerCustomerNumber;
+    }
+  }
   await createDraftJobLogForBooking({
     name, phone, services, start, code, car,
     discountCode: redeemedDiscountPercent ? discountCode.trim().toUpperCase() : null,
     discountPercent: redeemedDiscountPercent,
+    referredBy,
   });
 
   let smsSent = false;

@@ -10,11 +10,33 @@ import { getVisitorSummary } from "./_lib/analytics.js";
 import { upsertCustomerCars, upsertCustomerAvatar, renameCarForCustomer, syncCarToCustomer } from "./_lib/customers.js";
 import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
 import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode, getDiscountCodeInfo, markDiscountCodeGivenAway } from "./_lib/discount-codes.js";
+import { getOrCreateReferralCode, referralTierPercent } from "./_lib/referral-codes.js";
 import { getCalendarClient, CALENDAR_ID, findPastBookingByCode } from "./_lib/google-calendar.js";
 import { buildBookingTextCustomer, buildCompletionSmsText, buildThanksSmsText, buildThanksSmsTextWithDiscount } from "./_lib/sms-templates.js";
 import { logNotification } from "./_lib/notifications.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
+
+// Resolves (creating if needed) a customer's permanent referral code plus
+// their currently earned discount tier, to attach to a completion/thanks
+// SMS. Best-effort — never blocks sending the SMS if it fails or the job
+// has no customer_number (e.g. a manually-logged job with no phone match).
+async function buildReferralForCustomer(supabase, customerNumber) {
+  if (!customerNumber) return null;
+  try {
+    const code = await getOrCreateReferralCode(supabase, customerNumber);
+    if (!code) return null;
+    const { data } = await supabase
+      .from("freshride_customers")
+      .select("referral_pending_count")
+      .eq("customer_number", String(customerNumber))
+      .maybeSingle();
+    return { code, percent: referralTierPercent(data?.referral_pending_count) };
+  } catch (err) {
+    console.error("buildReferralForCustomer error:", err);
+    return null;
+  }
+}
 
 /* ---------------- About ---------------- */
 async function handleAbout(req, res, supabase) {
@@ -330,11 +352,12 @@ async function handleJobs(req, res, supabase) {
       if (!jobId) return res.status(400).json({ error: "Missing jobId" });
       try {
         const { data: job, error: getErr } = await supabase.from("freshride_jobs")
-          .select("customer_name, customer_phone, services, job_date, booking_code").eq("id", jobId).single();
+          .select("customer_name, customer_phone, customer_number, services, job_date, booking_code").eq("id", jobId).single();
         if (getErr || !job) return res.status(404).json({ error: "Fant ikke jobben" });
         if (!job.customer_phone) return res.status(400).json({ error: "Kunden mangler mobilnummer" });
 
-        const message = buildCompletionSmsText(job.customer_name);
+        const referral = await buildReferralForCustomer(supabase, job.customer_number);
+        const message = buildCompletionSmsText(job.customer_name, referral);
         const ok = await sendTalkdeskSms({
           toPhone: job.customer_phone, name: job.customer_name,
           date: job.job_date || "", time: "", services: job.services || "",
@@ -380,7 +403,8 @@ async function handleJobs(req, res, supabase) {
           }
           message = buildThanksSmsTextWithDiscount(job.customer_name, info.code, info.percent);
         } else {
-          message = buildThanksSmsText(job.customer_name);
+          const referral = await buildReferralForCustomer(supabase, job.customer_number);
+          message = buildThanksSmsText(job.customer_name, referral);
         }
 
         const ok = await sendTalkdeskSms({
@@ -418,7 +442,7 @@ async function handleJobs(req, res, supabase) {
           if (!info) return res.status(404).json({ error: "Fant ikke rabattkoden" });
           message = buildThanksSmsTextWithDiscount("Test Testesen", info.code, info.percent);
         } else {
-          message = buildThanksSmsText("Test Testesen");
+          message = buildThanksSmsText("Test Testesen", { code: "VDEMO", percent: 10 });
         }
         const ok = await sendTalkdeskSms({
           toPhone: phone, name: "Test Testesen", date: "", time: "",
@@ -436,7 +460,7 @@ async function handleJobs(req, res, supabase) {
       const { phone } = req.body || {};
       if (!phone) return res.status(400).json({ error: "Missing phone" });
       try {
-        const message = buildCompletionSmsText("Test Testesen");
+        const message = buildCompletionSmsText("Test Testesen", { code: "VDEMO", percent: 10 });
         const ok = await sendTalkdeskSms({
           toPhone: phone, name: "Test Testesen", date: "", time: "",
           services: "Test", address: BUSINESS_ADDRESS, message,
@@ -556,12 +580,23 @@ async function handleJobs(req, res, supabase) {
 // Cars per customer, keyed by customer_number — not tied to any one job.
 async function handleCustomerCars(req, res, supabase) {
   if (req.method === "GET") {
-    const { data, error } = await supabase.from("freshride_customers").select("customer_number, cars, avatar");
+    const { data, error } = await supabase.from("freshride_customers")
+      .select("customer_number, cars, avatar, referral_code, referral_pending_count, referral_lifetime_count");
     if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å hente biler" }); }
     const cars = {};
     const avatars = {};
-    (data || []).forEach(row => { cars[row.customer_number] = row.cars || []; avatars[row.customer_number] = row.avatar || null; });
-    return res.status(200).json({ cars, avatars });
+    const referrals = {};
+    (data || []).forEach(row => {
+      cars[row.customer_number] = row.cars || [];
+      avatars[row.customer_number] = row.avatar || null;
+      referrals[row.customer_number] = {
+        code: row.referral_code || null,
+        pending: row.referral_pending_count || 0,
+        lifetime: row.referral_lifetime_count || 0,
+        percent: referralTierPercent(row.referral_pending_count),
+      };
+    });
+    return res.status(200).json({ cars, avatars, referrals });
   }
   if (req.method === "PATCH") {
     const { customer_number, cars, avatar, carRenames } = req.body || {};

@@ -1041,7 +1041,9 @@
         <div class="fr-accounting-summary">
           <div><span class="fr-acc-label">Jobber</span><span class="fr-acc-value" id="custEditJobCount">–</span></div>
           <div><span class="fr-acc-label">Totalt brukt</span><span class="fr-acc-value" id="custEditTotalSpent">–</span></div>
+          <div><span class="fr-acc-label">Vervet</span><span class="fr-acc-value" id="custEditReferralCount">–</span></div>
         </div>
+        <p class="fr-hint mt-1" id="custEditReferralCode"></p>
         <div class="fr-form-row">
           <label class="fr-label">Jobbhistorikk</label>
           <div id="custEditHistory" class="fr-cust-history"></div>
@@ -3067,6 +3069,7 @@ function renderCustomersAdmin() {
           ${c.phone ? `<div class="fr-customer-row-detail">${frIcon('phone')} ${c.phone}</div>` : ''}
           ${cars.length ? `<div class="fr-customer-row-detail">${frIcon('car')} ${cars.join(', ')}</div>` : ''}
           <div class="fr-customer-row-detail">${frIcon('checkCircle')} ${c.jobCount} jobb${c.jobCount === 1 ? '' : 'er'}</div>
+          ${customerReferralHtml(c.number)}
         </div>
       </div>
       <span class="fr-customer-chevron">${frIcon('edit')}</span>
@@ -3077,6 +3080,7 @@ function renderCustomersAdmin() {
 
 let _frCustomerCarsMap = {};
 let _frCustomerAvatarMap = {};
+let _frCustomerReferralMap = {};
 async function loadCustomerCars() {
   try {
     const res = await fetch('/api/admin-data?resource=customer-cars', { headers: authHeaders() });
@@ -3084,8 +3088,19 @@ async function loadCustomerCars() {
     const data = await res.json();
     _frCustomerCarsMap = data.cars || {};
     _frCustomerAvatarMap = data.avatars || {};
+    _frCustomerReferralMap = data.referrals || {};
     renderCustomersAdmin();
   } catch (e) { /* silent */ }
+}
+
+// "Tips en venn"-status for the Kunderegister list row — only shown once a
+// customer has ever referred anyone, since an empty state here would just
+// be noise on every single row.
+function customerReferralHtml(number) {
+  const r = _frCustomerReferralMap[String(number)];
+  if (!r || !r.lifetime) return '';
+  const readyText = r.percent > 0 ? ` · ${r.percent}% klar` : '';
+  return `<div class="fr-customer-row-detail fr-customer-referral">${frIcon('star')} ${r.lifetime} vervet${readyText}</div>`;
 }
 
 function customerCarRowHtml(value) {
@@ -3148,6 +3163,16 @@ function openCustomerEdit(number) {
   document.getElementById('custEditPhone').value = c.phone || '';
   document.getElementById('custEditJobCount').textContent = c.jobCount;
   document.getElementById('custEditTotalSpent').textContent = `kr ${c.totalSpent.toLocaleString('no-NO')}`;
+  const referral = _frCustomerReferralMap[String(c.number)];
+  document.getElementById('custEditReferralCount').textContent = referral ? referral.lifetime : 0;
+  const codeEl = document.getElementById('custEditReferralCode');
+  if (referral?.code) {
+    codeEl.textContent = referral.percent > 0
+      ? `Vervekode: ${referral.code} (${referral.percent}% klar til neste vask)`
+      : `Vervekode: ${referral.code}`;
+  } else {
+    codeEl.textContent = '';
+  }
   renderCustomerCarRows(_frCustomerCarsMap[String(c.number)] || []);
   renderCustomerHistory(c.number);
   _custEditSelectedAvatar = _frCustomerAvatarMap[String(c.number)] || null;

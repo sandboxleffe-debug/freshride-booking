@@ -12,6 +12,7 @@ import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { getCarsByPhone } from "./_lib/customers.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 import { validateDiscountCode } from "./_lib/discount-codes.js";
+import { previewReferralCode } from "./_lib/referral-codes.js";
 
 function isPromoActive(promo, todayStr) {
   if (promo.status === "forced_on") return true;
@@ -186,15 +187,21 @@ export default async function handler(req, res) {
 
   if (type === "discount-code") {
     // Live "✓ 15% rabatt" check as the customer types a code on the booking
-    // form — read-only, never marks the code as used (book-slot.js does the
-    // real one-time redemption once the booking actually goes through).
-    const { code } = req.query;
+    // form — read-only, never marks anything used (book-slot.js does the
+    // real redemption once the booking actually goes through). `phone` is
+    // optional (whatever's typed into the phone field so far) — only needed
+    // to tell a referral code's owner apart from anyone else typing it.
+    const { code, phone } = req.query;
     try {
       const ip = getClientIp(req);
       const allowed = await checkRateLimit({ key: `discount-code:${ip}`, maxRequests: 20, windowSeconds: 600 });
       if (!allowed) return res.status(200).json({ valid: false });
       const result = await validateDiscountCode(supabase, code);
-      return res.status(200).json(result);
+      if (result.valid) return res.status(200).json(result);
+      // Not a one-time discount code — maybe it's someone's personal referral code instead.
+      const referral = await previewReferralCode(supabase, code, phone);
+      if (referral) return res.status(200).json({ valid: referral.valid, percent: referral.percent });
+      return res.status(200).json({ valid: false });
     } catch (err) {
       console.error("content discount-code error:", err);
       return res.status(200).json({ valid: false });

@@ -723,6 +723,7 @@
     ];
     _frCustomerCarsMap = {};
     _frCustomerAvatarMap = {};
+    _frCustomerReferralMap = {};
     renderCustomersAdmin();
     const rows = Array.from(document.querySelectorAll('.fr-customer-row'));
     const rowEn = rows.find(r => r.textContent.includes('En Jobb'));
@@ -731,6 +732,70 @@
     assert(!rowEn.querySelector('.fr-tier-badge'), 'a 1-job customer must not show any tier badge');
     assert(!!rowBronse.querySelector('.fr-tier-bronze'), 'expected the bronze tier class for 2 jobs');
     assert(!!rowGull.querySelector('.fr-tier-gold'), 'expected the gold tier class for 4 jobs');
+  });
+
+  // =========================================================================
+  // Kunderegister: "tips en venn" referral stars — hidden until a customer
+  // has ever referred anyone, shown with their currently earned tier % once
+  // they have a pending reward waiting.
+  // =========================================================================
+  test('customerReferralHtml: empty until the customer has ever referred anyone', () => {
+    _frCustomerReferralMap = {};
+    assertEqual(customerReferralHtml('99'), '', 'no referral entry at all — no line');
+    _frCustomerReferralMap = { '99': { code: 'VABCD', pending: 0, lifetime: 0, percent: 0 } };
+    assertEqual(customerReferralHtml('99'), '', 'lifetime 0 — no line even if a code exists');
+  });
+
+  test('customerReferralHtml: shows lifetime count, and the earned % only when > 0', () => {
+    _frCustomerReferralMap = {
+      '95': { code: 'VABCD', pending: 1, lifetime: 3, percent: 0 },
+      '96': { code: 'VWXYZ', pending: 2, lifetime: 2, percent: 15 },
+    };
+    const noRewardPending = customerReferralHtml('95');
+    assert(noRewardPending.includes('3 vervet'), 'expected the lifetime total to show');
+    assert(!noRewardPending.includes('%'), 'percent already redeemed (0) should not be shown');
+
+    const rewardPending = customerReferralHtml('96');
+    assert(rewardPending.includes('2 vervet'), 'expected the lifetime total to show');
+    assert(rewardPending.includes('15% klar'), 'expected the currently earned tier % to show');
+  });
+
+  test('renderCustomersAdmin: referral stars appear in the list row when the customer has referred someone', () => {
+    window._frJobs = [
+      { id: 'ref1', customer_number: '50', customer_name: 'Verve Testesen', status: 'completed', job_date: '2026-07-01' },
+    ];
+    _frCustomerCarsMap = {};
+    _frCustomerAvatarMap = {};
+    _frCustomerReferralMap = { '50': { code: 'VQQQQ', pending: 1, lifetime: 1, percent: 10 } };
+    renderCustomersAdmin();
+    const row = Array.from(document.querySelectorAll('.fr-customer-row')).find(r => r.textContent.includes('Verve Testesen'));
+    assert(!!row.querySelector('.fr-customer-referral'), 'expected a referral detail line in the row');
+    assert(row.textContent.includes('1 vervet'), 'expected the lifetime count in the row text');
+  });
+
+  test('openCustomerEdit: shows the referral code and earned % in the edit modal', () => {
+    window._frJobs = [
+      { id: 'ref2', customer_number: '51', customer_name: 'Kode Testesen', status: 'completed', job_date: '2026-07-01' },
+    ];
+    _frCustomerCarsMap = {};
+    _frCustomerAvatarMap = {};
+    _frCustomerReferralMap = { '51': { code: 'VZZZZ', pending: 2, lifetime: 2, percent: 15 } };
+    openCustomerEdit('51');
+    assertEqual(document.getElementById('custEditReferralCount').textContent, '2');
+    assert(document.getElementById('custEditReferralCode').textContent.includes('VZZZZ'), 'expected the code itself to show');
+    assert(document.getElementById('custEditReferralCode').textContent.includes('15%'), 'expected the earned tier % to show');
+  });
+
+  test('openCustomerEdit: blank referral fields for a customer who has never referred anyone', () => {
+    window._frJobs = [
+      { id: 'ref3', customer_number: '52', customer_name: 'Ingen Verving', status: 'completed', job_date: '2026-07-01' },
+    ];
+    _frCustomerCarsMap = {};
+    _frCustomerAvatarMap = {};
+    _frCustomerReferralMap = {};
+    openCustomerEdit('52');
+    assertEqual(document.getElementById('custEditReferralCount').textContent, '0');
+    assertEqual(document.getElementById('custEditReferralCode').textContent, '', 'no code generated yet for this customer client-side, so nothing to show');
   });
 
   // =========================================================================
@@ -744,6 +809,7 @@
     ];
     _frCustomerCarsMap = {};
     _frCustomerAvatarMap = { '20': 'avatar-2' };
+    _frCustomerReferralMap = {};
     renderCustomersAdmin();
     const rowWith = Array.from(document.querySelectorAll('.fr-customer-row')).find(r => r.textContent.includes('Avatar Testesen'));
     const rowWithout = Array.from(document.querySelectorAll('.fr-customer-row')).find(r => r.textContent.includes('Uten Bilde'));
@@ -759,6 +825,7 @@
     ];
     _frCustomerCarsMap = { '22': ['Skoda Octavia'] };
     _frCustomerAvatarMap = {};
+    _frCustomerReferralMap = {};
     openCustomerEdit('22');
     const picker = document.getElementById('custEditAvatarPicker');
     const opts = picker.querySelectorAll('.fr-avatar-option');
@@ -793,6 +860,7 @@
     ];
     _frCustomerCarsMap = { '30': ['VW golf, kvit'] };
     _frCustomerAvatarMap = {};
+    _frCustomerReferralMap = {};
     openCustomerEdit('30');
     const carInput = document.querySelector('#custEditCarsList .fr-cust-car-input');
     carInput.value = 'VW Golf, hvit';
@@ -818,6 +886,7 @@
     ];
     _frCustomerCarsMap = { '31': ['Skoda Octavia'] };
     _frCustomerAvatarMap = {};
+    _frCustomerReferralMap = {};
     openCustomerEdit('31');
     addCustomerCarRow();
     const inputs = document.querySelectorAll('#custEditCarsList .fr-cust-car-input');

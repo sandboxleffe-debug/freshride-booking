@@ -1127,6 +1127,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .fr-customer-row-detail svg { width: 0.85em; height: 0.85em; flex-shrink: 0; }
+.fr-customer-referral { color: var(--fr-gold); font-weight: 600; }
 .fr-customer-chevron { flex-shrink: 0; color: var(--fr-panel-text-faint); display: flex; }
 .fr-customer-chevron svg { width: 1.1em; height: 1.1em; }
 

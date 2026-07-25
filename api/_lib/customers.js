@@ -173,7 +173,7 @@ export async function getNextCustomerNumber(supabase) {
 // the moment a customer books) and manually (admin-bookings.js, for
 // bookings made before this existed, or one the admin wants to log ahead
 // of time). Skips if a job for this booking_code already exists.
-export async function createDraftJobLog(supabase, { name, phone, services, jobDate, code, car, discountCode, discountPercent }) {
+export async function createDraftJobLog(supabase, { name, phone, services, jobDate, code, car, discountCode, discountPercent, referredBy }) {
   if (code) {
     const { data: existing } = await supabase.from("freshride_jobs").select("id").eq("booking_code", code).limit(1);
     if (existing && existing.length) return { ok: false, reason: "exists" };
@@ -206,6 +206,7 @@ export async function createDraftJobLog(supabase, { name, phone, services, jobDa
     booking_code: code || null,
     discount_code: discountCode || null,
     discount_percent: discountPercent || null,
+    referred_by_customer_number: referredBy || null,
   });
   if (error) return { ok: false, reason: "error" };
 

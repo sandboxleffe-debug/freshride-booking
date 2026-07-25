@@ -45,14 +45,28 @@ export function buildBookingTextOwner({ name, phone, services, date, time, endTi
   );
 }
 
+// One line appended to both completion SMS variants below — `referral` is
+// { code, percent } for the recipient's own permanent "tips en venn" code,
+// or null if it couldn't be resolved (never blocks sending the SMS itself).
+// Wording depends on whether they already have an earned discount waiting
+// (percent > 0) or haven't referred anyone yet.
+function referralNudgeLine(referral) {
+  if (!referral?.code) return "";
+  if (referral.percent > 0) {
+    return `\n\nTips en venn! Del koden din ${referral.code} — du har allerede ${referral.percent}% rabatt klar til din neste vask.`;
+  }
+  return `\n\nTips en venn! Del koden din ${referral.code} — for hver nye kunde du sender vår vei låser du opp rabatt til deg selv (fra 10%).`;
+}
+
 // Sent manually by William (admin-data.js "send-completion-sms" action)
 // once a job is done and the car is ready for pickup.
-export function buildCompletionSmsText(name) {
+export function buildCompletionSmsText(name, referral) {
   const greeting = name ? `Hei ${name}!` : "Hei!";
   return (
     `${greeting}\n\n` +
     `Bilen din er klar hos FreshRide. Håper du ble fornøyd!\n\n` +
-    `Legg gjerne igjen en tilbakemelding: ${FEEDBACK_URL}\n\n` +
+    `Legg gjerne igjen en tilbakemelding: ${FEEDBACK_URL}` +
+    `${referralNudgeLine(referral)}\n\n` +
     `Mvh William\n\n` +
     `Denne SMS-en kan ikke besvares.`
   );
@@ -64,12 +78,13 @@ export function buildCompletionSmsText(name) {
 // the "bilen er klar" line since that would be stale/redundant hours after
 // the fact; just a thank-you + feedback nudge. Counts as the customer
 // having been notified, same as the full completion SMS.
-export function buildThanksSmsText(name) {
+export function buildThanksSmsText(name, referral) {
   const greeting = name ? `Hei ${name}!` : "Hei!";
   return (
     `${greeting}\n\n` +
     `Tusen takk for oppdraget hos FreshRide!\n\n` +
-    `Legg gjerne igjen en tilbakemelding: ${FEEDBACK_URL}\n\n` +
+    `Legg gjerne igjen en tilbakemelding: ${FEEDBACK_URL}` +
+    `${referralNudgeLine(referral)}\n\n` +
     `Mvh William\n\n` +
     `Denne SMS-en kan ikke besvares.`
   );
