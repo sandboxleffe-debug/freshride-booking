@@ -132,8 +132,8 @@
   .fr-list-row-code { font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; color: var(--fr-gold-deep); background: var(--fr-gold-soft); padding: 0.1rem 0.4rem; border-radius: 6px; }
   .fr-list-row-code.fr-list-row-customer { color: #2E6E8E; background: rgba(46,110,142,0.14); }
   .fr-list-row-open { color: #2E7D32; font-weight: 600; font-size: 0.82rem; }
-  .fr-list-row-completed { border-left: 3px solid #3EA246; padding-left: calc(0.8rem - 3px); }
-  .fr-list-row-upcoming { border-left: 3px solid #D98A15; padding-left: calc(0.8rem - 3px); }
+  .fr-list-row-completed { border-left: 7px solid #3EA246; padding-left: calc(0.8rem - 7px); }
+  .fr-list-row-upcoming { border-left: 7px solid #D98A15; padding-left: calc(0.8rem - 7px); }
   .fr-completed-check { display: inline-flex; color: #3EA246; vertical-align: -0.15em; }
   .fr-completed-check svg { width: 1em; height: 1em; }
   .fr-booked-service {
@@ -441,8 +441,8 @@
       </div>
 
       <div class="fr-admin-range">
-        <button class="fr-range-btn" data-days="7" onclick="setRange(7)">7 dager</button>
-        <button class="fr-range-btn active" data-days="14" onclick="setRange(14)">14 dager</button>
+        <button class="fr-range-btn active" data-days="7" onclick="setRange(7)">7 dager</button>
+        <button class="fr-range-btn" data-days="14" onclick="setRange(14)">14 dager</button>
         <button class="fr-range-btn" data-days="30" onclick="setRange(30)">30 dager</button>
       </div>
       <div id="list"></div>
@@ -659,7 +659,10 @@
       </div>
 
       <div class="fr-panel">
-        <div class="fr-panel-head"><h2>Utgiftslogg</h2></div>
+        <div class="fr-panel-head fr-panel-head-flex">
+          <h2>Utgiftslogg</h2>
+          <span class="fr-ga-total" id="expensesTotal"></span>
+        </div>
         <div id="expensesList"></div>
       </div>
     </div>
@@ -671,9 +674,12 @@
           <h2><span class="fr-icon" data-fr-icon="users"></span> Kunderegister</h2>
           <button class="fr-reveal-btn" id="customersRevealBtn" onclick="toggleCustomersReveal()" title="Vis/skjul kunderegister" aria-label="Vis/skjul kunderegister"><span class="fr-icon" data-fr-icon="eye"></span></button>
         </div>
-        <p class="fr-hint">Trykk på en kunde for å redigere navn, nummer eller mobil. Lagring oppdaterer alle jobber knyttet til kunden.</p>
         <p class="fr-hint" id="customersHiddenHint">Skjult av personvernhensyn — trykk på øyet for å vise.</p>
         <div class="d-none" id="customersTableWrap">
+          <div class="fr-cust-subtabs">
+            <button class="fr-cust-subtab active" id="custSubTabAll" onclick="showCustomersSubTab('all')">Alle kunder</button>
+            <button class="fr-cust-subtab" id="custSubTabGold" onclick="showCustomersSubTab('gold')"><span class="fr-icon" data-fr-icon="star"></span> Gullkunder</button>
+          </div>
           <div id="customersList"></div>
         </div>
       </div>
@@ -1161,7 +1167,7 @@ function frRenderIcons(root) {
 }
 frRenderIcons();
 
-let currentDays = 14;
+let currentDays = 7;
 let editingEventId = null;
 const editModal = new bootstrap.Modal(document.getElementById('editModal'));
 
@@ -1568,7 +1574,6 @@ function renderList(days) {
 // window._frJobs loads in parallel with the overview fetch (see enterAdmin),
 // so this is also called from loadJobsAdmin() in case jobs arrive after the
 // Oversikt list has already rendered once.
-const RECENT_COMPLETED_COUNT = 5;
 function completedRowHtml(j) {
   return `
     <div class="fr-list-row fr-list-row-completed" style="cursor:default">
@@ -1601,11 +1606,19 @@ function weekRangeLabel(monday) {
 function renderCompletedSection() {
   const container = document.getElementById('listCompletedSection');
   if (!container) return; // Oversikt tab hasn't rendered its list yet
-  const jobs = (window._frJobs || []).filter(j => j.status !== 'draft').sort((a, b) => (b.job_date || '').localeCompare(a.job_date || ''));
+  // Follows the same 7/14/30-day range as "Ledige tider" (currentDays),
+  // looking backward from today instead of forward — so picking a wider
+  // range shows further back, and the total always matches what's shown.
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - (currentDays - 1));
+  const cutoffKey = toDateKey(cutoff);
+  const jobs = (window._frJobs || [])
+    .filter(j => j.status !== 'draft' && j.job_date && j.job_date >= cutoffKey)
+    .sort((a, b) => (b.job_date || '').localeCompare(a.job_date || ''));
   if (!jobs.length) { container.innerHTML = ''; return; }
-  const visible = jobs.slice(0, RECENT_COMPLETED_COUNT);
+  const visible = jobs;
   const total = visible.reduce((sum, j) => sum + Number(j.price_paid || 0), 0);
-  const label = `${frIcon('checkCircle')} Siste fullførte prosjekter <span class="fr-list-section-total">kr ${total.toLocaleString('no-NO')}</span>`;
+  const label = `${frIcon('checkCircle')} Siste fullførte prosjekter (${currentDays} dager) <span class="fr-list-section-total">kr ${total.toLocaleString('no-NO')}</span>`;
 
   let rowsHtml = '';
   let lastWeekKey = null;
@@ -2630,7 +2643,10 @@ function renderAccountingSummary() {
   document.getElementById('accExpenses').textContent = accValuesVisible ? _accData.expenses.toLocaleString('no-NO') : FR_MASK;
   const netEl = document.getElementById('accNet');
   if (accValuesVisible) {
-    netEl.innerHTML = `${_accData.net > 0 ? frIcon('trendingUp') + ' ' : ''}${_accData.net.toLocaleString('no-NO')}`;
+    // Number first, trend icon after — so "Netto" reads on the same
+    // baseline as the plain Inntekt/Utgifter figures instead of the icon
+    // pushing the number down/out of line with the other two.
+    netEl.innerHTML = `${_accData.net.toLocaleString('no-NO')}${_accData.net > 0 ? ' ' + frIcon('trendingUp') : ''}`;
   } else {
     netEl.textContent = FR_MASK;
   }
@@ -3002,8 +3018,9 @@ function customerInitials(name) {
 // Loyalty tier by total job count — a quick visual cue in Kunderegister for
 // who's a repeat customer, no separate tracking needed since c.jobCount is
 // already computed for the "X jobber" detail line.
+const FR_GOLD_TIER_MIN = 4;
 function customerTierBadgeHtml(jobCount) {
-  if (jobCount >= 4) return `<span class="fr-tier-badge fr-tier-gold">${frIcon('star')} Gullkunde</span>`;
+  if (jobCount >= FR_GOLD_TIER_MIN) return `<span class="fr-tier-badge fr-tier-gold">${frIcon('star')} Gullkunde</span>`;
   if (jobCount === 3) return `<span class="fr-tier-badge fr-tier-silver">${frIcon('star')} Sølvkunde</span>`;
   if (jobCount === 2) return `<span class="fr-tier-badge fr-tier-bronze">${frIcon('star')} Bronsekunde</span>`;
   return '';
@@ -3018,12 +3035,24 @@ function customerAvatarHtml(c) {
   return `<div class="fr-customer-avatar" style="background:${customerAvatarColor(c.number)}">${customerInitials(c.name)}</div>`;
 }
 
+// "Alle kunder" vs "Gullkunder" filing tabs above the list.
+let customersSubTab = 'all';
+function showCustomersSubTab(tab) {
+  customersSubTab = tab;
+  document.getElementById('custSubTabAll').classList.toggle('active', tab === 'all');
+  document.getElementById('custSubTabGold').classList.toggle('active', tab === 'gold');
+  renderCustomersAdmin();
+}
+
 function renderCustomersAdmin() {
   const list = document.getElementById('customersList');
   if (!list) return;
-  const customers = getCustomerStats();
+  let customers = getCustomerStats();
+  if (customersSubTab === 'gold') customers = customers.filter(c => c.jobCount >= FR_GOLD_TIER_MIN);
   if (!customers.length) {
-    list.innerHTML = '<p class="fr-empty-day">Ingen kunder registrert ennå.</p>';
+    list.innerHTML = customersSubTab === 'gold'
+      ? '<p class="fr-empty-day">Ingen gullkunder ennå.</p>'
+      : '<p class="fr-empty-day">Ingen kunder registrert ennå.</p>';
     return;
   }
   list.innerHTML = customers.map(c => {
@@ -3667,11 +3696,24 @@ function deleteJobFromEdit() {
   deleteJob(editingJobId);
 }
 
+// If the customer has already gotten an SMS for this job, a second click
+// (fat-finger, double-tap) would spam them again — ask for an explicit
+// "did you mean this?" confirmation instead of just re-sending quietly.
+function confirmDuplicateSmsSend(promptIfNew) {
+  const job = (window._frJobs || []).find(j => j.id === editingJobId);
+  if (job && job.completion_sms_sent_at) {
+    const d = new Date(job.completion_sms_sent_at);
+    const when = `${d.toLocaleDateString('no-NO')} kl. ${d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })}`;
+    return confirm(`Kunden har allerede fått SMS ${when}. Sikker på at du vil sende en til?`);
+  }
+  return confirm(promptIfNew);
+}
+
 async function sendCompletionSms() {
   const btn = document.getElementById('editJobSmsBtn');
   const msg = document.getElementById('editJobMsg');
   if (btn.disabled) return;
-  if (!confirm('Sende SMS til kunden om at jobben er ferdig?')) return;
+  if (!confirmDuplicateSmsSend('Sende SMS til kunden om at jobben er ferdig?')) return;
   btn.disabled = true;
   msg.textContent = ''; msg.className = 'fr-save-msg';
   try {
@@ -3712,6 +3754,12 @@ let discountAttachContext = 'job';
 async function sendThanksSms() {
   const btn = document.getElementById('editJobThanksBtn');
   if (btn.disabled) return;
+  const job = (window._frJobs || []).find(j => j.id === editingJobId);
+  if (job && job.completion_sms_sent_at) {
+    const d = new Date(job.completion_sms_sent_at);
+    const when = `${d.toLocaleDateString('no-NO')} kl. ${d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })}`;
+    if (!confirm(`Kunden har allerede fått SMS ${when}. Sikker på at du vil sende en til?`)) return;
+  }
   discountAttachContext = 'job';
   document.getElementById('discountAttachHint').textContent =
     'Vil du legge ved en rabattkode til denne kunden, f.eks. som takk for at de er en trofast kunde?';
@@ -3813,12 +3861,15 @@ async function confirmSendThanksSms() {
 /* ---------------- Regnskap: utgifter ---------------- */
 async function loadExpensesAdmin() {
   const list = document.getElementById('expensesList');
+  const totalEl = document.getElementById('expensesTotal');
   try {
     const res = await fetch('/api/admin-data?resource=expenses', { headers: authHeaders() });
     if (res.status === 401) return handleAuthExpired();
     const data = await res.json();
     list.innerHTML = '';
     const expenses = data.expenses || [];
+    const total = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    totalEl.textContent = expenses.length ? `kr ${total.toLocaleString('no-NO')}` : '';
     if (!expenses.length) { list.innerHTML = '<p class="fr-empty-day">Ingen utgifter registrert ennå.</p>'; return; }
     expenses.forEach(e => {
       const row = document.createElement('div');

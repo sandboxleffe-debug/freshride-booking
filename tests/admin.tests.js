@@ -54,6 +54,12 @@
   document.getElementById('loginView').classList.add('d-none');
   document.getElementById('adminView').classList.remove('d-none');
 
+  // Must run before any other test types into #testSmsPhoneInput — this
+  // checks the page's actual initial value, not a value some other test left behind.
+  test('Test SMS panel: phone field defaults to 47464544', () => {
+    assertEqual(document.getElementById('testSmsPhoneInput').value, '47464544', 'expected a sensible default test number pre-filled');
+  });
+
   // =========================================================================
   // Car auto-suggest from kunderegister (Jobblogg → Logg ny jobb)
   // =========================================================================
@@ -368,6 +374,7 @@
   test('oversikt: renderCompletedSection() shows recent completed jobs, sorted newest first', () => {
     const el = document.getElementById('list');
     el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
+    currentDays = 9999; // sort/exclude-draft logic under test, not the date-range filter (see dedicated test below)
     window._frJobs = [
       { id: 'd1', status: 'draft', job_date: '2026-07-20', customer_name: 'Kladd' },
       { id: 'j1', status: 'completed', job_date: '2026-07-10', customer_name: 'Eldst', price_paid: 100 },
@@ -381,6 +388,7 @@
   test('renderCompletedSection: shows the total income of the visible rows', () => {
     const el = document.getElementById('list');
     el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
+    currentDays = 9999;
     window._frJobs = [
       { id: 't1', status: 'completed', job_date: '2026-07-10', customer_name: 'A', price_paid: 100 },
       { id: 't2', status: 'completed', job_date: '2026-07-11', customer_name: 'B', price_paid: 250 },
@@ -394,6 +402,7 @@
   test('renderCompletedSection: groups jobs into the same week under one divider, separate weeks get their own', () => {
     const el = document.getElementById('list');
     el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
+    currentDays = 9999;
     window._frJobs = [
       { id: 'w1', status: 'completed', job_date: '2026-07-24', customer_name: 'Fredag', price_paid: 100 }, // week Mon20-Sun26 jul
       { id: 'w2', status: 'completed', job_date: '2026-07-22', customer_name: 'Onsdag', price_paid: 100 }, // same week
@@ -413,6 +422,7 @@
   test('oversikt: completed rows show a green checkmark + green border, and the total of the visible ones', () => {
     const el = document.getElementById('list');
     el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
+    currentDays = 9999;
     window._frJobs = [
       { id: 'j3', status: 'completed', job_date: '2026-07-10', customer_name: 'Eldst', price_paid: 100 },
       { id: 'j4', status: 'completed', job_date: '2026-07-15', customer_name: 'Nyest', price_paid: 200 },
@@ -423,6 +433,37 @@
     assert(!!rows[0].querySelector('.fr-completed-check svg'), 'expected a checkmark icon on each completed row');
     const label = document.querySelector('#listCompletedSection .fr-list-section-label');
     assert(label.innerHTML.includes('kr 300'), `expected the total of the visible completed jobs (100+200), got "${label.innerHTML}"`);
+  });
+
+  test('renderCompletedSection: follows the selected day range (currentDays) — widening the range brings older jobs (and their kr) back in', () => {
+    const el = document.getElementById('list');
+    el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
+    const toDateKeyLocal = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const today = new Date();
+    const d3 = new Date(today); d3.setDate(d3.getDate() - 3);   // inside a 7-day window
+    const d10 = new Date(today); d10.setDate(d10.getDate() - 10); // outside 7, inside 14
+    window._frJobs = [
+      { id: 'r1', status: 'completed', job_date: toDateKeyLocal(d3), customer_name: 'Nylig', price_paid: 100 },
+      { id: 'r2', status: 'completed', job_date: toDateKeyLocal(d10), customer_name: 'For10DagerSiden', price_paid: 500 },
+    ];
+
+    currentDays = 7;
+    renderCompletedSection();
+    let names = Array.from(document.querySelectorAll('#listCompletedSection .fr-list-row-name')).map(el => el.textContent.trim());
+    assert(names.some(n => n.includes('Nylig')), 'expected the 3-days-ago job inside a 7-day window');
+    assert(!names.some(n => n.includes('For10DagerSiden')), 'expected the 10-days-ago job excluded from a 7-day window');
+    let label = document.querySelector('#listCompletedSection .fr-list-section-label');
+    assert(label.textContent.includes('7 dager'), `expected the label to mention the active range, got "${label.textContent}"`);
+    assert(label.innerHTML.includes('kr 100'), `expected only the in-range job's amount, got "${label.innerHTML}"`);
+
+    currentDays = 14;
+    renderCompletedSection();
+    names = Array.from(document.querySelectorAll('#listCompletedSection .fr-list-row-name')).map(el => el.textContent.trim());
+    assert(names.some(n => n.includes('For10DagerSiden')), 'widening to 14 days should bring the 10-days-ago job back in');
+    label = document.querySelector('#listCompletedSection .fr-list-section-label');
+    assert(label.innerHTML.includes('kr 600'), `expected both jobs summed (100+500) once the range widens, got "${label.innerHTML}"`);
+
+    currentDays = 7; // restore the app default for any later test relying on it
   });
 
   test('bookedRowHtml: shows the service with a matching icon, and an orange upcoming-border class', () => {
@@ -755,8 +796,7 @@
   // Test SMS til kunder — lets William preview the exact current wording of
   // every customer-facing SMS from his own phone, whenever it changes.
   // =========================================================================
-  test('Test SMS panel: phone field defaults to 47464544, and every test button is left-aligned', () => {
-    assertEqual(document.getElementById('testSmsPhoneInput').value, '47464544', 'expected a sensible default test number pre-filled');
+  test('Test SMS panel: every test button is left-aligned', () => {
     const ids = ['testBookingSmsBtn', 'testSmsBtn', 'testThanksSmsBtn', 'testThanksDiscountBtn'];
     for (const id of ids) {
       const btn = document.getElementById(id);
@@ -899,6 +939,75 @@
     renderJobSmsStatus({ customer_phone: null, completion_sms_sent_at: null });
     assert(document.getElementById('editJobSmsBtn').disabled, 'ferdig-SMS button must disable with no phone');
     assert(document.getElementById('editJobThanksBtn').disabled, 'takk-SMS button must disable with no phone');
+  });
+
+  // =========================================================================
+  // Re-sending an SMS the customer already got is easy to trigger by
+  // accident (fat-finger, double-tap) — both send buttons must ask a
+  // duplicate-specific "did you mean this?" before actually re-sending.
+  // =========================================================================
+  test('sendCompletionSms: a job with completion_sms_sent_at already set asks a duplicate-specific confirm, and Cancel sends nothing', async () => {
+    window._frJobs = [{ id: 'jDup1', booking_code: 'D01', customer_phone: '90000020', completion_sms_sent_at: '2026-07-20T10:00:00Z', completion_notice_dismissed: false }];
+    editingJobId = 'jDup1';
+    renderJobSmsStatus(window._frJobs[0]);
+
+    let confirmMessage = null;
+    window.confirm = (msg) => { confirmMessage = msg; return false; };
+    window.fetch = () => { throw new Error('must not send when the duplicate-warning is cancelled'); };
+
+    await sendCompletionSms();
+    assert(confirmMessage && confirmMessage.includes('allerede'), `expected a duplicate-specific confirm mentioning the customer already got an SMS, got "${confirmMessage}"`);
+  });
+
+  test('sendCompletionSms: confirming the duplicate warning proceeds with the send', async () => {
+    window._frJobs = [{ id: 'jDup2', booking_code: 'D02', customer_phone: '90000021', completion_sms_sent_at: '2026-07-20T10:00:00Z', completion_notice_dismissed: false }];
+    editingJobId = 'jDup2';
+    renderJobSmsStatus(window._frJobs[0]);
+
+    window.confirm = () => true;
+    let sent = false;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      if (opts && opts.body) { sent = true; }
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, sentAt: '2026-07-25T09:00:00Z' }), { status: 200 }));
+    };
+    try {
+      await sendCompletionSms();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assert(sent, 'expected the send to proceed once the admin confirms anyway');
+  });
+
+  test('sendCompletionSms: a job with no prior SMS still gets the plain (non-duplicate) confirm text', async () => {
+    window._frJobs = [{ id: 'jDup3', booking_code: 'D03', customer_phone: '90000022', completion_sms_sent_at: null, completion_notice_dismissed: false }];
+    editingJobId = 'jDup3';
+    renderJobSmsStatus(window._frJobs[0]);
+
+    let confirmMessage = null;
+    window.confirm = (msg) => { confirmMessage = msg; return false; };
+    window.fetch = () => { throw new Error('must not send when cancelled'); };
+
+    await sendCompletionSms();
+    assert(confirmMessage && !confirmMessage.includes('allerede'), `expected the plain first-send prompt, not the duplicate one, got "${confirmMessage}"`);
+  });
+
+  test('sendThanksSms: a job with completion_sms_sent_at already set asks the duplicate confirm before opening the discount picker', async () => {
+    window._frJobs = [{ id: 'jDup4', booking_code: 'D04', customer_phone: '90000023', completion_sms_sent_at: '2026-07-20T10:00:00Z', completion_notice_dismissed: false }];
+    editingJobId = 'jDup4';
+    renderJobSmsStatus(window._frJobs[0]);
+
+    let confirmMessage = null;
+    window.confirm = (msg) => { confirmMessage = msg; return false; };
+    // If the picker's code fetch fired at all, that alone proves
+    // openDiscountAttachModal() ran despite the cancelled warning — a more
+    // reliable signal here than the modal's CSS 'show' class, since
+    // Bootstrap's fade transition is heavily throttled in this backgrounded
+    // automated tab and can lag behind real state by hundreds of ms.
+    window.fetch = () => { throw new Error('must not fetch discount codes when the duplicate-warning is cancelled'); };
+
+    await sendThanksSms();
+    assert(confirmMessage && confirmMessage.includes('allerede'), `expected a duplicate-specific confirm, got "${confirmMessage}"`);
   });
 
   // =========================================================================
