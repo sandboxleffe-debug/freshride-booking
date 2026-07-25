@@ -657,6 +657,10 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
      via transform/scale (paint-only, zero layout impact) so it can never
      shift its own row or its neighbors regardless of load order or which
      tab is active. */
+  /* overflow:hidden on .fr-bnav-btn (for label ellipsis) would otherwise
+     clip the raised icon's top edge, since it pokes above the button's own
+     box via transform — this button alone needs overflow:visible back. */
+  .fr-bnav-btn-main { overflow: visible; }
   .fr-bnav-btn-main .fr-bnav-icon {
     transform: scale(1.24) translateY(-0.85rem);
     background: var(--fr-gold);
@@ -685,6 +689,36 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem;
 }
 .fr-icon-btn:hover { border-color: var(--fr-gold); }
+
+/* Utgiftslogg — a plain 3-column table (dato / beskrivelse / beløp), like
+   you'd lay it out in a spreadsheet, instead of a cramped single line.
+   Description is free to wrap onto a second line; the delete control is
+   de-emphasized (small, faint until hover) since it's not the point of
+   the row. */
+.fr-expense-row {
+  display: grid;
+  grid-template-columns: 4rem 1fr auto 1.4rem;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--fr-panel-border);
+}
+.fr-expense-row:first-of-type { border-top: none; }
+.fr-expense-header {
+  padding-top: 0; padding-bottom: 0.45rem;
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--fr-panel-text-faint);
+}
+.fr-expense-date { font-size: 0.8rem; font-weight: 600; color: var(--fr-panel-text-soft); white-space: nowrap; }
+.fr-expense-desc { font-size: 0.9rem; color: var(--fr-panel-text); line-height: 1.35; word-break: break-word; }
+.fr-expense-amount { font-weight: 700; font-size: 0.9rem; color: var(--fr-panel-text); white-space: nowrap; text-align: right; }
+.fr-expense-delete {
+  background: none; border: none; color: var(--fr-panel-text-faint); opacity: 0.4;
+  padding: 0.15rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.fr-expense-delete:hover { opacity: 1; color: #C63B2E; }
+.fr-expense-delete svg { width: 0.9em; height: 0.9em; }
 
 .fr-save-msg { font-size: 0.85rem; margin-top: 0.6rem; min-height: 1.1rem; }
 .fr-save-msg.ok { color: #2E7D32; }

@@ -3858,6 +3858,15 @@ async function confirmSendThanksSms() {
   }
 }
 
+// Compact "DD.MM.YY" — formatDateNO()'s "1. juli 2026" is too wide for the
+// narrow date column in a spreadsheet-style expense table.
+function formatDateShortNumeric(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr + "T00:00:00");
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${String(d.getFullYear()).slice(-2)}`;
+}
+
 /* ---------------- Regnskap: utgifter ---------------- */
 async function loadExpensesAdmin() {
   const list = document.getElementById('expensesList');
@@ -3871,17 +3880,18 @@ async function loadExpensesAdmin() {
     const total = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
     totalEl.textContent = expenses.length ? `kr ${total.toLocaleString('no-NO')}` : '';
     if (!expenses.length) { list.innerHTML = '<p class="fr-empty-day">Ingen utgifter registrert ennå.</p>'; return; }
+    const header = document.createElement('div');
+    header.className = 'fr-expense-row fr-expense-header';
+    header.innerHTML = '<div>Dato</div><div>Beskrivelse</div><div>Beløp</div><div></div>';
+    list.appendChild(header);
     expenses.forEach(e => {
       const row = document.createElement('div');
-      row.className = 'fr-service-row';
+      row.className = 'fr-expense-row';
       row.innerHTML = `
-        <div>
-          <div class="fr-service-row-label">${formatDateNO(e.expense_date)} · ${e.description}</div>
-          <div class="fr-service-row-desc">kr ${Number(e.amount).toLocaleString('no-NO')}</div>
-        </div>
-        <div class="fr-service-row-actions">
-          <button class="fr-icon-btn" title="Slett" onclick="deleteExpense('${e.id}')">${frIcon('trash')}</button>
-        </div>
+        <div class="fr-expense-date">${formatDateShortNumeric(e.expense_date)}</div>
+        <div class="fr-expense-desc">${(e.description || '').replace(/</g, '&lt;')}</div>
+        <div class="fr-expense-amount">kr ${Number(e.amount).toLocaleString('no-NO')}</div>
+        <button class="fr-expense-delete" title="Slett" onclick="deleteExpense('${e.id}')">${frIcon('trash')}</button>
       `;
       list.appendChild(row);
     });

@@ -253,6 +253,16 @@
     });
   });
 
+  test('showTab: the raised "Innstillinger" bottom-nav icon is not clipped by its button', () => {
+    const mainBtn = document.querySelector('.fr-bnav-btn-main');
+    if (!mainBtn || getComputedStyle(mainBtn).display === 'none') return; // desktop viewport — bottom nav hidden
+    assertEqual(getComputedStyle(mainBtn).overflow, 'visible', 'the raised icon pokes above its own button box via transform — that button must not clip its own content');
+    const icon = mainBtn.querySelector('.fr-bnav-icon');
+    const btnRect = mainBtn.getBoundingClientRect();
+    const iconRect = icon.getBoundingClientRect();
+    assert(iconRect.top < btnRect.top, `expected the raised icon to visibly extend above its button, got icon.top=${iconRect.top} vs btn.top=${btnRect.top}`);
+  });
+
   test('swipe gesture: swiping left on the wrap moves to the next tab', () => {
     showTab('accounting');
     const wrap = document.querySelector('.fr-admin-wrap');
@@ -604,6 +614,45 @@
     toggleAccountingReveal(); // reveal -> hide
     assertEqual(accValuesVisible, false);
     assert(!document.querySelector('.fr-money-rain'), 'hiding the figures again must not spawn another splash');
+  });
+
+  // =========================================================================
+  // Utgiftslogg — a plain spreadsheet-style dato/beskrivelse/beløp table
+  // instead of a cramped single line, with a de-emphasized delete control.
+  // =========================================================================
+  test('loadExpensesAdmin: renders a 3-column dato/beskrivelse/beløp table with a header row', async () => {
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      expenses: [
+        { id: 'e1', expense_date: '2026-07-01', description: 'Bilvaskemiddel', amount: 349 },
+        { id: 'e2', expense_date: '2026-07-10', description: 'Drivstoff', amount: 650 },
+      ],
+    }), { status: 200 }));
+    try {
+      await loadExpensesAdmin();
+    } finally {
+      window.fetch = origFetch;
+    }
+    const rows = document.querySelectorAll('#expensesList .fr-expense-row:not(.fr-expense-header)');
+    assertEqual(rows.length, 2, 'expected one row per expense');
+    const header = document.querySelector('#expensesList .fr-expense-header');
+    assert(!!header, 'expected a header row (Dato / Beskrivelse / Beløp)');
+    assert(header.textContent.includes('Dato') && header.textContent.includes('Beskrivelse') && header.textContent.includes('Beløp'), 'expected the 3 column labels');
+
+    const first = rows[0];
+    assert(first.querySelector('.fr-expense-date').textContent.includes('01.07.26'), `expected a compact numeric date, got "${first.querySelector('.fr-expense-date').textContent}"`);
+    assert(first.querySelector('.fr-expense-desc').textContent.includes('Bilvaskemiddel'));
+    assert(first.querySelector('.fr-expense-amount').textContent.includes('349'));
+    assert(!!first.querySelector('.fr-expense-delete'), 'expected a delete control');
+
+    assertEqual(document.getElementById('expensesTotal').textContent, 'kr 999', 'expected the header total to sum both expenses');
+  });
+
+  test('loadExpensesAdmin: the delete control is de-emphasized (faint until hover), not the visual focus of the row', () => {
+    const delBtn = document.querySelector('#expensesList .fr-expense-delete');
+    assert(!!delBtn, 'expected at least one delete control from the previous test\'s render');
+    const opacity = Number(getComputedStyle(delBtn).opacity);
+    assert(opacity < 0.6, `expected the delete icon to be visually faint by default, got opacity ${opacity}`);
   });
 
   // =========================================================================
