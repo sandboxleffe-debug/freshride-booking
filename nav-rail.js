@@ -54,15 +54,17 @@ document.querySelectorAll('.fr-nav-rail-item').forEach(item => {
     for (let i = 0; i < count; i++) {
       const drip = document.createElement('div');
       drip.className = 'fr-soap-drip';
-      const fallDistance = 220 + Math.random() * 260;
-      const duration = 1.1 + Math.random() * 0.9;
-      const delay = Math.random() * 0.25;
-      const size = 0.75 + Math.random() * 0.55;
+      const fallDistance = 200 + Math.random() * 220;
+      const duration = 2.8 + Math.random() * 1.8;
+      const delay = Math.random() * 0.4;
+      const size = 0.9 + Math.random() * 0.6;
+      const sway = (Math.random() - 0.5) * 24;
       drip.style.left = `${Math.random() * window.innerWidth}px`;
       drip.style.top = `${navBottom}px`;
       drip.style.width = `${size}rem`;
-      drip.style.height = `${size * 3.2}rem`;
+      drip.style.height = `${size * 1.3}rem`;
       drip.style.setProperty('--fr-soap-fall-distance', `${fallDistance}px`);
+      drip.style.setProperty('--fr-soap-sway', `${sway}px`);
       drip.style.animationDuration = `${duration}s`;
       drip.style.animationDelay = `${delay}s`;
       layer.appendChild(drip);
