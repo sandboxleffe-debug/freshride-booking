@@ -50,19 +50,19 @@ document.querySelectorAll('.fr-nav-rail-item').forEach(item => {
   function spawnSoapDrip() {
     const navbar = document.querySelector('.fr-navbar');
     const navBottom = navbar ? navbar.getBoundingClientRect().bottom : 0;
-    const count = 7 + Math.floor(Math.random() * 4);
+    const count = 5 + Math.floor(Math.random() * 3);
     for (let i = 0; i < count; i++) {
       const drip = document.createElement('div');
       drip.className = 'fr-soap-drip';
       const fallDistance = 200 + Math.random() * 220;
       const duration = 2.8 + Math.random() * 1.8;
       const delay = Math.random() * 0.4;
-      const size = 0.9 + Math.random() * 0.6;
+      const size = 2.2 + Math.random() * 1.6;
       const sway = (Math.random() - 0.5) * 24;
       drip.style.left = `${Math.random() * window.innerWidth}px`;
       drip.style.top = `${navBottom}px`;
       drip.style.width = `${size}rem`;
-      drip.style.height = `${size * 1.3}rem`;
+      drip.style.height = `${size * 0.8}rem`;
       drip.style.setProperty('--fr-soap-fall-distance', `${fallDistance}px`);
       drip.style.setProperty('--fr-soap-sway', `${sway}px`);
       drip.style.animationDuration = `${duration}s`;
