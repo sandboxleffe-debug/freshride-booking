@@ -70,9 +70,18 @@ document.querySelectorAll('.fr-nav-rail-item').forEach(item => {
     }
   }
 
+  // `body` (not the window) turns out to be the actual scrolling element on
+  // this layout — html/body both have height:100%, so body's own overflow
+  // absorbs the page content instead of the window. `scroll` events fired on
+  // body don't bubble to window, so the listener has to sit on `document`
+  // with `capture: true` to see them regardless of which element scrolled.
+  function currentScrollY() {
+    return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+  }
+
   let atTop = true;
-  window.addEventListener('scroll', () => {
-    if (window.scrollY <= 4) {
+  document.addEventListener('scroll', () => {
+    if (currentScrollY() <= 4) {
       atTop = true;
       return;
     }
@@ -80,5 +89,5 @@ document.querySelectorAll('.fr-nav-rail-item').forEach(item => {
       atTop = false;
       spawnSoapDrip();
     }
-  }, { passive: true });
+  }, { passive: true, capture: true });
 })();
