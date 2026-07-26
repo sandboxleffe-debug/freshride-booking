@@ -61,7 +61,7 @@ checking what later tests assume is already true.
 
 ## What's NOT covered (be extra careful here, or extend the suite first)
 
-- Anything touching the real Supabase/Google Calendar/Talkdesk backends —
+- Anything touching the real Supabase/Google Calendar/46elks backends —
   these tests never hit real APIs, only mocked `fetch`. A change to an actual
   `/api/*.js` handler's behavior needs either a real Vercel deploy to a
   preview environment, or careful manual reasoning against the code.

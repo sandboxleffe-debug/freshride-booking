@@ -8,14 +8,12 @@
 import { getSupabaseAdmin, checkAdminPassword } from "./_lib/supabase.js";
 import { getVisitorSummary } from "./_lib/analytics.js";
 import { upsertCustomerCars, upsertCustomerAvatar, renameCarForCustomer, syncCarToCustomer } from "./_lib/customers.js";
-import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
+import { sendSms } from "./_lib/elks-sms.js";
 import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode, getDiscountCodeInfo, markDiscountCodeGivenAway } from "./_lib/discount-codes.js";
 import { getOrCreateReferralCode, referralTierPercent } from "./_lib/referral-codes.js";
 import { getCalendarClient, CALENDAR_ID, findPastBookingByCode } from "./_lib/google-calendar.js";
 import { buildBookingTextCustomer, buildCompletionSmsText, buildThanksSmsText, buildThanksSmsTextWithDiscount } from "./_lib/sms-templates.js";
 import { logNotification } from "./_lib/notifications.js";
-
-const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 
 // Resolves (creating if needed) a customer's permanent referral code plus
 // their currently earned discount tier, to attach to a completion/thanks
@@ -358,11 +356,7 @@ async function handleJobs(req, res, supabase) {
 
         const referral = await buildReferralForCustomer(supabase, job.customer_number);
         const message = buildCompletionSmsText(job.customer_name, referral);
-        const ok = await sendTalkdeskSms({
-          toPhone: job.customer_phone, name: job.customer_name,
-          date: job.job_date || "", time: "", services: job.services || "",
-          address: BUSINESS_ADDRESS, message,
-        });
+        const ok = await sendSms({ toPhone: job.customer_phone, message });
         await logNotification({
           channel: "sms_ferdig", recipient: job.customer_phone, code: job.booking_code,
           name: job.customer_name, status: ok ? "ok" : "failed", message,
@@ -407,11 +401,7 @@ async function handleJobs(req, res, supabase) {
           message = buildThanksSmsText(job.customer_name, referral);
         }
 
-        const ok = await sendTalkdeskSms({
-          toPhone: job.customer_phone, name: job.customer_name,
-          date: job.job_date || "", time: "", services: job.services || "",
-          address: BUSINESS_ADDRESS, message,
-        });
+        const ok = await sendSms({ toPhone: job.customer_phone, message });
         await logNotification({
           channel: "sms_takk", recipient: job.customer_phone, code: job.booking_code,
           name: job.customer_name, status: ok ? "ok" : "failed", message,
@@ -444,10 +434,7 @@ async function handleJobs(req, res, supabase) {
         } else {
           message = buildThanksSmsText("Test Testesen", { code: "VDEMO", percent: 10 });
         }
-        const ok = await sendTalkdeskSms({
-          toPhone: phone, name: "Test Testesen", date: "", time: "",
-          services: "Test", address: BUSINESS_ADDRESS, message,
-        });
+        const ok = await sendSms({ toPhone: phone, message });
         if (!ok) return res.status(502).json({ error: "Klarte ikke å sende test-SMS" });
         return res.status(200).json({ ok: true, message });
       } catch (err) {
@@ -461,10 +448,7 @@ async function handleJobs(req, res, supabase) {
       if (!phone) return res.status(400).json({ error: "Missing phone" });
       try {
         const message = buildCompletionSmsText("Test Testesen", { code: "VDEMO", percent: 10 });
-        const ok = await sendTalkdeskSms({
-          toPhone: phone, name: "Test Testesen", date: "", time: "",
-          services: "Test", address: BUSINESS_ADDRESS, message,
-        });
+        const ok = await sendSms({ toPhone: phone, message });
         if (!ok) return res.status(502).json({ error: "Klarte ikke å sende test-SMS" });
         return res.status(200).json({ ok: true, message });
       } catch (err) {
@@ -487,10 +471,7 @@ async function handleJobs(req, res, supabase) {
           date: now.toLocaleDateString("no-NO", { day: "numeric", month: "long", year: "numeric" }),
           time: "12:00", endTime: "13:30", code: "T99",
         });
-        const ok = await sendTalkdeskSms({
-          toPhone: phone, name: "Test Testesen", date: "", time: "",
-          services: "FreshRide Complete", address: BUSINESS_ADDRESS, message,
-        });
+        const ok = await sendSms({ toPhone: phone, message });
         if (!ok) return res.status(502).json({ error: "Klarte ikke å sende test-SMS" });
         return res.status(200).json({ ok: true, message });
       } catch (err) {

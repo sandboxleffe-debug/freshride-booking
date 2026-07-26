@@ -7,14 +7,14 @@
 //    duration of the chosen service(s) — e.g. a 3-hour "Ledig" slot
 //    shrinks to 1.5 hours if the customer only picks "Kun innvendig".
 //    It never extends beyond the original slot, only shrinks.
-// 2. Sends the booking details + code to Talkdesk for SMS confirmation.
+// 2. Sends the booking details + code via SMS (46elks) for confirmation.
 // 3. Sends a reminder email to the business owner with the same info.
 
 import { getCalendarClient, CALENDAR_ID, getUsedCodes, generateUniqueCode } from "./_lib/google-calendar.js";
 import { sendOwnerEmail } from "./_lib/email.js";
 import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
-import { sendTalkdeskSms } from "./_lib/talkdesk-sms.js";
+import { sendSms } from "./_lib/elks-sms.js";
 import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
 import { createDraftJobLog, findCustomerByPhone } from "./_lib/customers.js";
 import { redeemDiscountCode } from "./_lib/discount-codes.js";
@@ -59,7 +59,7 @@ async function sendBookingSms({ phone, name, services, start, end, code }) {
   const { date, time } = formatNorwegian(start);
   const endTime = formatOsloTime(end);
   const message = buildBookingTextCustomer({ services, phone, date, time, endTime, code });
-  const ok = await sendTalkdeskSms({ toPhone: phone, name, time, date, services, address: BUSINESS_ADDRESS, message });
+  const ok = await sendSms({ toPhone: phone, message });
   return { ok, message };
 }
 
@@ -82,7 +82,7 @@ async function sendOwnerSms({ name, phone, services, start, end, code }) {
     const numbers = data.owner_sms_phone.split(",").map(n => n.trim()).filter(Boolean);
     const results = await Promise.all(
       numbers.map(async toPhone => {
-        const ok = await sendTalkdeskSms({ toPhone, name, time, date, services, address: BUSINESS_ADDRESS, message });
+        const ok = await sendSms({ toPhone, message });
         await logNotification({ channel: "sms_eier", recipient: toPhone, code, name, status: ok ? "ok" : "failed", message });
         return ok;
       })
