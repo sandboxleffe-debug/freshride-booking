@@ -129,36 +129,6 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
     rgba(0,0,0,0) 100%);
 }
 
-/* Decorative foam corner/edge accents on the hero banner — static, no
-   animation, tucked into corners so they read as splashes of actual soap
-   rather than covering the photo/video underneath. */
-.fr-hero-foam {
-  position: absolute;
-  pointer-events: none;
-  z-index: 2;
-}
-.fr-hero-foam-corner {
-  top: -10px;
-  left: -10px;
-  width: clamp(64px, 11vw, 120px);
-  height: auto;
-  opacity: 0.85;
-}
-.fr-hero-foam-splash {
-  bottom: -14px;
-  right: -8px;
-  width: clamp(72px, 13vw, 140px);
-  height: auto;
-  opacity: 0.9;
-}
-.fr-hero-foam-froth {
-  bottom: -4px;
-  left: 0;
-  width: min(48%, 380px);
-  height: auto;
-  opacity: 0.8;
-}
-
 /* The hero video has a visible glitch right at its bottom edge each time it
    loops — nudging it up slightly (anchored to the top) pushes that sliver
    past the wrap's overflow:hidden bottom edge instead of re-encoding the
@@ -212,6 +182,22 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   margin-bottom: 1.5rem;
   color: var(--fr-panel-text);
 }
+/* A splash of actual soap tucked into the booking panel's corner, hanging
+   mostly over the dark page background (not the light panel itself, where
+   a white image would just disappear) so it reads as a real detail rather
+   than clutter. */
+.fr-panel-foam-corner { position: relative; }
+.fr-panel-foam {
+  position: absolute;
+  bottom: -30px;
+  right: -14px;
+  width: clamp(64px, 11vw, 104px);
+  height: auto;
+  pointer-events: none;
+  z-index: 3;
+  filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4));
+}
+
 .fr-panel-head { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 1.5rem; }
 .fr-panel-head h2 { font-size: 1.2rem; font-weight: 700; margin: 0; color: var(--fr-panel-text); }
 .fr-step-badge {
