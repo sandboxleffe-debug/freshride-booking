@@ -426,7 +426,20 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 
 /* Footer — dark zone */
-.fr-footer { text-align: center; padding: 2rem 0 2.5rem; color: var(--fr-text-dark-zone-faint); font-size: 0.85rem; border-top: 1px solid var(--fr-line-dark-zone); }
+.fr-footer { position: relative; text-align: center; padding: 2rem 0 2.5rem; color: var(--fr-text-dark-zone-faint); font-size: 0.85rem; border-top: 1px solid var(--fr-line-dark-zone); overflow: visible; }
+/* A wide froth strip settling right where the page meets the footer line —
+   like suds pooling at the bottom of the wash. */
+.fr-footer-foam {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(60%, 280px);
+  height: auto;
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 1;
+}
 .fr-footer .container { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; row-gap: 0.3rem; }
 .fr-footer a { color: var(--fr-gold); font-weight: 600; text-decoration: none; }
 .fr-footer-dot { margin: 0 0.5rem; }
@@ -766,6 +779,17 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
    that's still running underneath it. See loadGallery()/setupGalleryAutoScroll()
    in index.html. */
 .fr-gallery-section { margin-bottom: 2.5rem; }
+.fr-gallery-foam-corner { position: relative; }
+.fr-gallery-foam {
+  position: absolute;
+  top: -38px;
+  left: -8px;
+  width: clamp(46px, 7vw, 66px);
+  height: auto;
+  opacity: 0.75;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35));
+}
 .fr-gallery-track-wrap {
   overflow-x: auto;
   overflow-y: hidden;
