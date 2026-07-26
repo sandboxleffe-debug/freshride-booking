@@ -129,6 +129,15 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
     rgba(0,0,0,0) 100%);
 }
 
+/* The hero video has a visible glitch right at its bottom edge each time it
+   loops — nudging it up slightly (anchored to the top) pushes that sliver
+   past the wrap's overflow:hidden bottom edge instead of re-encoding the
+   video file itself. */
+.fr-hero-video-crop {
+  transform: scale(1.05);
+  transform-origin: center top;
+}
+
 .fr-hero-copy {
   padding: 1.75rem 0 1.25rem;
   border-bottom: 1px solid var(--fr-line-dark-zone);

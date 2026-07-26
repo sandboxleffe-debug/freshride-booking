@@ -331,7 +331,7 @@ async function loadHeroMedia() {
     const data = await res.json();
     if (!data.useVideo) return;
     document.getElementById('heroMediaWrap').innerHTML =
-      '<video class="fr-hero-image" src="assets/pika.mp4" autoplay loop muted playsinline aria-label="FreshRide — Next-Gen Car Care"></video>';
+      '<video class="fr-hero-image fr-hero-video-crop" src="assets/pika.mp4" autoplay loop muted playsinline aria-label="FreshRide — Next-Gen Car Care"></video>';
   } catch (e) { /* silent — keeps the default image */ }
 }
 loadHeroMedia();
