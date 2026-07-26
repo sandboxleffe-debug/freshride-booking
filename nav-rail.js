@@ -38,3 +38,47 @@ document.querySelectorAll('.fr-nav-rail-item').forEach(item => {
     }
   });
 });
+
+// Soap-drip effect: a handful of soapy drips run down from the navbar the
+// first time a visitor scrolls away from the very top of the page — resets
+// once they scroll back to the top, so it can play again next time.
+(function () {
+  const layer = document.createElement('div');
+  layer.className = 'fr-soap-drip-layer';
+  document.body.appendChild(layer);
+
+  function spawnSoapDrip() {
+    const navbar = document.querySelector('.fr-navbar');
+    const navBottom = navbar ? navbar.getBoundingClientRect().bottom : 0;
+    const count = 7 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < count; i++) {
+      const drip = document.createElement('div');
+      drip.className = 'fr-soap-drip';
+      const fallDistance = 220 + Math.random() * 260;
+      const duration = 1.1 + Math.random() * 0.9;
+      const delay = Math.random() * 0.25;
+      const size = 0.75 + Math.random() * 0.55;
+      drip.style.left = `${Math.random() * window.innerWidth}px`;
+      drip.style.top = `${navBottom}px`;
+      drip.style.width = `${size}rem`;
+      drip.style.height = `${size * 3.2}rem`;
+      drip.style.setProperty('--fr-soap-fall-distance', `${fallDistance}px`);
+      drip.style.animationDuration = `${duration}s`;
+      drip.style.animationDelay = `${delay}s`;
+      layer.appendChild(drip);
+      setTimeout(() => drip.remove(), (duration + delay) * 1000 + 100);
+    }
+  }
+
+  let atTop = true;
+  window.addEventListener('scroll', () => {
+    if (window.scrollY <= 4) {
+      atTop = true;
+      return;
+    }
+    if (atTop) {
+      atTop = false;
+      spawnSoapDrip();
+    }
+  }, { passive: true });
+})();

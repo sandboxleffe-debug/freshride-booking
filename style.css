@@ -81,6 +81,27 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   top: 0;
   z-index: 20;
 }
+.fr-soap-drip-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15; /* below the navbar (20) so drips read as running down from behind it */
+  overflow: hidden;
+}
+.fr-soap-drip {
+  position: absolute;
+  top: 0;
+  border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(232,185,35,0.35) 65%, rgba(255,255,255,0) 100%);
+  box-shadow: 0 0 6px rgba(255,255,255,0.45);
+  animation: fr-soap-fall linear forwards;
+}
+@keyframes fr-soap-fall {
+  0% { transform: translateY(0) scaleY(0.6); opacity: 0; }
+  10% { opacity: 0.9; }
+  100% { transform: translateY(var(--fr-soap-fall-distance, 300px)) scaleY(1.15); opacity: 0; }
+}
+
 .fr-brand {
   display: flex;
   align-items: center;
