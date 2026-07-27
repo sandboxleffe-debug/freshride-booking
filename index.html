@@ -214,6 +214,7 @@
       </div>
       <div class="modal-body">
         <p class="fr-modal-slot" id="modalSlotLabel"></p>
+        <p class="fr-hint fr-time-request-notice d-none" id="modalTimeRequestNotice">🕐 Du har forespurt dette tidspunktet selv — William bekrefter at det passer og gir beskjed hvis noe må justeres.</p>
 
         <label class="form-label fr-label">✅ Velg tjeneste(r)</label>
         <div class="fr-service-grid" id="serviceGrid">
@@ -807,9 +808,11 @@ function render() {
     `;
     btn.onclick = () => {
       selected = e;
+      document.getElementById('timeRequestInline')?.remove();
       const weekday = NO_WEEKDAYS[new Date(e.start).getDay()];
       const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
       document.getElementById("modalSlotLabel").textContent = `${weekdayCap} kl. ${start} – ${end}`;
+      document.getElementById("modalTimeRequestNotice").classList.add('d-none');
       document.getElementById("formError").classList.add('d-none');
       document.getElementById("serviceError").classList.add('d-none');
       document.querySelectorAll(".fr-service-checkbox").forEach(cb => {
@@ -820,6 +823,66 @@ function render() {
     };
     el.appendChild(btn);
   });
+
+  // Always-available extra option: not every customer's ideal time is one
+  // of the pre-listed slots (e.g. wanting 12 instead of an offered 11) —
+  // let them request their own start time instead. Attaches to one of this
+  // day's real "Ledig" events (so there's something to actually book), but
+  // keeps that slot's own duration while moving its start to match.
+  const reqBtn = document.createElement("button");
+  reqBtn.type = "button";
+  reqBtn.className = "fr-slot fr-slot-request";
+  reqBtn.innerHTML = `
+    <span class="fr-slot-time">🕐 Forespør tidspunkt</span>
+    <span class="fr-slot-tag">Ønsker du et annet klokkeslett?</span>
+  `;
+  reqBtn.onclick = () => showTimeRequestInput(reqBtn);
+  el.appendChild(reqBtn);
+}
+
+function showTimeRequestInput(afterEl) {
+  if (document.getElementById('timeRequestInline')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'timeRequestInline';
+  wrap.className = 'fr-time-request-inline';
+  wrap.innerHTML = `
+    <label class="fr-label" for="timeRequestInput">Ønsket klokkeslett</label>
+    <div class="fr-time-request-row">
+      <input type="time" id="timeRequestInput" class="form-control fr-input" value="12:00" step="900" />
+      <button type="button" class="btn fr-btn-primary" id="timeRequestConfirmBtn">Fortsett</button>
+    </div>
+  `;
+  afterEl.after(wrap);
+  document.getElementById('timeRequestConfirmBtn').onclick = confirmTimeRequest;
+}
+
+function confirmTimeRequest() {
+  const value = document.getElementById('timeRequestInput').value;
+  if (!value) return;
+  const base = events[0];
+  const durationMs = new Date(base.end) - new Date(base.start);
+  const baseDurationMinutes = Math.max(15, Math.round(durationMs / 60000));
+
+  selected = {
+    id: base.id,
+    isTimeRequest: true,
+    requestedDate: currentSlotsDate,
+    requestedTime: value,
+    baseDurationMinutes,
+  };
+
+  const [hh, mm] = value.split(':');
+  const weekday = NO_WEEKDAYS[new Date(`${currentSlotsDate}T${hh}:${mm}:00`).getDay()];
+  const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  document.getElementById("modalSlotLabel").textContent = `${weekdayCap} kl. ${value} (forespurt)`;
+  document.getElementById("modalTimeRequestNotice").classList.remove('d-none');
+  document.getElementById("formError").classList.add('d-none');
+  document.getElementById("serviceError").classList.add('d-none');
+  document.querySelectorAll(".fr-service-checkbox").forEach(cb => {
+    cb.checked = false;
+    cb.closest(".fr-service-option").classList.remove("fr-service-checked");
+  });
+  bookingModal.show();
 }
 
 /* ---------------- Services (from Supabase) ---------------- */
@@ -1086,8 +1149,9 @@ async function book() {
         car: car || undefined,
         services,
         discountCode: validatedDiscountCode,
-        start: selected.start,
-        end: selected.end
+        ...(selected.isTimeRequest
+          ? { isTimeRequest: true, requestedDate: selected.requestedDate, requestedTime: selected.requestedTime, baseDurationMinutes: selected.baseDurationMinutes }
+          : { start: selected.start, end: selected.end })
       })
     });
     const result = await res.json();

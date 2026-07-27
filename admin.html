@@ -828,6 +828,12 @@
         <p class="fr-hint">Siste SMS- og e-postvarsler som er forsøkt sendt, nyeste først.</p>
         <div id="notificationsLog"></div>
       </div>
+
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="phone"></span> SMS-logg (46elks)</h2></div>
+        <p class="fr-hint">Faktisk sendelogg direkte fra SMS-leverandøren, nyeste først.</p>
+        <div id="elksSmsLog"></div>
+      </div>
     </div>
 
   </div>
@@ -1236,6 +1242,7 @@ function enterAdmin() {
   loadAnalyticsSummary();
   loadAboutAdmin();
   loadNotifications();
+  loadElksSmsLog();
   document.getElementById('createDate').valueAsDate = new Date();
   loadCreateDayTimeline();
   document.getElementById('jobDate').valueAsDate = new Date();
@@ -4111,6 +4118,59 @@ async function loadNotifications() {
     renderNotifications();
   } catch (e) {
     box.innerHTML = '<p class="fr-hint">Klarte ikke å hente varslingslogg.</p>';
+  }
+}
+
+// The SMS provider's (46elks) own send log — separate from the app's own
+// Varslingslogg above, since this reflects what actually happened on their
+// end (exact content, real delivery status), not just what was attempted.
+let _frElksSmsMessages = [];
+function renderElksSmsLog() {
+  const box = document.getElementById('elksSmsLog');
+  const messages = _frElksSmsMessages;
+  if (!messages.length) {
+    box.innerHTML = '<p class="fr-hint">Ingen SMS-er logget ennå.</p>';
+    return;
+  }
+  box.innerHTML = messages.map((m, i) => {
+    const when = m.created || m.created_at || m.date || '';
+    const status = m.status || '';
+    const to = m.to || m.from || '';
+    return `
+    <div class="fr-list-row">
+      <div class="fr-list-row-when">${when ? `${fmtDateShort(when)} ${fmtTime(when)}` : ''}</div>
+      <div class="fr-list-row-body">
+        <div class="fr-list-row-name">${to}${status ? ` <span class="fr-list-row-code">${status}</span>` : ''}</div>
+      </div>
+      <div class="fr-notif-row-actions">
+        <button type="button" class="fr-notif-view-btn" onclick="showElksSmsMessage(${i})" title="Se innhold">${frIcon('eye')} Se</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showElksSmsMessage(index) {
+  const m = _frElksSmsMessages[index];
+  if (!m) return;
+  document.getElementById('notifMessageModalBody').innerHTML = `
+    <div class="fr-notif-message-block">
+      <div class="fr-notif-message-label">Til: ${m.to || m.from || ''}${m.status ? ` · ${m.status}` : ''}</div>
+      <pre class="fr-notif-message-text">${(m.message || '').replace(/</g, '&lt;')}</pre>
+    </div>
+  `;
+  notifMessageModal.show();
+}
+
+async function loadElksSmsLog() {
+  const box = document.getElementById('elksSmsLog');
+  try {
+    const res = await fetch('/api/admin-data?resource=sms-log', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    _frElksSmsMessages = data.messages || [];
+    renderElksSmsLog();
+  } catch (e) {
+    box.innerHTML = '<p class="fr-hint">Klarte ikke å hente SMS-logg.</p>';
   }
 }
 

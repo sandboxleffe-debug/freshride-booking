@@ -563,6 +563,39 @@
   });
 
   // =========================================================================
+  // SMS-logg (46elks): the provider's own send log, separate from the app's
+  // own Varslingslogg — same "Se"-button pattern to view full content.
+  // =========================================================================
+  test('renderElksSmsLog: renders one row per message with a "Se" button', () => {
+    _frElksSmsMessages = [
+      { id: 's1', to: '+4791234567', status: 'delivered', created: '2026-07-24T12:00:00Z', message: 'Booking bekreftet ✅' },
+      { id: 's2', to: '+4790000000', status: 'failed', created: '2026-07-24T11:00:00Z', message: 'Ny booking mottatt' },
+    ];
+    renderElksSmsLog();
+    const rows = document.querySelectorAll('#elksSmsLog .fr-list-row');
+    assertEqual(rows.length, 2, 'expected one row per logged message');
+    assert(rows[0].textContent.includes('+4791234567'), 'expected the recipient number to show');
+    assert(rows[0].textContent.includes('delivered'), 'expected the delivery status to show');
+    assert(!!rows[0].querySelector('.fr-notif-view-btn'), 'expected a "Se" button to view the full message');
+  });
+
+  test('renderElksSmsLog: shows an empty-state hint when there are no messages', () => {
+    _frElksSmsMessages = [];
+    renderElksSmsLog();
+    assert(document.getElementById('elksSmsLog').textContent.includes('Ingen SMS-er logget'), 'expected an empty-state message');
+  });
+
+  test('showElksSmsMessage: opens the shared notif modal with the full message text', () => {
+    _frElksSmsMessages = [
+      { id: 's1', to: '+4791234567', status: 'delivered', created: '2026-07-24T12:00:00Z', message: 'Hele meldingsteksten her' },
+    ];
+    showElksSmsMessage(0);
+    const body = document.getElementById('notifMessageModalBody');
+    assert(body.textContent.includes('Hele meldingsteksten her'), 'expected the full message content in the modal');
+    assert(body.textContent.includes('+4791234567'), 'expected the recipient to show in the modal');
+  });
+
+  // =========================================================================
   // Besøkende i dag: gridlines, total, click-for-value, GA link
   // =========================================================================
   test('visitor chart: renders gridlines, total, and updates value on bar click', () => {

@@ -352,6 +352,16 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   color: var(--fr-gold-deep); background: var(--fr-gold-soft); padding: 0.15rem 0.5rem; border-radius: 999px;
 }
 .fr-slot-weather { margin-left: 0.4rem; text-transform: none; letter-spacing: normal; }
+.fr-slot-request { border-style: dashed; background: var(--fr-panel-bg); }
+.fr-time-request-inline {
+  grid-column: 1 / -1;
+  background: var(--fr-panel-bg-2);
+  border: 2px dashed var(--fr-gold-soft);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+}
+.fr-time-request-row { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.4rem; }
+.fr-time-request-row input[type="time"] { max-width: 140px; }
 @keyframes fr-slot-pop {
   from { opacity: 0; transform: translateY(8px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }

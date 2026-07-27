@@ -8,7 +8,7 @@
 import { getSupabaseAdmin, checkAdminPassword } from "./_lib/supabase.js";
 import { getVisitorSummary } from "./_lib/analytics.js";
 import { upsertCustomerCars, upsertCustomerAvatar, renameCarForCustomer, syncCarToCustomer } from "./_lib/customers.js";
-import { sendSms } from "./_lib/elks-sms.js";
+import { sendSms, listSms } from "./_lib/elks-sms.js";
 import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode, getDiscountCodeInfo, markDiscountCodeGivenAway } from "./_lib/discount-codes.js";
 import { getOrCreateReferralCode, referralTierPercent } from "./_lib/referral-codes.js";
 import { getCalendarClient, CALENDAR_ID, findPastBookingByCode } from "./_lib/google-calendar.js";
@@ -664,6 +664,22 @@ async function handleNotifications(req, res, supabase) {
   return res.status(200).json({ notifications: data });
 }
 
+// The SMS provider's own send log (46elks) — separate from the app's own
+// freshride_notifications table above, since this reflects what actually
+// happened on their end (delivery status, exact content), not just what we
+// attempted to send.
+async function handleSmsLog(req, res) {
+  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  try {
+    const messages = await listSms();
+    if (messages === null) return res.status(502).json({ error: "Klarte ikke å hente SMS-logg fra 46elks" });
+    return res.status(200).json({ messages });
+  } catch (err) {
+    console.error("sms-log error:", err);
+    return res.status(500).json({ error: "Klarte ikke å hente SMS-logg" });
+  }
+}
+
 /* ---------------- Accounting summary ---------------- */
 async function handleAccounting(req, res, supabase) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
@@ -857,6 +873,7 @@ export default async function handler(req, res) {
   if (resource === "expenses") return handleExpenses(req, res, supabase);
   if (resource === "accounting") return handleAccounting(req, res, supabase);
   if (resource === "notifications") return handleNotifications(req, res, supabase);
+  if (resource === "sms-log") return handleSmsLog(req, res);
   if (resource === "analytics") return handleAnalytics(req, res);
   if (resource === "gallery") return handleGallery(req, res, supabase);
 

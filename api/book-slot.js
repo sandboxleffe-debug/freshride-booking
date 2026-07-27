@@ -15,7 +15,7 @@ import { sendOwnerEmail } from "./_lib/email.js";
 import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 import { sendSms } from "./_lib/elks-sms.js";
-import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
+import { getOsloParts, formatOsloTime, osloWallTimeToUtc } from "./_lib/timezone.js";
 import { createDraftJobLog, findCustomerByPhone } from "./_lib/customers.js";
 import { redeemDiscountCode } from "./_lib/discount-codes.js";
 import { redeemReferralCode } from "./_lib/referral-codes.js";
@@ -65,7 +65,7 @@ async function sendBookingSms({ phone, name, services, start, end, code }) {
 
 // Extra SMS to the business owner's own number(s), if enabled in admin
 // (Om oss-fanen). Separate from the owner email — some prefer SMS.
-async function sendOwnerSms({ name, phone, services, start, end, code }) {
+async function sendOwnerSms({ name, phone, services, start, end, code, isTimeRequest }) {
   try {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
@@ -77,7 +77,7 @@ async function sendOwnerSms({ name, phone, services, start, end, code }) {
 
     const { date, time } = formatNorwegian(start);
     const endTime = formatOsloTime(end);
-    const message = buildBookingTextOwner({ name, phone, services, date, time, endTime, code });
+    const message = buildBookingTextOwner({ name, phone, services, date, time, endTime, code, isTimeRequest });
 
     const numbers = data.owner_sms_phone.split(",").map(n => n.trim()).filter(Boolean);
     const results = await Promise.all(
@@ -94,23 +94,23 @@ async function sendOwnerSms({ name, phone, services, start, end, code }) {
   }
 }
 
-async function sendOwnerReminderEmail({ name, phone, services, start, end, code }) {
+async function sendOwnerReminderEmail({ name, phone, services, start, end, code, isTimeRequest }) {
   const { date, time } = formatNorwegian(start);
   const endTime = formatOsloTime(end);
-  const message = buildBookingTextOwner({ name, phone, services, date, time, endTime, code });
+  const message = buildBookingTextOwner({ name, phone, services, date, time, endTime, code, isTimeRequest });
   const ok = await sendOwnerEmail({ subject: `Ny booking: ${name} — ${date} kl. ${time}`, text: message });
   return { ok, message };
 }
 
 // Best-effort wrapper — never blocks the booking itself if the draft
 // job log creation fails for some reason.
-async function createDraftJobLogForBooking({ name, phone, services, start, code, car, discountCode, discountPercent, referredBy }) {
+async function createDraftJobLogForBooking({ name, phone, services, start, code, car, discountCode, discountPercent, referredBy, notes }) {
   try {
     const supabase = getSupabaseAdmin();
     const p = getOsloParts(start);
     const pad = n => String(n).padStart(2, "0");
     const jobDate = `${p.year}-${pad(p.month)}-${pad(p.day)}`;
-    await createDraftJobLog(supabase, { name, phone, services, jobDate, code, car, discountCode, discountPercent, referredBy });
+    await createDraftJobLog(supabase, { name, phone, services, jobDate, code, car, discountCode, discountPercent, referredBy, notes });
   } catch (err) {
     console.error("createDraftJobLogForBooking error:", err);
   }
@@ -153,9 +153,29 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { eventId, name, phone, services, start, end, car, discountCode } = req.body || {};
+  const {
+    eventId, name, phone, services, car, discountCode,
+    isTimeRequest, requestedDate, requestedTime, baseDurationMinutes,
+  } = req.body || {};
+  let { start, end } = req.body || {};
   if (!eventId || !name || !phone || !Array.isArray(services) || services.length === 0) {
     return res.status(400).json({ error: "Missing eventId, name, phone, or services" });
+  }
+
+  // "Forespør tidspunkt": the customer picked their own start time instead
+  // of one of the real listed slots — still attached to a real "Ledig"
+  // event (eventId) so there's something to patch, but the actual time
+  // is computed here from Oslo wall-clock time rather than trusted from
+  // the client, and keeps that slot's own original duration.
+  if (isTimeRequest) {
+    if (!requestedDate || !requestedTime || !baseDurationMinutes) {
+      return res.status(400).json({ error: "Missing requestedDate, requestedTime, or baseDurationMinutes" });
+    }
+    const startDt = osloWallTimeToUtc(requestedDate, requestedTime);
+    start = startDt.toISOString();
+    end = new Date(startDt.getTime() + baseDurationMinutes * 60000).toISOString();
+  } else if (!start || !end) {
+    return res.status(400).json({ error: "Missing start or end" });
   }
 
   const ip = getClientIp(req);
@@ -185,6 +205,11 @@ export default async function handler(req, res) {
       location: BUSINESS_ADDRESS,
       description: `Tjeneste: ${services.join(", ")}`,
       extendedProperties: { private: { freshride_code: code } },
+      // Always set explicitly (not just conditionally like end below) — in
+      // the normal flow this already matches the event's real start, so
+      // it's a no-op there; for a time request it's what actually moves
+      // the calendar event to the customer-requested time.
+      start: { dateTime: start, timeZone: "Europe/Oslo" },
     };
     if (finalEnd !== end) {
       requestBody.end = { dateTime: finalEnd, timeZone: "Europe/Oslo" };
@@ -211,6 +236,7 @@ export default async function handler(req, res) {
     discountCode: redeemedDiscountPercent ? discountCode.trim().toUpperCase() : null,
     discountPercent: redeemedDiscountPercent,
     referredBy,
+    notes: isTimeRequest ? "🕐 Kunden forespurte dette tidspunktet selv ved booking (ikke et av de faste ledige tidene)." : undefined,
   });
 
   let smsSent = false;
@@ -225,7 +251,7 @@ export default async function handler(req, res) {
 
   let emailSent = false;
   try {
-    const result = await sendOwnerReminderEmail({ name, phone, services, start, end: finalEnd, code });
+    const result = await sendOwnerReminderEmail({ name, phone, services, start, end: finalEnd, code, isTimeRequest });
     emailSent = result.ok;
     await logNotification({ channel: "epost_eier", recipient: "eier", code, name, status: emailSent ? "ok" : "failed", message: result.message });
   } catch (err) {
@@ -234,7 +260,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    await sendOwnerSms({ name, phone, services, start, end: finalEnd, code });
+    await sendOwnerSms({ name, phone, services, start, end: finalEnd, code, isTimeRequest });
   } catch (err) {
     console.error("book-slot owner sms error:", err);
   }

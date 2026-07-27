@@ -47,3 +47,27 @@ export async function sendSms({ toPhone, message }) {
   }
   return true;
 }
+
+// Read-only: the provider's own send log (message content + delivery
+// status), for the admin panel — lets William check what was actually
+// sent/delivered without logging into 46elks.com separately.
+export async function listSms() {
+  const username = process.env.ELKS_API_USERNAME;
+  const password = process.env.ELKS_API_PASSWORD;
+  if (!username || !password) {
+    console.error("listSms: ELKS_API_USERNAME/ELKS_API_PASSWORD is not set");
+    return null;
+  }
+  const res = await fetch(ELKS_URL, {
+    method: "GET",
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+  });
+  if (!res.ok) {
+    console.error("listSms (46elks) failed:", res.status, await res.text().catch(() => ""));
+    return null;
+  }
+  const json = await res.json();
+  return json.data || [];
+}

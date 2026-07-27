@@ -28,10 +28,14 @@ export function buildBookingTextCustomer({ services, date, time, endTime, code, 
 }
 
 // Sent to William (owner SMS/email) — keeps the fuller detail since he
-// needs to know who's coming, not just that someone booked.
-export function buildBookingTextOwner({ name, phone, services, date, time, endTime, code }) {
+// needs to know who's coming, not just that someone booked. `isTimeRequest`
+// flags a customer-picked time that doesn't match any real free calendar
+// slot (see book-slot.js) — William needs an extra nudge to double-check it
+// actually works before treating it as confirmed.
+export function buildBookingTextOwner({ name, phone, services, date, time, endTime, code, isTimeRequest }) {
   const calendarUrl = `${SITE_URL}/api/calendar-invite?code=${encodeURIComponent(code)}&phone=${encodeURIComponent(phone)}`;
   return (
+    (isTimeRequest ? `⚠️ FORESPURT TIDSPUNKT — bekreft at det passer!\n\n` : ``) +
     `Ny booking mottatt\n\n` +
     `Kode: ${code}\n` +
     `Navn: ${name}\n` +
