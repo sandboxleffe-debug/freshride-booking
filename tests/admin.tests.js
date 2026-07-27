@@ -564,9 +564,11 @@
 
   // =========================================================================
   // SMS-logg (46elks): the provider's own send log, separate from the app's
-  // own Varslingslogg — same "Se"-button pattern to view full content.
+  // own Varslingslogg. Message text shows directly in the row (no click-to-
+  // view step — these are short SMS bodies, not multi-channel bundles), and
+  // the recipient number is matched against Kunderegister for a readable name.
   // =========================================================================
-  test('renderElksSmsLog: renders one row per message with a "Se" button', () => {
+  test('renderElksSmsLog: renders one row per message with the content shown inline', () => {
     _frElksSmsMessages = [
       { id: 's1', to: '+4791234567', status: 'delivered', created: '2026-07-24T12:00:00Z', message: 'Booking bekreftet ✅' },
       { id: 's2', to: '+4790000000', status: 'failed', created: '2026-07-24T11:00:00Z', message: 'Ny booking mottatt' },
@@ -576,7 +578,7 @@
     assertEqual(rows.length, 2, 'expected one row per logged message');
     assert(rows[0].textContent.includes('+4791234567'), 'expected the recipient number to show');
     assert(rows[0].textContent.includes('delivered'), 'expected the delivery status to show');
-    assert(!!rows[0].querySelector('.fr-notif-view-btn'), 'expected a "Se" button to view the full message');
+    assert(rows[0].textContent.includes('Booking bekreftet'), 'expected the message content to show directly, no click needed');
   });
 
   test('renderElksSmsLog: shows an empty-state hint when there are no messages', () => {
@@ -585,14 +587,19 @@
     assert(document.getElementById('elksSmsLog').textContent.includes('Ingen SMS-er logget'), 'expected an empty-state message');
   });
 
-  test('showElksSmsMessage: opens the shared notif modal with the full message text', () => {
-    _frElksSmsMessages = [
-      { id: 's1', to: '+4791234567', status: 'delivered', created: '2026-07-24T12:00:00Z', message: 'Hele meldingsteksten her' },
+  test('renderElksSmsLog: matches the phone number against Kunderegister and shows the customer name', () => {
+    window._frJobs = [
+      { id: 'jSmsMatch', customer_number: '77', customer_name: 'Ola Nordmann', customer_phone: '92133900', status: 'completed', job_date: '2026-07-01' },
     ];
-    showElksSmsMessage(0);
-    const body = document.getElementById('notifMessageModalBody');
-    assert(body.textContent.includes('Hele meldingsteksten her'), 'expected the full message content in the modal');
-    assert(body.textContent.includes('+4791234567'), 'expected the recipient to show in the modal');
+    _frElksSmsMessages = [
+      { id: 's1', to: '+4792133900', status: 'delivered', created: '2026-07-24T12:00:00Z', message: 'Hei Ola' },
+      { id: 's2', to: '+4799999999', status: 'delivered', created: '2026-07-24T12:00:00Z', message: 'Ukjent nummer' },
+    ];
+    renderElksSmsLog();
+    const rows = document.querySelectorAll('#elksSmsLog .fr-list-row');
+    assert(rows[0].textContent.includes('Ola Nordmann'), 'expected the matched customer name to show for a known number');
+    assert(!rows[1].textContent.includes('Nordmann'), 'an unmatched number must not show an unrelated name');
+    assert(rows[1].textContent.includes('+4799999999'), 'an unmatched number should still show the bare number');
   });
 
   // =========================================================================

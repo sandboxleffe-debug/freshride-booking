@@ -131,6 +131,7 @@
   .fr-list-row-meta { font-size: 0.78rem; color: var(--fr-panel-text-faint); }
   .fr-list-row-code { font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; color: var(--fr-gold-deep); background: var(--fr-gold-soft); padding: 0.1rem 0.4rem; border-radius: 6px; }
   .fr-list-row-code.fr-list-row-customer { color: #2E6E8E; background: rgba(46,110,142,0.14); }
+  .fr-elks-sms-text { font-size: 0.82rem; color: var(--fr-panel-text-soft); margin-top: 0.3rem; white-space: pre-wrap; word-break: break-word; }
   .fr-list-row-open { color: #2E7D32; font-weight: 600; font-size: 0.82rem; }
   .fr-list-row-completed { border-left: 7px solid #3EA246; padding-left: calc(0.8rem - 7px); }
   .fr-list-row-upcoming { border-left: 7px solid #D98A15; padding-left: calc(0.8rem - 7px); }
@@ -4124,7 +4125,26 @@ async function loadNotifications() {
 // The SMS provider's (46elks) own send log — separate from the app's own
 // Varslingslogg above, since this reflects what actually happened on their
 // end (exact content, real delivery status), not just what was attempted.
+// Message text shows directly in the row (no click-to-view step) since
+// these are short SMS bodies, not the multi-channel bundles Varslingslogg
+// deals with — a "Se"-button here would just be an extra step to see
+// something that fits fine inline.
 let _frElksSmsMessages = [];
+
+function normalizePhoneDigits(raw) {
+  return (raw || '').toString().replace(/\D/g, '').slice(-8);
+}
+
+// Best-effort match against Kunderegister so the log reads "Ola Nordmann"
+// instead of a bare phone number — falls back to just the number if no
+// customer with that phone is on file (e.g. the owner's own number).
+function findCustomerNameByPhone(rawPhone) {
+  const target = normalizePhoneDigits(rawPhone);
+  if (!target) return null;
+  const match = getCustomerStats().find(c => normalizePhoneDigits(c.phone) === target);
+  return match ? match.name : null;
+}
+
 function renderElksSmsLog() {
   const box = document.getElementById('elksSmsLog');
   const messages = _frElksSmsMessages;
@@ -4132,33 +4152,21 @@ function renderElksSmsLog() {
     box.innerHTML = '<p class="fr-hint">Ingen SMS-er logget ennå.</p>';
     return;
   }
-  box.innerHTML = messages.map((m, i) => {
+  box.innerHTML = messages.map(m => {
     const when = m.created || m.created_at || m.date || '';
     const status = m.status || '';
     const to = m.to || m.from || '';
+    const customerName = findCustomerNameByPhone(to);
+    const whoLabel = customerName ? `${customerName} <span class="fr-list-row-code">${to}</span>` : to;
     return `
     <div class="fr-list-row">
       <div class="fr-list-row-when">${when ? `${fmtDateShort(when)} ${fmtTime(when)}` : ''}</div>
       <div class="fr-list-row-body">
-        <div class="fr-list-row-name">${to}${status ? ` <span class="fr-list-row-code">${status}</span>` : ''}</div>
-      </div>
-      <div class="fr-notif-row-actions">
-        <button type="button" class="fr-notif-view-btn" onclick="showElksSmsMessage(${i})" title="Se innhold">${frIcon('eye')} Se</button>
+        <div class="fr-list-row-name">${whoLabel}${status ? ` <span class="fr-list-row-code">${status}</span>` : ''}</div>
+        <div class="fr-elks-sms-text">${(m.message || '').replace(/</g, '&lt;')}</div>
       </div>
     </div>`;
   }).join('');
-}
-
-function showElksSmsMessage(index) {
-  const m = _frElksSmsMessages[index];
-  if (!m) return;
-  document.getElementById('notifMessageModalBody').innerHTML = `
-    <div class="fr-notif-message-block">
-      <div class="fr-notif-message-label">Til: ${m.to || m.from || ''}${m.status ? ` · ${m.status}` : ''}</div>
-      <pre class="fr-notif-message-text">${(m.message || '').replace(/</g, '&lt;')}</pre>
-    </div>
-  `;
-  notifMessageModal.show();
 }
 
 async function loadElksSmsLog() {
