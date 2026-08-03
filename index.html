@@ -112,14 +112,14 @@
 
 <!-- Hero image/video (video swapped in by loadHeroMedia() if enabled in admin) -->
 <div class="fr-hero-image-wrap" id="heroMediaWrap">
-  <img src="assets/hero-banner.jpg" alt="FreshRide — Next-Gen Car Care" class="fr-hero-image" />
+  <img src="assets/hero-banner.jpg" alt="Bilvask og bilpleie i Lyngdal — FreshRide" class="fr-hero-image" />
 </div>
 
 <!-- Hero copy -->
 <header class="fr-hero-copy">
   <div class="container">
     <p class="fr-eyebrow">FRESHRIDE — DETALJENE SOM UTGJØR FORSKJELLEN</p>
-    <h1 class="fr-hero-title">Din bil fortjener <span class="fr-highlight">ekte omtanke</span></h1>
+    <h1 class="fr-hero-title">Bilvask og bilpleie i Lyngdal med <span class="fr-highlight">ekte omtanke</span></h1>
     <p class="fr-steps-label">✨ Slik booker du:</p>
     <div class="fr-steps-grid">
       <a href="#step-date" class="fr-step-card fr-step-card-link">
@@ -332,7 +332,7 @@ async function loadHeroMedia() {
     const data = await res.json();
     if (!data.useVideo) return;
     document.getElementById('heroMediaWrap').innerHTML =
-      '<video class="fr-hero-image fr-hero-video-crop" src="assets/pika.mp4" autoplay loop muted playsinline aria-label="FreshRide — Next-Gen Car Care"></video>';
+      '<video class="fr-hero-image fr-hero-video-crop" src="assets/pika.mp4" autoplay loop muted playsinline aria-label="Bilvask og bilpleie i Lyngdal — FreshRide"></video>';
   } catch (e) { /* silent — keeps the default image */ }
 }
 loadHeroMedia();
