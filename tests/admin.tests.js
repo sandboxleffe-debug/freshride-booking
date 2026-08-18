@@ -1025,6 +1025,63 @@
   });
 
   // =========================================================================
+  // Tjenester: kategori (complete/premium/exterior/interior/addon) styrer
+  // gjensidig-utelukkelse pa bookingsiden — admin ma kunne sette/redigere den.
+  // =========================================================================
+  test('openServiceEdit: populates the category dropdown from the service\'s saved category', () => {
+    window._frServices = [{ id: 'svc1', label: 'FreshRide Complete', description: '', long_description: '', category: 'complete', price_nok: 500 }];
+    openServiceEdit('svc1');
+    assertEqual(document.getElementById('svcEditCategory').value, 'complete');
+  });
+
+  test('openServiceEdit: a service with no category shows the blank "ingen" option', () => {
+    window._frServices = [{ id: 'svc2', label: 'FreshRide Motorvask', description: '', long_description: '', category: null, price_nok: 200 }];
+    openServiceEdit('svc2');
+    assertEqual(document.getElementById('svcEditCategory').value, '');
+  });
+
+  test('saveServiceEdit: sends the selected category in the PATCH body', async () => {
+    window._frServices = [{ id: 'svc1', label: 'FreshRide Complete', description: '', long_description: '', category: 'complete', price_nok: 500 }];
+    openServiceEdit('svc1');
+    document.getElementById('svcEditCategory').value = 'premium';
+    const origFetch = window.fetch;
+    let sentBody = null;
+    window.fetch = (url, opts) => {
+      if (String(url).includes('resource=services') && opts && opts.method === 'PATCH') sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    };
+    try {
+      await saveServiceEdit();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody.category, 'premium');
+  });
+
+  test('addService: sends the chosen category for a brand-new service', async () => {
+    document.getElementById('newServiceLabel').value = 'FreshRide Test';
+    document.getElementById('newServiceDesc').value = '';
+    document.getElementById('newServicePrice').value = '';
+    document.getElementById('newServiceCategory').value = 'addon';
+    const origFetch = window.fetch;
+    let sentBody = null;
+    window.fetch = (url, opts) => {
+      if (String(url).includes('resource=services') && opts && opts.method === 'POST') {
+        sentBody = JSON.parse(opts.body);
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, service: { id: 'newid' } }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ services: [] }), { status: 200 }));
+    };
+    try {
+      await addService();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody.category, 'addon');
+    assertEqual(document.getElementById('newServiceCategory').value, '', 'expected the category select to reset after a successful add');
+  });
+
+  // =========================================================================
   // Test SMS til kunder — lets William preview the exact current wording of
   // every customer-facing SMS from his own phone, whenever it changes.
   // =========================================================================

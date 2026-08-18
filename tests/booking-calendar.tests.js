@@ -430,6 +430,93 @@
     assert(hint.classList.contains('fr-hint-error'), 'expected an error hint for an invalid/used code');
   });
 
+  // =========================================================================
+  // Services: Complete/Premium each cover Exterior+Interior and exclude each
+  // other; Exterior and Interior can combine with each other but each is
+  // exclusive within its own category (e.g. Interior vs Interior+); addons
+  // are never touched.
+  // =========================================================================
+  function setupServiceGrid() {
+    const grid = document.getElementById('serviceGrid');
+    const services = [
+      { label: 'FreshRide Complete', category: 'complete' },
+      { label: 'FreshRide Premium', category: 'premium' },
+      { label: 'FreshRide Exterior', category: 'exterior' },
+      { label: 'FreshRide Interior', category: 'interior' },
+      { label: 'FreshRide Interior+', category: 'interior' },
+      { label: 'FreshRide Clay', category: 'addon' },
+    ];
+    grid.innerHTML = services.map(s => `
+      <label class="fr-service-option">
+        <input type="checkbox" class="fr-service-checkbox" value="${s.label}" data-price="0" data-category="${s.category}">
+        <span class="fr-service-option-body"><span class="fr-service-option-top"><span class="fr-service-name">${s.label}</span></span></span>
+      </label>
+    `).join('');
+    grid.querySelectorAll('.fr-service-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => {
+        cb.closest('.fr-service-option').classList.toggle('fr-service-checked', cb.checked);
+        updateServiceAvailability();
+      });
+    });
+    updateServiceAvailability();
+  }
+  function checkSvc(label, val) {
+    const cb = Array.from(document.querySelectorAll('.fr-service-checkbox')).find(c => c.value === label);
+    cb.checked = val;
+    cb.dispatchEvent(new Event('change'));
+  }
+  function svcDisabled(label) {
+    return Array.from(document.querySelectorAll('.fr-service-checkbox')).find(c => c.value === label).disabled;
+  }
+
+  test('updateServiceAvailability: Complete blocks Premium/Exterior/Interior/Interior+, leaves addons free', () => {
+    setupServiceGrid();
+    checkSvc('FreshRide Complete', true);
+    assertEqual(svcDisabled('FreshRide Premium'), true);
+    assertEqual(svcDisabled('FreshRide Exterior'), true);
+    assertEqual(svcDisabled('FreshRide Interior'), true);
+    assertEqual(svcDisabled('FreshRide Interior+'), true);
+    assertEqual(svcDisabled('FreshRide Clay'), false, 'addons must stay selectable regardless of what main category is chosen');
+    assertEqual(svcDisabled('FreshRide Complete'), false, 'a checked box must never disable itself — needs to stay clickable to uncheck');
+  });
+
+  test('updateServiceAvailability: Premium blocks Complete/Exterior/Interior/Interior+ the same way', () => {
+    setupServiceGrid();
+    checkSvc('FreshRide Premium', true);
+    assertEqual(svcDisabled('FreshRide Complete'), true);
+    assertEqual(svcDisabled('FreshRide Exterior'), true);
+    assertEqual(svcDisabled('FreshRide Interior'), true);
+    assertEqual(svcDisabled('FreshRide Interior+'), true);
+  });
+
+  test('updateServiceAvailability: Exterior blocks Complete/Premium only — Interior stays combinable', () => {
+    setupServiceGrid();
+    checkSvc('FreshRide Exterior', true);
+    assertEqual(svcDisabled('FreshRide Complete'), true);
+    assertEqual(svcDisabled('FreshRide Premium'), true);
+    assertEqual(svcDisabled('FreshRide Interior'), false, 'Exterior + Interior together is a valid combo');
+    assertEqual(svcDisabled('FreshRide Interior+'), false);
+  });
+
+  test('updateServiceAvailability: Exterior + Interior together still blocks Complete/Premium, and Interior excludes Interior+', () => {
+    setupServiceGrid();
+    checkSvc('FreshRide Exterior', true);
+    checkSvc('FreshRide Interior', true);
+    assertEqual(svcDisabled('FreshRide Complete'), true);
+    assertEqual(svcDisabled('FreshRide Premium'), true);
+    assertEqual(svcDisabled('FreshRide Interior+'), true, 'Interior and Interior+ are alternative tiers of the same category — not stackable');
+    assertEqual(svcDisabled('FreshRide Exterior'), false, 'still checked, must stay clickable to uncheck');
+  });
+
+  test('updateServiceAvailability: unchecking everything clears all disabled states', () => {
+    setupServiceGrid();
+    checkSvc('FreshRide Complete', true);
+    checkSvc('FreshRide Complete', false);
+    ['FreshRide Premium', 'FreshRide Exterior', 'FreshRide Interior', 'FreshRide Interior+', 'FreshRide Clay'].forEach(label => {
+      assertEqual(svcDisabled(label), false, `${label} should be selectable again once nothing is checked`);
+    });
+  });
+
   window.fetch = origFetch;
 
   const results = [];

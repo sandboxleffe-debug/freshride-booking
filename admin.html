@@ -503,6 +503,14 @@
         <input id="newServiceLabel" class="form-control fr-input mb-2" placeholder="Navn (f.eks. Motorvask)" />
         <input id="newServiceDesc" class="form-control fr-input mb-2" placeholder="Beskrivelse (valgfritt)" />
         <input id="newServicePrice" type="number" class="form-control fr-input mb-2" placeholder="Pris i kr (valgfritt)" />
+        <select id="newServiceCategory" class="form-select fr-input mb-2">
+          <option value="">Kategori: ingen (fritt valgbar)</option>
+          <option value="complete">Kategori: Complete (hovedpakke)</option>
+          <option value="premium">Kategori: Premium (hovedpakke)</option>
+          <option value="exterior">Kategori: Exterior (hovedpakke)</option>
+          <option value="interior">Kategori: Interior (hovedpakke)</option>
+          <option value="addon">Kategori: Tillegg</option>
+        </select>
         <button class="btn fr-btn-primary w-100" onclick="addService()">Legg til tjeneste</button>
         <div id="servicesMsg" class="fr-save-msg"></div>
       </div>
@@ -1090,6 +1098,17 @@
         <div class="fr-form-row">
           <label class="fr-label">Pris (kr)</label>
           <input id="svcEditPrice" type="number" class="form-control fr-input" placeholder="—" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Kategori <span class="fr-hint">(styrer hvilke tjenester som utelukker hverandre ved booking)</span></label>
+          <select id="svcEditCategory" class="form-select fr-input">
+            <option value="">Ingen (fritt valgbar)</option>
+            <option value="complete">Complete (hovedpakke)</option>
+            <option value="premium">Premium (hovedpakke)</option>
+            <option value="exterior">Exterior (hovedpakke)</option>
+            <option value="interior">Interior (hovedpakke)</option>
+            <option value="addon">Tillegg</option>
+          </select>
         </div>
         <div id="svcEditMsg" class="fr-save-msg"></div>
       </div>
@@ -2233,6 +2252,10 @@ function setupTimelineDrag(widthFrac) {
 }
 
 /* ---------------- Tjenester ---------------- */
+const SERVICE_CATEGORY_LABELS = {
+  complete: 'Complete', premium: 'Premium', exterior: 'Exterior', interior: 'Interior', addon: 'Tillegg',
+};
+
 async function loadServicesAdmin() {
   const list = document.getElementById('servicesList');
   try {
@@ -2246,7 +2269,7 @@ async function loadServicesAdmin() {
       row.className = 'fr-service-row';
       row.innerHTML = `
         <div class="flex-grow-1">
-          <div class="fr-service-row-label">${s.label}${s.active ? '' : ' <span class="fr-service-row-desc">(skjult)</span>'}</div>
+          <div class="fr-service-row-label">${s.label}${s.active ? '' : ' <span class="fr-service-row-desc">(skjult)</span>'}${s.category ? ` <span class="fr-list-row-code">${SERVICE_CATEGORY_LABELS[s.category] || s.category}</span>` : ''}</div>
           ${s.description ? `<div class="fr-service-row-desc">${s.description}</div>` : ''}
           <div class="fr-service-price-edit">
             <span class="fr-service-row-desc">kr</span>
@@ -2283,6 +2306,7 @@ function openServiceEdit(id) {
   document.getElementById('svcEditDesc').value = s.description || '';
   document.getElementById('svcEditLongDesc').value = s.long_description || '';
   document.getElementById('svcEditPrice').value = s.price_nok ?? '';
+  document.getElementById('svcEditCategory').value = s.category || '';
   document.getElementById('svcEditMsg').textContent = ''; document.getElementById('svcEditMsg').className = 'fr-save-msg';
   serviceEditModal.show();
 }
@@ -2294,6 +2318,7 @@ async function saveServiceEdit() {
   const description = document.getElementById('svcEditDesc').value.trim();
   const long_description = document.getElementById('svcEditLongDesc').value.trim();
   const priceVal = document.getElementById('svcEditPrice').value;
+  const category = document.getElementById('svcEditCategory').value;
   if (!label) { msg.textContent = 'Skriv inn et navn.'; msg.classList.add('err'); return; }
   try {
     const res = await fetch('/api/admin-data?resource=services', {
@@ -2305,6 +2330,7 @@ async function saveServiceEdit() {
         description: description || null,
         long_description: long_description || null,
         price_nok: priceVal === '' ? null : Number(priceVal),
+        category: category || null,
       })
     });
     if (res.status === 401) return handleAuthExpired();
@@ -2339,6 +2365,7 @@ async function addService() {
   const label = document.getElementById('newServiceLabel').value.trim();
   const description = document.getElementById('newServiceDesc').value.trim();
   const priceVal = document.getElementById('newServicePrice').value;
+  const category = document.getElementById('newServiceCategory').value;
   const msg = document.getElementById('servicesMsg');
   msg.textContent = ''; msg.className = 'fr-save-msg';
   if (!label) { msg.textContent = 'Skriv inn et navn.'; msg.classList.add('err'); return; }
@@ -2346,7 +2373,7 @@ async function addService() {
     const res = await fetch('/api/admin-data?resource=services', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label, description })
+      body: JSON.stringify({ label, description, category: category || null })
     });
     if (res.status === 401) return handleAuthExpired();
     const data = await res.json();
@@ -2360,6 +2387,7 @@ async function addService() {
     document.getElementById('newServiceLabel').value = '';
     document.getElementById('newServiceDesc').value = '';
     document.getElementById('newServicePrice').value = '';
+    document.getElementById('newServiceCategory').value = '';
     msg.textContent = 'Lagt til ✓'; msg.classList.add('ok');
     loadServicesAdmin();
   } catch (e) {

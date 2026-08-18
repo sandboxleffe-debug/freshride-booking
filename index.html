@@ -824,6 +824,7 @@ function render() {
         cb.checked = false;
         cb.closest(".fr-service-option").classList.remove("fr-service-checked");
       });
+      updateServiceAvailability();
       bookingModal.show();
     };
     el.appendChild(btn);
@@ -909,6 +910,7 @@ function confirmTimeRequest() {
     cb.checked = false;
     cb.closest(".fr-service-option").classList.remove("fr-service-checked");
   });
+  updateServiceAvailability();
   bookingModal.show();
 }
 
@@ -949,7 +951,7 @@ async function loadServices() {
       const priceHtml = s.price_nok ? `<span class="fr-service-price">kr ${Number(s.price_nok).toLocaleString('no-NO')}</span>` : "";
       const favoriteHtml = s.label.toLowerCase().includes("complete") ? `<span class="fr-service-favorite">★ Kundefavoritt</span>` : "";
       label.innerHTML = `
-        <input type="checkbox" class="fr-service-checkbox" value="${s.label}" data-price="${s.price_nok || 0}">
+        <input type="checkbox" class="fr-service-checkbox" value="${s.label}" data-price="${s.price_nok || 0}" data-category="${s.category || ''}">
         <span class="fr-service-option-body">
           <span class="fr-service-option-top">
             <span class="fr-service-name"><span class="fr-service-icon">${iconForServiceLabel(s.label)}</span>${s.label}${favoriteHtml}</span>
@@ -964,14 +966,46 @@ async function loadServices() {
     grid.querySelectorAll(".fr-service-checkbox").forEach(cb => {
       cb.addEventListener("change", () => {
         cb.closest(".fr-service-option").classList.toggle("fr-service-checked", cb.checked);
+        updateServiceAvailability();
         updateBookingPriceSummary();
       });
     });
+    updateServiceAvailability();
   } catch (e) {
     grid.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente tjenester.</p>';
   }
 }
 loadServices();
+
+// Complete/Premium each cover everything Exterior/Interior do — picking one
+// of those two blocks all four (and each other, since Premium = Complete +
+// seterens, not a separate additive service). Exterior and Interior can
+// still combine with each other (some customers only want one or the
+// other), and each is exclusive with itself (e.g. Interior vs Interior+ —
+// alternative tiers of the same category, not stackable). "Tillegg"
+// (addons) never get touched — those layer on top of whatever's chosen.
+const FR_SERVICE_MAIN_CATEGORIES = ['complete', 'premium', 'exterior', 'interior'];
+function updateServiceAvailability() {
+  const checkboxes = document.querySelectorAll('.fr-service-checkbox');
+  const checkedCategories = new Set();
+  checkboxes.forEach(cb => { if (cb.checked && cb.dataset.category) checkedCategories.add(cb.dataset.category); });
+
+  let blockedCategories = new Set();
+  if (checkedCategories.has('complete') || checkedCategories.has('premium')) {
+    blockedCategories = new Set(FR_SERVICE_MAIN_CATEGORIES);
+  } else if (checkedCategories.has('exterior') || checkedCategories.has('interior')) {
+    blockedCategories.add('complete');
+    blockedCategories.add('premium');
+  }
+
+  checkboxes.forEach(cb => {
+    const cat = cb.dataset.category;
+    if (!cat || cb.checked) { cb.disabled = false; cb.closest('.fr-service-option').classList.remove('fr-service-disabled'); return; }
+    const disabled = blockedCategories.has(cat) || (FR_SERVICE_MAIN_CATEGORIES.includes(cat) && checkedCategories.has(cat));
+    cb.disabled = disabled;
+    cb.closest('.fr-service-option').classList.toggle('fr-service-disabled', disabled);
+  });
+}
 
 function getSelectedServices() {
   const services = [];

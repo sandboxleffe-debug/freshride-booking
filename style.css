@@ -401,6 +401,8 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-service-option input { margin-top: 0.2rem; accent-color: var(--fr-gold-deep); flex-shrink: 0; }
 .fr-service-option.fr-service-checked { border-color: var(--fr-gold); }
+.fr-service-option.fr-service-disabled { opacity: 0.45; cursor: not-allowed; }
+.fr-service-option.fr-service-disabled input { cursor: not-allowed; }
 .fr-service-sub { color: var(--fr-panel-text-faint); font-size: 0.78rem; font-weight: 400; }
 .fr-service-other-text { margin-top: 0.5rem; }
 
