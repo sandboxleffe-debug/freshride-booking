@@ -353,6 +353,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-slot-weather { margin-left: 0.4rem; text-transform: none; letter-spacing: normal; }
 .fr-slot-request { border-style: dashed; background: var(--fr-panel-bg); }
+.fr-slot-request-standalone { max-width: 220px; margin: 1rem auto 0; }
 .fr-time-request-inline {
   grid-column: 1 / -1;
   background: var(--fr-panel-bg-2);

@@ -158,22 +158,36 @@ export default async function handler(req, res) {
     isTimeRequest, requestedDate, requestedTime, baseDurationMinutes,
   } = req.body || {};
   let { start, end } = req.body || {};
-  if (!eventId || !name || !phone || !Array.isArray(services) || services.length === 0) {
-    return res.status(400).json({ error: "Missing eventId, name, phone, or services" });
+  if (!name || !phone || !Array.isArray(services) || services.length === 0) {
+    return res.status(400).json({ error: "Missing name, phone, or services" });
+  }
+  if (!isTimeRequest && !eventId) {
+    return res.status(400).json({ error: "Missing eventId" });
   }
 
-  // "Forespør tidspunkt": the customer picked their own start time instead
-  // of one of the real listed slots — still attached to a real "Ledig"
-  // event (eventId) so there's something to patch, but the actual time
-  // is computed here from Oslo wall-clock time rather than trusted from
-  // the client, and keeps that slot's own original duration.
+  // "Foreslå tid": the customer picked their own start time instead of one
+  // of the real listed slots. Two cases:
+  //  - eventId given: attached to a real "Ledig" event that day (patches it,
+  //    keeps its own duration) — actual time still computed here from Oslo
+  //    wall-clock rather than trusted from the client.
+  //  - no eventId: the day had no "Ledig" slots at all to attach to, so a
+  //    brand-new event gets inserted directly instead of patched, sized by
+  //    the chosen service(s) since there's no existing slot to inherit a
+  //    duration from.
+  let insertNewEvent = false;
   if (isTimeRequest) {
-    if (!requestedDate || !requestedTime || !baseDurationMinutes) {
-      return res.status(400).json({ error: "Missing requestedDate, requestedTime, or baseDurationMinutes" });
+    if (!requestedDate || !requestedTime) {
+      return res.status(400).json({ error: "Missing requestedDate or requestedTime" });
     }
     const startDt = osloWallTimeToUtc(requestedDate, requestedTime);
     start = startDt.toISOString();
-    end = new Date(startDt.getTime() + baseDurationMinutes * 60000).toISOString();
+    if (eventId && baseDurationMinutes) {
+      end = new Date(startDt.getTime() + baseDurationMinutes * 60000).toISOString();
+    } else {
+      insertNewEvent = true;
+      const minutes = estimatedDurationMinutes(services) || 120;
+      end = new Date(startDt.getTime() + minutes * 60000).toISOString();
+    }
   } else if (!start || !end) {
     return res.status(400).json({ error: "Missing start or end" });
   }
@@ -192,30 +206,55 @@ export default async function handler(req, res) {
     const usedCodes = await getUsedCodes(calendar, CALENDAR_ID);
     code = generateUniqueCode(usedCodes);
 
-    // Shrink the booked event's duration if the chosen service(s) need
-    // less time than the original slot — never extend beyond it.
-    const originalDurationMin = (new Date(end) - new Date(start)) / 60000;
-    const estimatedMin = estimatedDurationMinutes(services);
-    if (estimatedMin && estimatedMin < originalDurationMin) {
-      finalEnd = new Date(new Date(start).getTime() + estimatedMin * 60000).toISOString();
-    }
+    if (insertNewEvent) {
+      // No "Ledig" event existed that day to attach to — insert the booked
+      // event directly. Defensive overlap check first: the day had zero
+      // open slots, but may still have OTHER real bookings at different
+      // times that this requested time could clash with.
+      const { data: existing } = await calendar.events.list({
+        calendarId: CALENDAR_ID, timeMin: start, timeMax: end, singleEvents: true,
+      });
+      const overlaps = (existing.items || []).some(ev => ev.summary && ev.summary !== "Ledig");
+      if (overlaps) {
+        return res.status(409).json({ error: "Beklager, det tidspunktet er nettopp blitt opptatt. Prøv et annet tidspunkt." });
+      }
+      await calendar.events.insert({
+        calendarId: CALENDAR_ID,
+        requestBody: {
+          summary: `${name} - ${phone}`,
+          location: BUSINESS_ADDRESS,
+          description: `Tjeneste: ${services.join(", ")}`,
+          extendedProperties: { private: { freshride_code: code } },
+          start: { dateTime: start, timeZone: "Europe/Oslo" },
+          end: { dateTime: end, timeZone: "Europe/Oslo" },
+        },
+      });
+    } else {
+      // Shrink the booked event's duration if the chosen service(s) need
+      // less time than the original slot — never extend beyond it.
+      const originalDurationMin = (new Date(end) - new Date(start)) / 60000;
+      const estimatedMin = estimatedDurationMinutes(services);
+      if (estimatedMin && estimatedMin < originalDurationMin) {
+        finalEnd = new Date(new Date(start).getTime() + estimatedMin * 60000).toISOString();
+      }
 
-    const requestBody = {
-      summary: `${name} - ${phone}`,
-      location: BUSINESS_ADDRESS,
-      description: `Tjeneste: ${services.join(", ")}`,
-      extendedProperties: { private: { freshride_code: code } },
-      // Always set explicitly (not just conditionally like end below) — in
-      // the normal flow this already matches the event's real start, so
-      // it's a no-op there; for a time request it's what actually moves
-      // the calendar event to the customer-requested time.
-      start: { dateTime: start, timeZone: "Europe/Oslo" },
-    };
-    if (finalEnd !== end) {
-      requestBody.end = { dateTime: finalEnd, timeZone: "Europe/Oslo" };
-    }
+      const requestBody = {
+        summary: `${name} - ${phone}`,
+        location: BUSINESS_ADDRESS,
+        description: `Tjeneste: ${services.join(", ")}`,
+        extendedProperties: { private: { freshride_code: code } },
+        // Always set explicitly (not just conditionally like end below) —
+        // in the normal flow this already matches the event's real start,
+        // so it's a no-op there; for a time request it's what actually
+        // moves the calendar event to the customer-requested time.
+        start: { dateTime: start, timeZone: "Europe/Oslo" },
+      };
+      if (finalEnd !== end) {
+        requestBody.end = { dateTime: finalEnd, timeZone: "Europe/Oslo" };
+      }
 
-    await calendar.events.patch({ calendarId: CALENDAR_ID, eventId, requestBody });
+      await calendar.events.patch({ calendarId: CALENDAR_ID, eventId, requestBody });
+    }
   } catch (err) {
     console.error("book-slot calendar error:", err);
     return res.status(500).json({ error: "Klarte ikke å bekrefte booking" });

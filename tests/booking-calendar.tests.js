@@ -192,13 +192,59 @@
     assertEqual(document.getElementById('buildVersion').textContent, 'v1.1.0', 'a failed lookup must not blank out or break the footer text');
   });
 
-  test('loadSlotsForDate: a day with zero open slots says "Fullbooket dag", not a generic empty message', async () => {
+  test('loadSlotsForDate: a day with zero open slots that was never configured says so, not "Fullbooket"', async () => {
     weatherByDate = {};
+    dayStatuses = {}; // date absent entirely — no "Ledig" or booked events were ever set up
     window.fetch = (url) => Promise.resolve(new Response(JSON.stringify({ events: [] }), { status: 200 }));
     await loadSlotsForDate('2026-07-25');
     const noSlots = document.getElementById('noSlots');
     assert(!noSlots.classList.contains('d-none'), 'expected the empty state to show for a day with zero events');
-    assert(noSlots.textContent.includes('Fullbooket dag'), `expected "Fullbooket dag" wording, got "${noSlots.textContent}"`);
+    assert(!noSlots.textContent.includes('Fullbooket'), `"Fullbooket" wording is wrong when nothing was ever set up, got "${noSlots.textContent}"`);
+    assert(noSlots.textContent.includes('Ingen faste ledige tider'), `expected the "never configured" wording, got "${noSlots.textContent}"`);
+  });
+
+  test('loadSlotsForDate: a day marked fully booked in the month view keeps the "Fullbooket dag" wording', async () => {
+    weatherByDate = {};
+    dayStatuses = { '2026-07-26': 'red' }; // month view: slots existed and all got taken
+    window.fetch = (url) => Promise.resolve(new Response(JSON.stringify({ events: [] }), { status: 200 }));
+    await loadSlotsForDate('2026-07-26');
+    const noSlots = document.getElementById('noSlots');
+    assert(!noSlots.classList.contains('d-none'), 'expected the empty state to show');
+    assert(noSlots.textContent.includes('Fullbooket dag'), `expected "Fullbooket dag" wording for a genuinely fully-booked day, got "${noSlots.textContent}"`);
+  });
+
+  test('loadSlotsForDate: a zero-slot day still offers a "Foreslå tid" button either way', async () => {
+    weatherByDate = {};
+    dayStatuses = {};
+    window.fetch = (url) => Promise.resolve(new Response(JSON.stringify({ events: [] }), { status: 200 }));
+    await loadSlotsForDate('2026-07-27');
+    const btn = document.querySelector('#noSlotsRequestWrap .fr-slot-request');
+    assert(!!btn, 'expected a "Foreslå tid" option even on a day with no real slots at all');
+  });
+
+  test('confirmTimeRequest: with no real slot that day, selected has no eventId/baseDurationMinutes to send', () => {
+    events = [];
+    currentSlotsDate = '2026-07-27';
+    renderNoSlots();
+    document.querySelector('#noSlotsRequestWrap .fr-slot-request').click();
+    document.getElementById('timeRequestInput').value = '08:30';
+    document.getElementById('timeRequestConfirmBtn').click();
+    assertEqual(selected.id, null, 'no base event exists — nothing to attach to');
+    assertEqual(selected.isTimeRequest, true);
+    assertEqual(selected.requestedDate, '2026-07-27');
+    assertEqual(selected.requestedTime, '08:30');
+    assertEqual(selected.baseDurationMinutes, undefined, 'no base slot means no inherited duration — the server sizes it from the chosen service(s) instead');
+  });
+
+  test('confirmTimeRequest: with a real slot that day, selected inherits its duration and id', () => {
+    events = [{ id: 'evtReal', start: '2026-07-28T09:00:00+02:00', end: '2026-07-28T11:30:00+02:00' }];
+    currentSlotsDate = '2026-07-28';
+    render();
+    document.querySelector('#list .fr-slot-request').click();
+    document.getElementById('timeRequestInput').value = '13:00';
+    document.getElementById('timeRequestConfirmBtn').click();
+    assertEqual(selected.id, 'evtReal', 'expected to attach to the real slot that day');
+    assertEqual(selected.baseDurationMinutes, 150, 'expected the base slot\'s own 2.5-hour duration to carry over');
   });
 
   test('phone field: strips non-digits and caps at 8', () => {

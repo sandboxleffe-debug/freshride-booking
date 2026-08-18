@@ -193,7 +193,8 @@
       <p id="slotsWeatherLine" class="fr-slots-weather d-none"></p>
       <div id="list" class="fr-slot-grid"></div>
       <div id="noSlots" class="fr-empty d-none">
-        <p>Fullbooket dag, finn en annen ledig tid.</p>
+        <p id="noSlotsMessage">Fullbooket dag, finn en annen ledig tid.</p>
+        <div id="noSlotsRequestWrap"></div>
       </div>
       <div id="loadingState" class="fr-empty d-none">
         <div class="spinner-border fr-spinner" role="status"></div>
@@ -511,6 +512,10 @@ loadReviews();
 
 let selected = null;
 let events = [];
+// Filled in by loadMonthCalendar() from the month-view fetch — reused by
+// renderNoSlots() so it can tell "genuinely fully booked" (red) apart from
+// "no slots ever configured" (day absent) without a second network call.
+let dayStatuses = {};
 const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
 
 function setState(state) {
@@ -650,7 +655,7 @@ async function loadMonthCalendar() {
   startWeekday = startWeekday === 0 ? 6 : startWeekday - 1; // Monday-first offset
 
   const todayKey = toDateKey(now);
-  let dayStatuses = {};
+  dayStatuses = {};
   try {
     const res = await fetch(`/api/public-calendar?view=month&year=${year}&month=${month}`);
     if (res.ok) {
@@ -785,7 +790,7 @@ function render() {
   el.innerHTML = "";
 
   if (!events.length) {
-    setState('empty');
+    renderNoSlots();
     return;
   }
   setState('results');
@@ -829,15 +834,36 @@ function render() {
   // let them request their own start time instead. Attaches to one of this
   // day's real "Ledig" events (so there's something to actually book), but
   // keeps that slot's own duration while moving its start to match.
+  el.appendChild(buildRequestTimeButton());
+}
+
+function buildRequestTimeButton(standalone) {
   const reqBtn = document.createElement("button");
   reqBtn.type = "button";
-  reqBtn.className = "fr-slot fr-slot-request";
+  reqBtn.className = standalone ? "fr-slot fr-slot-request fr-slot-request-standalone" : "fr-slot fr-slot-request";
   reqBtn.innerHTML = `
     <span class="fr-slot-time">🕐 Foreslå tid</span>
     <span class="fr-slot-tag">Velg selv</span>
   `;
   reqBtn.onclick = () => showTimeRequestInput(reqBtn);
-  el.appendChild(reqBtn);
+  return reqBtn;
+}
+
+// A day with zero "Ledig" events could mean two different things — either
+// every slot that existed got booked (dayStatuses says "red"), or no slots
+// were ever set up for that day at all (day is simply absent from
+// dayStatuses, computed from the same month-view fetch that colors the
+// calendar grid). The message says which one it actually is, but either
+// way a customer can still propose their own time.
+function renderNoSlots() {
+  setState('empty');
+  const status = currentSlotsDate ? dayStatuses[currentSlotsDate] : null;
+  document.getElementById('noSlotsMessage').textContent = status === 'red'
+    ? 'Fullbooket dag, finn en annen ledig tid — eller foreslå ditt eget tidspunkt under.'
+    : 'Ingen faste ledige tider satt opp denne dagen ennå — du kan likevel foreslå et tidspunkt under.';
+  const wrap = document.getElementById('noSlotsRequestWrap');
+  wrap.innerHTML = '';
+  wrap.appendChild(buildRequestTimeButton(true));
 }
 
 function showTimeRequestInput(afterEl) {
@@ -859,16 +885,17 @@ function showTimeRequestInput(afterEl) {
 function confirmTimeRequest() {
   const value = document.getElementById('timeRequestInput').value;
   if (!value) return;
-  const base = events[0];
-  const durationMs = new Date(base.end) - new Date(base.start);
-  const baseDurationMinutes = Math.max(15, Math.round(durationMs / 60000));
+  // No real "Ledig" event that day (events is empty) means there's nothing
+  // to attach to — the server inserts a brand-new event instead, sized by
+  // the chosen service(s) rather than an inherited slot duration.
+  const base = events[0] || null;
 
   selected = {
-    id: base.id,
+    id: base ? base.id : null,
     isTimeRequest: true,
     requestedDate: currentSlotsDate,
     requestedTime: value,
-    baseDurationMinutes,
+    baseDurationMinutes: base ? Math.max(15, Math.round((new Date(base.end) - new Date(base.start)) / 60000)) : undefined,
   };
 
   const [hh, mm] = value.split(':');
