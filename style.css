@@ -763,6 +763,47 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
    that's still running underneath it. See loadGallery()/setupGalleryAutoScroll()
    in index.html. */
 .fr-gallery-section { margin-bottom: 2.5rem; }
+
+/* Results promo: a clickable spotlight for resultater.html — otherwise it
+   only lives in the nav rail, which nobody notices. Sits on the dark page
+   background like the gallery above it, so it uses the dark-zone text
+   tokens, not the light .fr-panel ones. */
+.fr-results-promo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  background: linear-gradient(135deg, rgba(232,185,35,0.16), rgba(232,185,35,0.05));
+  border: 2px solid var(--fr-gold-soft);
+  border-radius: var(--fr-radius);
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 2.5rem;
+  text-decoration: none;
+  box-shadow: 0 14px 34px -20px rgba(232,185,35,0.4);
+  transition: border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+.fr-results-promo:hover {
+  border-color: var(--fr-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 44px -18px rgba(232,185,35,0.5);
+}
+.fr-results-promo-text .fr-eyebrow { margin-bottom: 0.3rem; }
+.fr-results-promo-text h2 { margin: 0 0 0.4rem; font-size: 1.3rem; color: var(--fr-text-dark-zone); }
+.fr-results-promo-text p:last-child { margin: 0; color: var(--fr-text-dark-zone-soft); font-size: 0.92rem; }
+.fr-results-promo-arrow {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--fr-black);
+  background: var(--fr-gold);
+  padding: 0.7rem 1.2rem;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.fr-results-promo:hover .fr-results-promo-arrow { background: var(--fr-gold-bright); }
+@media (max-width: 640px) {
+  .fr-results-promo { flex-direction: column; align-items: flex-start; }
+  .fr-results-promo-arrow { align-self: stretch; text-align: center; }
+}
 .fr-gallery-track-wrap {
   overflow-x: auto;
   overflow-y: hidden;

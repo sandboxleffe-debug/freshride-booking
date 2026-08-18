@@ -16,6 +16,17 @@
   const origFetch = window.fetch;
   window.fetch = () => Promise.resolve(new Response(JSON.stringify({ days: {} }), { status: 200 }));
 
+  // =========================================================================
+  // Results promo: resultater.html only lived in the nav rail before, which
+  // nobody noticed — this clickable card on the homepage is the fix.
+  // =========================================================================
+  test('results promo: a clickable spotlight linking to resultater.html is on the page', () => {
+    const el = document.querySelector('.fr-results-promo');
+    assert(!!el, 'expected a .fr-results-promo element on the homepage');
+    assertEqual(el.getAttribute('href'), 'resultater.html');
+    assert(el.textContent.includes('Se resultater'), 'expected a clear call-to-action label');
+  });
+
   test('calendar: today is marked but not struck through', async () => {
     calendarViewYear = undefined; calendarViewMonth = undefined; // reset to "today"
     await loadMonthCalendar();
