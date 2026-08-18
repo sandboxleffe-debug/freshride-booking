@@ -248,6 +248,7 @@
           <p id="discountCodeHint" class="fr-hint mt-1"></p>
         </div>
         <div id="bookingPriceSummary" class="fr-booking-price-summary d-none">
+          <div id="bookingPriceItems" class="fr-booking-price-items"></div>
           <div class="fr-booking-price-row"><span>Totalpris</span><span id="bookingPriceTotal">kr 0</span></div>
           <div class="fr-booking-price-row fr-booking-price-discount d-none" id="bookingPriceDiscountRow"><span id="bookingPriceDiscountLabel">Rabatt</span><span id="bookingPriceDiscountValue">-kr 0</span></div>
           <div class="fr-booking-price-row fr-booking-price-final"><span>Å betale</span><span id="bookingPriceFinal">kr 0</span></div>
@@ -1116,6 +1117,9 @@ function updateBookingPriceSummary() {
     return;
   }
   box.classList.remove('d-none');
+  document.getElementById('bookingPriceItems').innerHTML = Array.from(checked).map(cb => `
+    <div class="fr-booking-price-item"><span>${cb.value}</span><span>kr ${Number(cb.dataset.price || 0).toLocaleString('no-NO')}</span></div>
+  `).join('');
   document.getElementById('bookingPriceTotal').textContent = `kr ${total.toLocaleString('no-NO')}`;
 
   const discountRow = document.getElementById('bookingPriceDiscountRow');

@@ -333,6 +333,16 @@
     assert(document.getElementById('bookingPriceDiscountRow').classList.contains('d-none'), 'no discount row without a validated code');
   });
 
+  test('price summary: lists each selected service with its own price above the total', () => {
+    setUpTwoPricedServices();
+    document.querySelector('.fr-service-checkbox[value="FreshRide Interior"]').checked = true;
+    document.querySelector('.fr-service-checkbox[value="FreshRide Exterior"]').checked = true;
+    updateBookingPriceSummary();
+    const itemsText = document.getElementById('bookingPriceItems').textContent;
+    assert(itemsText.includes('FreshRide Interior') && itemsText.includes('kr 500'), `expected Interior + its price in the breakdown, got "${itemsText}"`);
+    assert(itemsText.includes('FreshRide Exterior') && itemsText.includes('kr 300'), `expected Exterior + its price in the breakdown, got "${itemsText}"`);
+  });
+
   test('price summary: applies a validated discount as totalpris - rabatt = totalt', async () => {
     setUpTwoPricedServices();
     document.querySelector('.fr-service-checkbox[value="FreshRide Interior"]').checked = true;

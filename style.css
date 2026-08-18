@@ -1225,6 +1225,8 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   padding: 0.7rem 0.9rem; margin-bottom: 0.9rem;
 }
 .fr-booking-price-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.88rem; color: var(--fr-panel-text-soft); padding: 0.15rem 0; }
+.fr-booking-price-items { border-bottom: 1px solid var(--fr-panel-border); margin-bottom: 0.3rem; padding-bottom: 0.3rem; }
+.fr-booking-price-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; color: var(--fr-panel-text-faint); padding: 0.1rem 0; }
 .fr-booking-price-discount { color: #2E7D32; }
 .fr-booking-price-final { font-weight: 700; font-size: 1rem; color: var(--fr-panel-text); border-top: 1px solid var(--fr-panel-border); margin-top: 0.3rem; padding-top: 0.45rem; }
 .fr-sms-sent-flag { color: #2E7D32; }
