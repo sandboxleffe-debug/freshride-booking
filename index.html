@@ -328,14 +328,25 @@ async function loadBuildVersion() {
 loadBuildVersion();
 
 /* ---------------- Hero media (image or looping video, set in admin) ---------------- */
-async function loadHeroMedia() {
+// Shared with the gallery's auto-scroll speed below — both live on the same
+// "hero" settings fetch, so this one network call covers both instead of
+// each feature fetching freshride_about separately.
+const siteSettingsReady = (async () => {
+  const settings = { useVideo: false, gallerySpeed: 18 };
   try {
     const res = await fetch('/api/content?type=hero');
     const data = await res.json();
-    if (!data.useVideo) return;
-    document.getElementById('heroMediaWrap').innerHTML =
-      '<video class="fr-hero-image fr-hero-video-crop" src="assets/pika.mp4" autoplay loop muted playsinline aria-label="Bilvask og bilpleie i Lyngdal — FreshRide"></video>';
-  } catch (e) { /* silent — keeps the default image */ }
+    settings.useVideo = !!data.useVideo;
+    settings.gallerySpeed = Number(data.gallerySpeed) || 18;
+  } catch (e) { /* keep defaults */ }
+  return settings;
+})();
+
+async function loadHeroMedia() {
+  const settings = await siteSettingsReady;
+  if (!settings.useVideo) return;
+  document.getElementById('heroMediaWrap').innerHTML =
+    '<video class="fr-hero-image fr-hero-video-crop" src="assets/pika.mp4" autoplay loop muted playsinline aria-label="Bilvask og bilpleie i Lyngdal — FreshRide"></video>';
 }
 loadHeroMedia();
 
@@ -392,7 +403,8 @@ async function loadGallery() {
     track.querySelectorAll('img').forEach(img => {
       img.addEventListener('click', () => openGalleryLightbox(img.src));
     });
-    setupGalleryAutoScroll(wrap, track);
+    const settings = await siteSettingsReady;
+    setupGalleryAutoScroll(wrap, track, settings.gallerySpeed);
   } catch (e) { /* silently skip — no gallery section shown */ }
 }
 
@@ -402,11 +414,11 @@ async function loadGallery() {
 // a few seconds after the user lets go, from wherever they left off. The
 // track is duplicated, so once scrollLeft passes the first set's width it
 // wraps back by that amount for a seamless loop.
-function setupGalleryAutoScroll(wrap, track) {
+function setupGalleryAutoScroll(wrap, track, speed) {
   let paused = false;
   let resumeTimer = null;
   let lastTs = null;
-  const SPEED = 18; // px/sec — gentle drift
+  const SPEED = speed || 18; // px/sec — admin-configurable, set in Innstillinger
 
   function tick(ts) {
     const halfWidth = track.scrollWidth / 2;

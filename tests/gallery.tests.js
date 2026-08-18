@@ -84,6 +84,18 @@
     assertEqual(document.getElementById('galleryLightboxImg').src, img.src);
   });
 
+  test('setupGalleryAutoScroll: accepts an admin-configured speed without throwing', () => {
+    const wrap = document.createElement('div');
+    const track = document.createElement('div');
+    track.innerHTML = '<img><img>';
+    document.body.appendChild(wrap);
+    setupGalleryAutoScroll(wrap, track, 42);
+    document.body.removeChild(wrap);
+    // No further assertion — actual px/sec drift can't be verified reliably
+    // here since requestAnimationFrame is throttled in a backgrounded tab
+    // (same limitation noted in the interaction-events test above).
+  });
+
   test('interaction events on the track wrapper do not throw (pause/resume wiring is intact)', () => {
     const wrap = document.querySelector('.fr-gallery-track-wrap');
     wrap.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));

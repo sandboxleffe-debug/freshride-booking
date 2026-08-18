@@ -603,6 +603,53 @@
   });
 
   // =========================================================================
+  // Galleri scroll-fart: admin-configurable speed for the homepage's
+  // auto-scrolling gallery strip, backed by freshride_about.gallery_scroll_speed.
+  // =========================================================================
+  test('loadAboutAdmin: populates the gallery speed slider from gallery_scroll_speed', async () => {
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      heading: 'x', body: 'y', use_hero_video: false, owner_sms_notify: false, owner_sms_phone: '', gallery_scroll_speed: 42,
+    }), { status: 200 }));
+    try {
+      await loadAboutAdmin();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(document.getElementById('gallerySpeedSlider').value, '42');
+    assertEqual(document.getElementById('gallerySpeedValue').textContent, '42');
+  });
+
+  test('loadAboutAdmin: falls back to 18 when gallery_scroll_speed is missing', async () => {
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      heading: 'x', body: 'y', use_hero_video: false, owner_sms_notify: false, owner_sms_phone: '',
+    }), { status: 200 }));
+    try {
+      await loadAboutAdmin();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(document.getElementById('gallerySpeedSlider').value, '18');
+  });
+
+  test('saveGallerySpeed: PATCHes gallery_scroll_speed as a number and shows a saved confirmation', async () => {
+    const origFetch = window.fetch;
+    let sentBody = null;
+    window.fetch = (url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    };
+    try {
+      await saveGallerySpeed('55');
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody, { gallery_scroll_speed: 55 }, 'expected a numeric gallery_scroll_speed in the PATCH body');
+    assert(document.getElementById('gallerySpeedMsg').textContent.includes('Lagret'), 'expected a saved confirmation message');
+  });
+
+  // =========================================================================
   // Besøkende i dag: gridlines, total, click-for-value, GA link
   // =========================================================================
   test('visitor chart: renders gridlines, total, and updates value on bar click', () => {

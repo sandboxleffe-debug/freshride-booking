@@ -715,6 +715,12 @@
         <input type="file" id="newGalleryFile" class="form-control fr-input mb-2" accept="image/*" />
         <button class="btn fr-btn-primary w-100" onclick="uploadGalleryImage()">Last opp bilde</button>
         <div id="galleryMsg" class="fr-save-msg"></div>
+        <hr class="my-3" style="border-color: var(--fr-panel-border);">
+        <label class="fr-label" for="gallerySpeedSlider">Scroll-fart <span id="gallerySpeedValue"></span></label>
+        <input type="range" class="form-range" id="gallerySpeedSlider" min="5" max="80" step="1"
+          oninput="document.getElementById('gallerySpeedValue').textContent = this.value" onchange="saveGallerySpeed(this.value)">
+        <p class="fr-hint">Hvor fort bildene glir sidelengs på forsiden. Lav verdi = rolig drift, høy verdi = rask scroll.</p>
+        <div id="gallerySpeedMsg" class="fr-save-msg"></div>
       </div>
 
       <div class="fr-panel">
@@ -4055,6 +4061,9 @@ async function loadAboutAdmin() {
     document.getElementById('aboutBodyInput').value = data.body || '';
     document.getElementById('heroVideoToggle').checked = !!data.use_hero_video;
     document.getElementById('heroVideoToggleLabel').textContent = data.use_hero_video ? 'Video' : 'Bilde';
+    const gallerySpeed = data.gallery_scroll_speed || 18;
+    document.getElementById('gallerySpeedSlider').value = gallerySpeed;
+    document.getElementById('gallerySpeedValue').textContent = gallerySpeed;
     document.getElementById('ownerSmsToggle').checked = !!data.owner_sms_notify;
     document.getElementById('ownerSmsToggleLabel').textContent = data.owner_sms_notify ? 'På' : 'Av';
     document.getElementById('ownerSmsPhoneInput').value = data.owner_sms_phone || '';
@@ -4219,6 +4228,23 @@ async function toggleHeroVideo(checked) {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ use_hero_video: checked })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    if (!res.ok) throw new Error();
+    msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å lagre.'; msg.classList.add('err');
+  }
+}
+
+async function saveGallerySpeed(value) {
+  const msg = document.getElementById('gallerySpeedMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  try {
+    const res = await fetch('/api/admin-data?resource=about', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gallery_scroll_speed: Number(value) })
     });
     if (res.status === 401) return handleAuthExpired();
     if (!res.ok) throw new Error();

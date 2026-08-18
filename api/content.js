@@ -41,12 +41,12 @@ export default async function handler(req, res) {
 
   if (type === "hero") {
     try {
-      const { data, error } = await supabase.from("freshride_about").select("use_hero_video").eq("id", 1).single();
+      const { data, error } = await supabase.from("freshride_about").select("use_hero_video, gallery_scroll_speed").eq("id", 1).single();
       if (error) throw error;
-      return res.status(200).json({ useVideo: !!data.use_hero_video });
+      return res.status(200).json({ useVideo: !!data.use_hero_video, gallerySpeed: data.gallery_scroll_speed || 18 });
     } catch (err) {
       console.error("content hero error:", err);
-      return res.status(200).json({ useVideo: false });
+      return res.status(200).json({ useVideo: false, gallerySpeed: 18 });
     }
   }
 
