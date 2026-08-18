@@ -20,11 +20,14 @@
   // Results promo: resultater.html only lived in the nav rail before, which
   // nobody noticed — this clickable card on the homepage is the fix.
   // =========================================================================
-  test('results promo: a clickable spotlight linking to resultater.html is on the page', () => {
+  test('results promo: a small link to resultater.html sits below the calendar section', () => {
     const el = document.querySelector('.fr-results-promo');
     assert(!!el, 'expected a .fr-results-promo element on the homepage');
     assertEqual(el.getAttribute('href'), 'resultater.html');
-    assert(el.textContent.includes('Se resultater'), 'expected a clear call-to-action label');
+    assert(el.textContent.includes('resultater'), 'expected a clear call-to-action label');
+    const main = document.querySelector('main');
+    const children = Array.from(main.children);
+    assert(children.indexOf(el) > children.indexOf(document.getElementById('step-date')), 'expected the promo link to come after the calendar section, not compete with it above');
   });
 
   test('calendar: today is marked but not struck through', async () => {
