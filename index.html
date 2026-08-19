@@ -224,7 +224,7 @@
       </div>
       <div class="modal-body">
         <p class="fr-modal-slot" id="modalSlotLabel"></p>
-        <p class="fr-hint fr-time-request-notice d-none" id="modalTimeRequestNotice">🕐 Du har forespurt dette tidspunktet selv — William bekrefter at det passer og gir beskjed hvis noe må justeres.</p>
+        <p class="fr-hint fr-time-request-notice d-none" id="modalTimeRequestNotice">🕐 Dette tidspunktet er ikke booket ennå — William bekrefter det (eller foreslår et annet) så snart som mulig.</p>
 
         <label class="form-label fr-label">✅ Velg tjeneste(r)</label>
         <div class="fr-service-grid" id="serviceGrid">
@@ -284,14 +284,16 @@
 <!-- Success toast -->
 <div class="fr-toast-wrap">
   <div id="successToast" class="fr-toast">
-    <div class="fr-toast-icon">✓</div>
+    <div class="fr-toast-icon" id="toastIcon">✓</div>
     <div>
-      <b>🎉 Takk for din booking – du blir garantert fornøyd!</b>
+      <b id="toastTitle">🎉 Takk for din booking – du blir garantert fornøyd!</b>
       <p class="mb-1" id="toastCode"></p>
-      <p class="mb-1">📍 Adresse: Oftebroveien 29, Lyngdal</p>
-      <p class="mb-1">Husk å levere bilen før oppgitt tidspunkt.</p>
-      <p class="mb-1">📱 Du får en SMS når bilen er ferdig og klar for henting.</p>
-      <p class="mb-1">💳 All betaling skjer via Vipps.</p>
+      <div id="toastConfirmedBody">
+        <p class="mb-1">📍 Adresse: Oftebroveien 29, Lyngdal</p>
+        <p class="mb-1">Husk å levere bilen før oppgitt tidspunkt.</p>
+        <p class="mb-1">📱 Du får en SMS når bilen er ferdig og klar for henting.</p>
+        <p class="mb-1">💳 All betaling skjer via Vipps.</p>
+      </div>
       <p class="mb-1">Ved spørsmål, ring William på:</p>
       <p class="mb-0"><a href="tel:92133900">921 33 900</a></p>
     </div>
@@ -908,17 +910,14 @@ function showTimeRequestInput(afterEl) {
 function confirmTimeRequest() {
   const value = document.getElementById('timeRequestInput').value;
   if (!value) return;
-  // No real "Ledig" event that day (events is empty) means there's nothing
-  // to attach to — the server inserts a brand-new event instead, sized by
-  // the chosen service(s) rather than an inherited slot duration.
-  const base = events[0] || null;
 
+  // Nothing gets booked yet — this just sends William a request to review.
+  // He confirms (or adjusts the time first) from admin, which is what
+  // actually creates the calendar event. See api/book-slot.js.
   selected = {
-    id: base ? base.id : null,
     isTimeRequest: true,
     requestedDate: currentSlotsDate,
     requestedTime: value,
-    baseDurationMinutes: base ? Math.max(15, Math.round((new Date(base.end) - new Date(base.start)) / 60000)) : undefined,
   };
 
   const [hh, mm] = value.split(':');
@@ -1229,22 +1228,32 @@ async function book() {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
-        eventId: selected.id,
         name,
         phone,
         car: car || undefined,
         services,
         discountCode: validatedDiscountCode,
         ...(selected.isTimeRequest
-          ? { isTimeRequest: true, requestedDate: selected.requestedDate, requestedTime: selected.requestedTime, baseDurationMinutes: selected.baseDurationMinutes }
-          : { start: selected.start, end: selected.end })
+          ? { isTimeRequest: true, requestedDate: selected.requestedDate, requestedTime: selected.requestedTime }
+          : { eventId: selected.id, start: selected.start, end: selected.end })
       })
     });
     const result = await res.json();
 
     bookingModal.hide();
     const toast = document.getElementById("successToast");
-    document.getElementById("toastCode").textContent = result.code ? `Din bookingkode: ${result.code}` : '';
+    const bodyEl = document.getElementById("toastConfirmedBody");
+    if (result.pending) {
+      // Nothing is booked yet — William reviews the request in admin and
+      // either confirms it as requested or adjusts the time first.
+      document.getElementById("toastTitle").textContent = "🕐 Forespørselen er sendt!";
+      document.getElementById("toastCode").textContent = "William bekrefter tidspunktet ditt så snart som mulig, og du får en SMS når det er klart.";
+      bodyEl.style.display = 'none';
+    } else {
+      document.getElementById("toastTitle").textContent = "🎉 Takk for din booking – du blir garantert fornøyd!";
+      document.getElementById("toastCode").textContent = result.code ? `Din bookingkode: ${result.code}` : '';
+      bodyEl.style.display = '';
+    }
     toast.classList.add('fr-toast-show');
     setTimeout(() => toast.classList.remove('fr-toast-show'), 8000);
 
@@ -1257,7 +1266,7 @@ async function book() {
     updateBookingPriceSummary();
     carSuggestLastPhone = '';
     renderCarSuggestions([]);
-    loadSlotsForDate(selected.start.slice(0, 10));
+    loadSlotsForDate(selected.isTimeRequest ? selected.requestedDate : selected.start.slice(0, 10));
     loadMonthCalendar();
   } catch (err) {
     errorEl.textContent = "Noe gikk galt. Prøv igjen.";

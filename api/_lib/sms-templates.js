@@ -28,14 +28,12 @@ export function buildBookingTextCustomer({ services, date, time, endTime, code, 
 }
 
 // Sent to William (owner SMS/email) — keeps the fuller detail since he
-// needs to know who's coming, not just that someone booked. `isTimeRequest`
-// flags a customer-picked time that doesn't match any real free calendar
-// slot (see book-slot.js) — William needs an extra nudge to double-check it
-// actually works before treating it as confirmed.
-export function buildBookingTextOwner({ name, phone, services, date, time, endTime, code, isTimeRequest }) {
+// needs to know who's coming, not just that someone booked. A "Foreslå tid"
+// request never reaches this template (see buildTimeRequestTextOwner below)
+// — by the time this one is sent, the booking is already real.
+export function buildBookingTextOwner({ name, phone, services, date, time, endTime, code }) {
   const calendarUrl = `${SITE_URL}/api/calendar-invite?code=${encodeURIComponent(code)}&phone=${encodeURIComponent(phone)}`;
   return (
-    (isTimeRequest ? `⚠️ FORESPURT TIDSPUNKT — bekreft at det passer!\n\n` : ``) +
     `Ny booking mottatt\n\n` +
     `Kode: ${code}\n` +
     `Navn: ${name}\n` +
@@ -46,6 +44,23 @@ export function buildBookingTextOwner({ name, phone, services, date, time, endTi
     `Adresse: ${BUSINESS_ADDRESS}\n\n` +
     `Legg til i kalender: ${calendarUrl}\n\n` +
     `Spørsmål? Ring William på ${OWNER_PHONE}. Denne SMS-en kan ikke besvares.`
+  );
+}
+
+// Sent to William the moment a customer submits a "Foreslå tid" request —
+// nothing is booked yet at this point (see book-slot.js), so unlike
+// buildBookingTextOwner above there's no code/calendar link to include.
+// William confirms (or adjusts the time first) from the admin panel, which
+// is what actually creates the calendar event and notifies the customer.
+export function buildTimeRequestTextOwner({ name, phone, services, date, time }) {
+  return (
+    `🕐 Ny tidsforespørsel\n\n` +
+    `Navn: ${name}\n` +
+    `Mobil: ${phone}\n` +
+    `Ønsket dato: ${date}\n` +
+    `Ønsket tid: ${time}\n` +
+    `Tjeneste(r): ${services.join(", ")}\n\n` +
+    `Bekreft eller juster tidspunktet i adminpanelet. Denne SMS-en kan ikke besvares.`
   );
 }
 

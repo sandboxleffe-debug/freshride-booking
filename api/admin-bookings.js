@@ -6,6 +6,13 @@
 // POST { action: "reopen", eventId }
 //   -> reverts a booked event back to an open "Ledig" slot -> { ok: true }
 //
+// POST { action: "confirm-time-request", requestId, date?, startTime? }
+//   -> turns a pending "Foreslå tid" request into a real booking, at the
+//      requested time or an adjusted one -> { ok: true, code, smsSent }
+//
+// POST { action: "decline-time-request", requestId }
+//   -> rejects a pending request, no calendar event created -> { ok: true }
+//
 // PATCH { eventId, name?, phone?, services?, date?, startTime?, durationMinutes? }
 //   -> edits a booking in place -> { ok: true }
 //
@@ -15,10 +22,12 @@
 // Merged from admin-booking.js + admin-create-slot.js to stay within
 // Vercel's function count limit (Hobby plan: 12 per deployment).
 
-import { getCalendarClient, CALENDAR_ID } from "./_lib/google-calendar.js";
+import { getCalendarClient, CALENDAR_ID, getUsedCodes, generateUniqueCode } from "./_lib/google-calendar.js";
 import { checkAdminPassword, getSupabaseAdmin } from "./_lib/supabase.js";
 import { osloWallTimeToUtc } from "./_lib/timezone.js";
 import { createDraftJobLog } from "./_lib/customers.js";
+import { estimatedDurationMinutes, redeemCodeForBooking, sendCustomerBookingSms } from "./_lib/booking-shared.js";
+import { logNotification } from "./_lib/notifications.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
 
@@ -135,6 +144,110 @@ export default async function handler(req, res) {
       } catch (err) {
         console.error("admin-bookings create-job-draft error:", err);
         return res.status(500).json({ error: "Klarte ikke å opprette jobblogg" });
+      }
+    }
+
+    // "Bekreft tid" on a pending "Foreslå tid" request — this is the moment
+    // it actually becomes a real booking: date/startTime let William adjust
+    // the customer's requested time first (e.g. after a phone call) instead
+    // of only ever confirming it as-is. If a real "Ledig" slot happens to
+    // overlap the final time, that exact slot gets consumed (patched) so it
+    // stops showing as available — never an arbitrary other slot, which is
+    // what caused a stale duplicate "Ledig" time before this request/confirm
+    // flow existed.
+    if (action === "confirm-time-request") {
+      const { requestId, date, startTime } = req.body || {};
+      if (!requestId) return res.status(400).json({ error: "Missing requestId" });
+      try {
+        const supabase = getSupabaseAdmin();
+        const { data: reqRow, error: getErr } = await supabase
+          .from("freshride_time_requests").select("*").eq("id", requestId).single();
+        if (getErr || !reqRow) return res.status(404).json({ error: "Fant ikke forespørselen" });
+        if (reqRow.status !== "pending") return res.status(409).json({ error: "Forespørselen er allerede behandlet" });
+
+        const finalDate = date || reqRow.requested_date;
+        const finalTime = startTime || reqRow.requested_time;
+        const startDt = osloWallTimeToUtc(finalDate, finalTime);
+        const minutes = estimatedDurationMinutes(reqRow.services) || 120;
+        const endDt = new Date(startDt.getTime() + minutes * 60 * 1000);
+        const start = startDt.toISOString();
+        const end = endDt.toISOString();
+
+        const { data: existing } = await calendar.events.list({
+          calendarId: CALENDAR_ID, timeMin: start, timeMax: end, singleEvents: true,
+        });
+        const items = existing.items || [];
+        const bookedConflict = items.find(ev => ev.summary && ev.summary !== "Ledig");
+        if (bookedConflict) {
+          return res.status(409).json({ error: "Det er allerede en booking i dette tidsrommet" });
+        }
+        const openSlot = items.find(ev => !ev.summary || ev.summary === "Ledig");
+
+        const usedCodes = await getUsedCodes(calendar, CALENDAR_ID);
+        const code = generateUniqueCode(usedCodes);
+
+        const requestBody = {
+          summary: `${reqRow.name} - ${reqRow.phone}`,
+          location: BUSINESS_ADDRESS,
+          description: `Tjeneste: ${reqRow.services.join(", ")}`,
+          extendedProperties: { private: { freshride_code: code } },
+          start: { dateTime: start, timeZone: "Europe/Oslo" },
+          end: { dateTime: end, timeZone: "Europe/Oslo" },
+        };
+        if (openSlot) {
+          await calendar.events.patch({ calendarId: CALENDAR_ID, eventId: openSlot.id, requestBody });
+        } else {
+          await calendar.events.insert({ calendarId: CALENDAR_ID, requestBody });
+        }
+
+        const { discountPercent, referredBy } = await redeemCodeForBooking(supabase, reqRow.discount_code, reqRow.phone);
+        try {
+          await createDraftJobLog(supabase, {
+            name: reqRow.name, phone: reqRow.phone, services: reqRow.services, jobDate: finalDate, code,
+            car: reqRow.car,
+            discountCode: discountPercent ? reqRow.discount_code.trim().toUpperCase() : null,
+            discountPercent, referredBy,
+            notes: "🕐 Kunden forespurte dette tidspunktet selv ved booking (ikke et av de faste ledige tidene).",
+          });
+        } catch (err) {
+          console.error("confirm-time-request draft job error:", err);
+        }
+
+        let smsSent = false;
+        try {
+          const result = await sendCustomerBookingSms({ phone: reqRow.phone, name: reqRow.name, services: reqRow.services, start, end, code });
+          smsSent = result.ok;
+          await logNotification({ channel: "sms_kunde", recipient: reqRow.phone, code, name: reqRow.name, status: smsSent ? "ok" : "failed", message: result.message });
+        } catch (err) {
+          console.error("confirm-time-request sms error:", err);
+        }
+
+        await supabase.from("freshride_time_requests")
+          .update({ status: "confirmed", confirmed_at: new Date().toISOString(), booking_code: code })
+          .eq("id", requestId);
+
+        return res.status(200).json({ ok: true, code, smsSent });
+      } catch (err) {
+        console.error("admin-bookings confirm-time-request error:", err);
+        return res.status(500).json({ error: "Klarte ikke å bekrefte tidspunktet" });
+      }
+    }
+
+    // Declines a pending request without touching the calendar — used when
+    // William is arranging a different time with the customer directly
+    // instead (by phone), so nothing gets auto-booked at the requested time.
+    if (action === "decline-time-request") {
+      const { requestId } = req.body || {};
+      if (!requestId) return res.status(400).json({ error: "Missing requestId" });
+      try {
+        const supabase = getSupabaseAdmin();
+        const { error } = await supabase
+          .from("freshride_time_requests").update({ status: "declined" }).eq("id", requestId).eq("status", "pending");
+        if (error) throw error;
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error("admin-bookings decline-time-request error:", err);
+        return res.status(500).json({ error: "Klarte ikke å avslå forespørselen" });
       }
     }
 

@@ -650,6 +650,91 @@
   });
 
   // =========================================================================
+  // Tidsforespørsler: a customer proposed their own start time ("Foreslå
+  // tid") — nothing is booked yet. William reviews it here, either
+  // confirming as requested or adjusting date/time first.
+  // =========================================================================
+  test('renderTimeRequests: renders one row per pending request, defaulting the fields to the requested date/time', () => {
+    _frTimeRequests = [
+      { id: 'r1', name: 'Ola Nordmann', phone: '92133900', car: 'VW Golf', services: ['FreshRide Complete'], requested_date: '2026-08-01', requested_time: '13:00' },
+    ];
+    renderTimeRequests();
+    const box = document.getElementById('timeRequestsBox');
+    assert(!box.classList.contains('d-none'), 'expected the box to show when there are pending requests');
+    assert(box.textContent.includes('Ola Nordmann') && box.textContent.includes('92133900'));
+    assert(box.textContent.includes('FreshRide Complete') && box.textContent.includes('VW Golf'));
+    assertEqual(document.getElementById('reqDate-r1').value, '2026-08-01');
+    assertEqual(document.getElementById('reqTime-r1').value, '13:00');
+  });
+
+  test('renderTimeRequests: hides the box entirely when there are no pending requests', () => {
+    _frTimeRequests = [];
+    renderTimeRequests();
+    assert(document.getElementById('timeRequestsBox').classList.contains('d-none'));
+  });
+
+  test('confirmTimeRequestRow: sends the (possibly edited) date/time and removes the row on success', async () => {
+    _frTimeRequests = [
+      { id: 'r1', name: 'Ola Nordmann', phone: '92133900', car: null, services: ['FreshRide Interior'], requested_date: '2026-08-01', requested_time: '13:00' },
+    ];
+    renderTimeRequests();
+    document.getElementById('reqTime-r1').value = '14:00'; // William adjusts the time before confirming
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, code: 'X9' }), { status: 200 }));
+    };
+    try {
+      await confirmTimeRequestRow('r1');
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody.action, 'confirm-time-request');
+    assertEqual(sentBody.requestId, 'r1');
+    assertEqual(sentBody.date, '2026-08-01');
+    assertEqual(sentBody.startTime, '14:00', 'expected the edited time, not the originally requested one');
+    assertEqual(_frTimeRequests.length, 0, 'confirmed request must be removed from the pending list');
+    assert(document.getElementById('timeRequestsBox').classList.contains('d-none'), 'box hides once the last pending request is confirmed');
+  });
+
+  test('confirmTimeRequestRow: a conflict error keeps the request in the pending list and shows the message', async () => {
+    _frTimeRequests = [
+      { id: 'r1', name: 'Ola Nordmann', phone: '92133900', car: null, services: ['FreshRide Interior'], requested_date: '2026-08-01', requested_time: '13:00' },
+    ];
+    renderTimeRequests();
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ error: 'Det er allerede en booking i dette tidsrommet' }), { status: 409 }));
+    await confirmTimeRequestRow('r1');
+    assertEqual(_frTimeRequests.length, 1, 'a failed confirm must not remove the request');
+    assert(document.getElementById('reqMsg-r1').textContent.includes('booking'), 'expected the server error message to show');
+  });
+
+  test('declineTimeRequestRow: removes the request from the pending list after confirming', async () => {
+    _frTimeRequests = [
+      { id: 'r1', name: 'Ola Nordmann', phone: '92133900', car: null, services: ['FreshRide Interior'], requested_date: '2026-08-01', requested_time: '13:00' },
+    ];
+    renderTimeRequests();
+    window.confirm = () => true;
+    let sentBody = null;
+    window.fetch = (url, opts) => { sentBody = JSON.parse(opts.body); return Promise.resolve(new Response('{}', { status: 200 })); };
+    await declineTimeRequestRow('r1');
+    assertEqual(sentBody, { action: 'decline-time-request', requestId: 'r1' });
+    assertEqual(_frTimeRequests.length, 0);
+  });
+
+  test('declineTimeRequestRow: does nothing if the confirm dialog is cancelled', async () => {
+    _frTimeRequests = [
+      { id: 'r1', name: 'Ola Nordmann', phone: '92133900', car: null, services: ['FreshRide Interior'], requested_date: '2026-08-01', requested_time: '13:00' },
+    ];
+    renderTimeRequests();
+    window.confirm = () => false;
+    window.fetch = () => { throw new Error('must not call the network when the decline is cancelled'); };
+    await declineTimeRequestRow('r1');
+    assertEqual(_frTimeRequests.length, 1);
+    window.confirm = () => true; // restore the module-level stub for later tests
+  });
+
+  // =========================================================================
   // Besøkende i dag: gridlines, total, click-for-value, GA link
   // =========================================================================
   test('visitor chart: renders gridlines, total, and updates value on bar click', () => {

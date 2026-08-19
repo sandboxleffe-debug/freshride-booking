@@ -9,63 +9,38 @@
 //    It never extends beyond the original slot, only shrinks.
 // 2. Sends the booking details + code via SMS (46elks) for confirmation.
 // 3. Sends a reminder email to the business owner with the same info.
+//
+// POST { isTimeRequest: true, requestedDate, requestedTime, name, phone,
+//        services, car?, discountCode? } -> { ok: true, pending: true }
+//
+// "Foreslå tid" — the customer proposes their own start time instead of
+// picking a real listed slot. Nothing is booked yet: this only logs a
+// pending request (freshride_time_requests) and notifies William, who
+// reviews it in admin and either confirms it as-is or adjusts the time
+// first (admin-bookings.js "confirm-time-request" action does the actual
+// calendar insert + customer SMS once he does). This deliberately never
+// touches the calendar here — an earlier version tried to "borrow" an
+// existing Ledig slot to attach the request to, but there was no way to
+// know which slot (if any) actually matched the requested time, so it
+// sometimes moved the wrong slot and left a stale duplicate behind.
 
 import { getCalendarClient, CALENDAR_ID, getUsedCodes, generateUniqueCode } from "./_lib/google-calendar.js";
 import { sendOwnerEmail } from "./_lib/email.js";
 import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 import { sendSms } from "./_lib/elks-sms.js";
-import { getOsloParts, formatOsloTime, osloWallTimeToUtc } from "./_lib/timezone.js";
-import { createDraftJobLog, findCustomerByPhone } from "./_lib/customers.js";
-import { redeemDiscountCode } from "./_lib/discount-codes.js";
-import { redeemReferralCode } from "./_lib/referral-codes.js";
-import { buildBookingTextCustomer, buildBookingTextOwner } from "./_lib/sms-templates.js";
+import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
+import { estimatedDurationMinutes, formatNorwegian, redeemCodeForBooking, sendCustomerBookingSms } from "./_lib/booking-shared.js";
+import { createDraftJobLog } from "./_lib/customers.js";
+import { buildBookingTextOwner, buildTimeRequestTextOwner } from "./_lib/sms-templates.js";
 import { logNotification } from "./_lib/notifications.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
-const OWNER_PHONE = "921 33 900";
-
-// Estimated duration per service, in minutes. Used to shrink the booked
-// calendar event when the chosen service takes less time than the
-// original "Ledig" slot. If multiple services are chosen, the longest
-// estimate among them is used.
-const SERVICE_DURATIONS_MIN = {
-  "FreshRide Complete": 180,
-  "FreshRide Interior": 90,
-  "FreshRide Exterior": 90,
-  "FreshRide Premium": 240,
-  "FreshRide Interior+": 150,
-};
-
-function estimatedDurationMinutes(services) {
-  const matched = services
-    .map(s => SERVICE_DURATIONS_MIN[s])
-    .filter(v => v !== undefined);
-  if (!matched.length) return null; // unknown service — keep original slot length
-  return Math.max(...matched);
-}
-
 const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
-
-function formatNorwegian(dateTimeStr) {
-  if (!dateTimeStr) return { date: "", time: "" };
-  const p = getOsloParts(dateTimeStr);
-  const date = `${p.day} ${NO_MONTHS[p.month - 1]} ${p.year}`;
-  const time = `${p.hour}:${p.minute}`;
-  return { date, time };
-}
-
-async function sendBookingSms({ phone, name, services, start, end, code }) {
-  const { date, time } = formatNorwegian(start);
-  const endTime = formatOsloTime(end);
-  const message = buildBookingTextCustomer({ services, phone, date, time, endTime, code });
-  const ok = await sendSms({ toPhone: phone, message });
-  return { ok, message };
-}
 
 // Extra SMS to the business owner's own number(s), if enabled in admin
 // (Om oss-fanen). Separate from the owner email — some prefer SMS.
-async function sendOwnerSms({ name, phone, services, start, end, code, isTimeRequest }) {
+async function sendOwnerSms({ name, phone, services, start, end, code }) {
   try {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
@@ -77,7 +52,7 @@ async function sendOwnerSms({ name, phone, services, start, end, code, isTimeReq
 
     const { date, time } = formatNorwegian(start);
     const endTime = formatOsloTime(end);
-    const message = buildBookingTextOwner({ name, phone, services, date, time, endTime, code, isTimeRequest });
+    const message = buildBookingTextOwner({ name, phone, services, date, time, endTime, code });
 
     const numbers = data.owner_sms_phone.split(",").map(n => n.trim()).filter(Boolean);
     const results = await Promise.all(
@@ -94,57 +69,52 @@ async function sendOwnerSms({ name, phone, services, start, end, code, isTimeReq
   }
 }
 
-async function sendOwnerReminderEmail({ name, phone, services, start, end, code, isTimeRequest }) {
+async function sendOwnerReminderEmail({ name, phone, services, start, end, code }) {
   const { date, time } = formatNorwegian(start);
   const endTime = formatOsloTime(end);
-  const message = buildBookingTextOwner({ name, phone, services, date, time, endTime, code, isTimeRequest });
+  const message = buildBookingTextOwner({ name, phone, services, date, time, endTime, code });
   const ok = await sendOwnerEmail({ subject: `Ny booking: ${name} — ${date} kl. ${time}`, text: message });
   return { ok, message };
 }
 
+// Notifies William that a new time request came in — nothing is booked
+// yet, so unlike sendOwnerSms/sendOwnerReminderEmail above there's no code
+// or calendar link. Email always sent (the assured channel); SMS only if
+// enabled in admin.
+async function notifyOwnerOfTimeRequest({ name, phone, services, requestedDate, requestedTime }) {
+  const [y, m, d] = requestedDate.split("-").map(Number);
+  const date = `${d}. ${NO_MONTHS[m - 1]} ${y}`;
+  const message = buildTimeRequestTextOwner({ name, phone, services, date, time: requestedTime });
+
+  try {
+    await sendOwnerEmail({ subject: `Ny tidsforespørsel: ${name} — ${date} kl. ${requestedTime}`, text: message });
+  } catch (err) {
+    console.error("notifyOwnerOfTimeRequest email error:", err);
+  }
+
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data } = await supabase.from("freshride_about").select("owner_sms_notify, owner_sms_phone").eq("id", 1).single();
+    if (data?.owner_sms_notify && data?.owner_sms_phone) {
+      const numbers = data.owner_sms_phone.split(",").map(n => n.trim()).filter(Boolean);
+      await Promise.all(numbers.map(toPhone => sendSms({ toPhone, message })));
+    }
+  } catch (err) {
+    console.error("notifyOwnerOfTimeRequest sms error:", err);
+  }
+}
+
 // Best-effort wrapper — never blocks the booking itself if the draft
 // job log creation fails for some reason.
-async function createDraftJobLogForBooking({ name, phone, services, start, code, car, discountCode, discountPercent, referredBy, notes }) {
+async function createDraftJobLogForBooking({ name, phone, services, start, code, car, discountCode, discountPercent, referredBy }) {
   try {
     const supabase = getSupabaseAdmin();
     const p = getOsloParts(start);
     const pad = n => String(n).padStart(2, "0");
     const jobDate = `${p.year}-${pad(p.month)}-${pad(p.day)}`;
-    await createDraftJobLog(supabase, { name, phone, services, jobDate, code, car, discountCode, discountPercent, referredBy, notes });
+    await createDraftJobLog(supabase, { name, phone, services, jobDate, code, car, discountCode, discountPercent, referredBy });
   } catch (err) {
     console.error("createDraftJobLogForBooking error:", err);
-  }
-}
-
-// Best-effort, one-time redemption of a customer-typed discount code — a
-// failure here (already used, typo, race) must never fail the booking
-// itself, it just means no discount gets attached to the draft job log.
-async function redeemDiscountCodeForBooking(discountCode, phone) {
-  if (!discountCode) return null;
-  try {
-    const result = await redeemDiscountCode(getSupabaseAdmin(), discountCode, { phone });
-    return result.ok ? result.percent : null;
-  } catch (err) {
-    console.error("redeemDiscountCodeForBooking error:", err);
-    return null;
-  }
-}
-
-// Falls back to a personal "tips en venn" referral code when the typed code
-// isn't a normal one-time discount code. Either credits whoever owns the
-// code (a brand-new customer typing a friend's code — no discount for
-// them), or lets the owner cash in their own earned tier discount. Never
-// fails the booking either way.
-async function redeemReferralCodeForBooking(discountCode, phone) {
-  if (!discountCode) return null;
-  try {
-    const supabase = getSupabaseAdmin();
-    const match = await findCustomerByPhone(supabase, phone);
-    const result = await redeemReferralCode(supabase, discountCode, { customerNumber: match ? match.customer_number : null });
-    return result.ok ? result : null;
-  } catch (err) {
-    console.error("redeemReferralCodeForBooking error:", err);
-    return null;
   }
 }
 
@@ -155,47 +125,49 @@ export default async function handler(req, res) {
 
   const {
     eventId, name, phone, services, car, discountCode,
-    isTimeRequest, requestedDate, requestedTime, baseDurationMinutes,
+    isTimeRequest, requestedDate, requestedTime,
   } = req.body || {};
-  let { start, end } = req.body || {};
+  const { start, end } = req.body || {};
   if (!name || !phone || !Array.isArray(services) || services.length === 0) {
     return res.status(400).json({ error: "Missing name, phone, or services" });
-  }
-  if (!isTimeRequest && !eventId) {
-    return res.status(400).json({ error: "Missing eventId" });
-  }
-
-  // "Foreslå tid": the customer picked their own start time instead of one
-  // of the real listed slots. Two cases:
-  //  - eventId given: attached to a real "Ledig" event that day (patches it,
-  //    keeps its own duration) — actual time still computed here from Oslo
-  //    wall-clock rather than trusted from the client.
-  //  - no eventId: the day had no "Ledig" slots at all to attach to, so a
-  //    brand-new event gets inserted directly instead of patched, sized by
-  //    the chosen service(s) since there's no existing slot to inherit a
-  //    duration from.
-  let insertNewEvent = false;
-  if (isTimeRequest) {
-    if (!requestedDate || !requestedTime) {
-      return res.status(400).json({ error: "Missing requestedDate or requestedTime" });
-    }
-    const startDt = osloWallTimeToUtc(requestedDate, requestedTime);
-    start = startDt.toISOString();
-    if (eventId && baseDurationMinutes) {
-      end = new Date(startDt.getTime() + baseDurationMinutes * 60000).toISOString();
-    } else {
-      insertNewEvent = true;
-      const minutes = estimatedDurationMinutes(services) || 120;
-      end = new Date(startDt.getTime() + minutes * 60000).toISOString();
-    }
-  } else if (!start || !end) {
-    return res.status(400).json({ error: "Missing start or end" });
   }
 
   const ip = getClientIp(req);
   const allowed = await checkRateLimit({ key: `book-slot:${ip}`, maxRequests: 5, windowSeconds: 600 });
   if (!allowed) {
     return res.status(429).json({ error: "For mange bookingforsøk. Prøv igjen om litt." });
+  }
+
+  // "Foreslå tid": log a pending request and notify William — no calendar
+  // event exists until he confirms it in admin.
+  if (isTimeRequest) {
+    if (!requestedDate || !requestedTime) {
+      return res.status(400).json({ error: "Missing requestedDate or requestedTime" });
+    }
+    try {
+      const supabase = getSupabaseAdmin();
+      const { error } = await supabase.from("freshride_time_requests").insert({
+        requested_date: requestedDate,
+        requested_time: requestedTime,
+        name, phone, car: car || null,
+        services,
+        discount_code: discountCode || null,
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.error("book-slot time-request insert error:", err);
+      return res.status(500).json({ error: "Klarte ikke å sende forespørselen" });
+    }
+
+    await notifyOwnerOfTimeRequest({ name, phone, services, requestedDate, requestedTime });
+    return res.status(200).json({ ok: true, pending: true });
+  }
+
+  if (!eventId) {
+    return res.status(400).json({ error: "Missing eventId" });
+  }
+  if (!start || !end) {
+    return res.status(400).json({ error: "Missing start or end" });
   }
 
   let code;
@@ -206,81 +178,43 @@ export default async function handler(req, res) {
     const usedCodes = await getUsedCodes(calendar, CALENDAR_ID);
     code = generateUniqueCode(usedCodes);
 
-    if (insertNewEvent) {
-      // No "Ledig" event existed that day to attach to — insert the booked
-      // event directly. Defensive overlap check first: the day had zero
-      // open slots, but may still have OTHER real bookings at different
-      // times that this requested time could clash with.
-      const { data: existing } = await calendar.events.list({
-        calendarId: CALENDAR_ID, timeMin: start, timeMax: end, singleEvents: true,
-      });
-      const overlaps = (existing.items || []).some(ev => ev.summary && ev.summary !== "Ledig");
-      if (overlaps) {
-        return res.status(409).json({ error: "Beklager, det tidspunktet er nettopp blitt opptatt. Prøv et annet tidspunkt." });
-      }
-      await calendar.events.insert({
-        calendarId: CALENDAR_ID,
-        requestBody: {
-          summary: `${name} - ${phone}`,
-          location: BUSINESS_ADDRESS,
-          description: `Tjeneste: ${services.join(", ")}`,
-          extendedProperties: { private: { freshride_code: code } },
-          start: { dateTime: start, timeZone: "Europe/Oslo" },
-          end: { dateTime: end, timeZone: "Europe/Oslo" },
-        },
-      });
-    } else {
-      // Shrink the booked event's duration if the chosen service(s) need
-      // less time than the original slot — never extend beyond it.
-      const originalDurationMin = (new Date(end) - new Date(start)) / 60000;
-      const estimatedMin = estimatedDurationMinutes(services);
-      if (estimatedMin && estimatedMin < originalDurationMin) {
-        finalEnd = new Date(new Date(start).getTime() + estimatedMin * 60000).toISOString();
-      }
-
-      const requestBody = {
-        summary: `${name} - ${phone}`,
-        location: BUSINESS_ADDRESS,
-        description: `Tjeneste: ${services.join(", ")}`,
-        extendedProperties: { private: { freshride_code: code } },
-        // Always set explicitly (not just conditionally like end below) —
-        // in the normal flow this already matches the event's real start,
-        // so it's a no-op there; for a time request it's what actually
-        // moves the calendar event to the customer-requested time.
-        start: { dateTime: start, timeZone: "Europe/Oslo" },
-      };
-      if (finalEnd !== end) {
-        requestBody.end = { dateTime: finalEnd, timeZone: "Europe/Oslo" };
-      }
-
-      await calendar.events.patch({ calendarId: CALENDAR_ID, eventId, requestBody });
+    // Shrink the booked event's duration if the chosen service(s) need
+    // less time than the original slot — never extend beyond it.
+    const originalDurationMin = (new Date(end) - new Date(start)) / 60000;
+    const estimatedMin = estimatedDurationMinutes(services);
+    if (estimatedMin && estimatedMin < originalDurationMin) {
+      finalEnd = new Date(new Date(start).getTime() + estimatedMin * 60000).toISOString();
     }
+
+    const requestBody = {
+      summary: `${name} - ${phone}`,
+      location: BUSINESS_ADDRESS,
+      description: `Tjeneste: ${services.join(", ")}`,
+      extendedProperties: { private: { freshride_code: code } },
+      start: { dateTime: start, timeZone: "Europe/Oslo" },
+    };
+    if (finalEnd !== end) {
+      requestBody.end = { dateTime: finalEnd, timeZone: "Europe/Oslo" };
+    }
+
+    await calendar.events.patch({ calendarId: CALENDAR_ID, eventId, requestBody });
   } catch (err) {
     console.error("book-slot calendar error:", err);
     return res.status(500).json({ error: "Klarte ikke å bekrefte booking" });
   }
 
-  let redeemedDiscountPercent = await redeemDiscountCodeForBooking(discountCode, phone);
-  let referredBy = null;
-  if (!redeemedDiscountPercent && discountCode) {
-    const referralResult = await redeemReferralCodeForBooking(discountCode, phone);
-    if (referralResult?.kind === "owner" && referralResult.percent > 0) {
-      redeemedDiscountPercent = referralResult.percent;
-    } else if (referralResult?.kind === "referred") {
-      referredBy = referralResult.referrerCustomerNumber;
-    }
-  }
+  const supabase = getSupabaseAdmin();
+  const { discountPercent: redeemedDiscountPercent, referredBy } = await redeemCodeForBooking(supabase, discountCode, phone);
   await createDraftJobLogForBooking({
     name, phone, services, start, code, car,
     discountCode: redeemedDiscountPercent ? discountCode.trim().toUpperCase() : null,
     discountPercent: redeemedDiscountPercent,
     referredBy,
-    notes: isTimeRequest ? "🕐 Kunden forespurte dette tidspunktet selv ved booking (ikke et av de faste ledige tidene)." : undefined,
   });
 
   let smsSent = false;
   try {
-    const result = await sendBookingSms({ phone, name, services, start, end: finalEnd, code });
+    const result = await sendCustomerBookingSms({ phone, name, services, start, end: finalEnd, code });
     smsSent = result.ok;
     await logNotification({ channel: "sms_kunde", recipient: phone, code, name, status: smsSent ? "ok" : "failed", message: result.message });
   } catch (err) {
@@ -290,7 +224,7 @@ export default async function handler(req, res) {
 
   let emailSent = false;
   try {
-    const result = await sendOwnerReminderEmail({ name, phone, services, start, end: finalEnd, code, isTimeRequest });
+    const result = await sendOwnerReminderEmail({ name, phone, services, start, end: finalEnd, code });
     emailSent = result.ok;
     await logNotification({ channel: "epost_eier", recipient: "eier", code, name, status: emailSent ? "ok" : "failed", message: result.message });
   } catch (err) {
@@ -299,7 +233,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    await sendOwnerSms({ name, phone, services, start, end: finalEnd, code, isTimeRequest });
+    await sendOwnerSms({ name, phone, services, start, end: finalEnd, code });
   } catch (err) {
     console.error("book-slot owner sms error:", err);
   }

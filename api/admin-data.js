@@ -1,6 +1,6 @@
 // api/admin-data.js — admin only (x-admin-password header)
 // All content-management CRUD, routed by ?resource=
-//   about | services | reviews | promotions | prices | jobs | completion-alerts | customer-cars | discount-codes | expenses | accounting | gallery
+//   about | services | reviews | promotions | prices | jobs | completion-alerts | customer-cars | discount-codes | expenses | accounting | gallery | time-requests
 //
 // Merged into one file to stay within Vercel's function count limit
 // (Hobby plan: 12 functions per deployment).
@@ -682,6 +682,19 @@ async function handleSmsLog(req, res) {
   }
 }
 
+/* ---------------- Time requests ("Foreslå tid" pending queue) ---------------- */
+async function handleTimeRequests(req, res, supabase) {
+  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  const { data, error } = await supabase
+    .from("freshride_time_requests")
+    .select("*")
+    .eq("status", "pending")
+    .order("requested_date", { ascending: true })
+    .order("requested_time", { ascending: true });
+  if (error) { console.error(error); return res.status(500).json({ error: "Klarte ikke å hente tidsforespørsler" }); }
+  return res.status(200).json({ requests: data || [] });
+}
+
 /* ---------------- Accounting summary ---------------- */
 async function handleAccounting(req, res, supabase) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
@@ -878,6 +891,7 @@ export default async function handler(req, res) {
   if (resource === "sms-log") return handleSmsLog(req, res);
   if (resource === "analytics") return handleAnalytics(req, res);
   if (resource === "gallery") return handleGallery(req, res, supabase);
+  if (resource === "time-requests") return handleTimeRequests(req, res, supabase);
 
   return res.status(400).json({ error: "Missing or invalid 'resource'" });
 }

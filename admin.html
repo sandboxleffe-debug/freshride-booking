@@ -196,6 +196,31 @@
   }
   .fr-completion-alert-dismiss svg { width: 0.9em; height: 0.9em; }
   .fr-completion-alert-dismiss:hover { background: rgba(198, 59, 46, 0.12); }
+  /* Tidsforespørsler: a customer proposed their own start time ("Foreslå
+     tid") — nothing is booked yet, William confirms (or adjusts the time
+     first) right here. Gold, not red — this is routine, not overdue. */
+  .fr-time-requests {
+    background: var(--fr-gold-soft); border: 1.5px solid rgba(232, 185, 35, 0.55);
+    border-radius: 12px; padding: 0.9rem 1rem; margin-bottom: 1rem;
+  }
+  .fr-time-requests-head {
+    display: flex; align-items: center; gap: 0.5rem; font-weight: 700; color: var(--fr-gold-deep);
+    font-family: var(--font-display); letter-spacing: 0.02em; margin-bottom: 0.3rem;
+  }
+  .fr-time-requests-head svg { width: 1.1em; height: 1.1em; }
+  .fr-time-requests-sub { font-size: 0.82rem; color: var(--fr-text-dark-zone-soft); margin-bottom: 0.7rem; }
+  .fr-time-request-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; flex-wrap: wrap;
+    padding: 0.6rem 0; border-top: 1px solid rgba(232, 185, 35, 0.35);
+  }
+  .fr-time-request-row:first-of-type { border-top: none; }
+  .fr-time-request-info { min-width: 0; }
+  .fr-time-request-fields { display: flex; gap: 0.4rem; flex-shrink: 0; }
+  .fr-time-request-fields .fr-input { padding: 0.35rem 0.5rem; font-size: 0.82rem; width: auto; }
+  .fr-time-request-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+  .fr-time-request-actions .fr-btn-primary { width: auto; padding: 0.4rem 0.8rem; font-size: 0.82rem; }
+  .fr-time-request-row .fr-save-msg { flex-basis: 100%; margin: 0; }
+
   .fr-list-more-btn {
     display: block; width: 100%; margin-top: 0.5rem;
     border: 1.5px dashed var(--fr-line-dark-zone); background: none; color: var(--fr-text-dark-zone-soft);
@@ -428,6 +453,7 @@
 
     <!-- Tab: Oversikt -->
     <div id="tab-overview" class="fr-tab-panel">
+      <div id="timeRequestsBox" class="fr-time-requests d-none"></div>
       <div id="completionAlertsBox" class="fr-completion-alerts d-none"></div>
 
       <div class="fr-panel">
@@ -1252,6 +1278,7 @@ function enterAdmin() {
   loadMonthCalendar();
   loadAdminWeather();
   fetchOverview();
+  loadTimeRequests();
   loadServicesAdmin();
   loadReviewsAdmin();
   loadPromoAdmin();
@@ -1722,6 +1749,92 @@ async function dismissCompletionAlert(jobId) {
     const job = (window._frJobs || []).find(j => j.id === jobId);
     if (job) job.completion_notice_dismissed = true;
     loadCompletionAlerts();
+  } catch (e) { /* silent */ }
+}
+
+/* ---------------- Tidsforespørsler ("Foreslå tid" pending queue) ----------
+   A customer proposed their own start time instead of picking a real slot
+   — nothing is booked yet (see api/book-slot.js). "Bekreft tid" is what
+   actually creates the calendar event; the date/time fields default to
+   what the customer asked for but are editable, so an adjusted time (after
+   a phone call) can be confirmed just as easily as the original request. */
+let _frTimeRequests = [];
+
+async function loadTimeRequests() {
+  try {
+    const res = await fetch('/api/admin-data?resource=time-requests', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    _frTimeRequests = data.requests || [];
+    renderTimeRequests();
+  } catch (e) { /* silent — best-effort, same as completion alerts */ }
+}
+
+function renderTimeRequests() {
+  const box = document.getElementById('timeRequestsBox');
+  if (!_frTimeRequests.length) { box.classList.add('d-none'); box.innerHTML = ''; return; }
+  box.classList.remove('d-none');
+  box.innerHTML = `
+    <div class="fr-time-requests-head">${frIcon('clock')} TIDSFORESPØRSLER</div>
+    <p class="fr-time-requests-sub">Kunden har foreslått tidspunktet selv. Bekreft som forespurt, eller juster dato/tid først.</p>
+    ${_frTimeRequests.map(r => `
+      <div class="fr-time-request-row">
+        <div class="fr-time-request-info">
+          <div class="fr-list-row-name">${(r.name || '').replace(/</g, '&lt;')} <span class="fr-list-row-code">${r.phone || ''}</span></div>
+          <div class="fr-hint">${(Array.isArray(r.services) ? r.services.join(', ') : '').replace(/</g, '&lt;')}${r.car ? ' · ' + r.car.replace(/</g, '&lt;') : ''}</div>
+        </div>
+        <div class="fr-time-request-fields">
+          <input type="date" class="form-control fr-input" id="reqDate-${r.id}" value="${r.requested_date}">
+          <input type="time" class="form-control fr-input" id="reqTime-${r.id}" value="${r.requested_time}">
+        </div>
+        <div class="fr-time-request-actions">
+          <button type="button" class="btn fr-btn-primary" onclick="confirmTimeRequestRow('${r.id}')">Bekreft tid</button>
+          <button type="button" class="fr-completion-alert-dismiss" onclick="declineTimeRequestRow('${r.id}')">${frIcon('x')} Avslå</button>
+        </div>
+        <p class="fr-save-msg" id="reqMsg-${r.id}"></p>
+      </div>
+    `).join('')}
+  `;
+}
+
+async function confirmTimeRequestRow(id) {
+  const msg = document.getElementById(`reqMsg-${id}`);
+  const date = document.getElementById(`reqDate-${id}`).value;
+  const startTime = document.getElementById(`reqTime-${id}`).value;
+  msg.textContent = 'Bekrefter …'; msg.className = 'fr-save-msg';
+  try {
+    const res = await fetch('/api/admin-bookings', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'confirm-time-request', requestId: id, date, startTime })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    if (!res.ok) {
+      msg.textContent = data.error || 'Klarte ikke å bekrefte.'; msg.classList.add('err');
+      return;
+    }
+    _frTimeRequests = _frTimeRequests.filter(r => r.id !== id);
+    renderTimeRequests();
+    fetchOverview();
+    loadMonthCalendar();
+  } catch (e) {
+    msg.textContent = 'Klarte ikke å bekrefte.'; msg.classList.add('err');
+  }
+}
+
+async function declineTimeRequestRow(id) {
+  if (!confirm('Avslå denne tidsforespørselen? Kunden varsles ikke automatisk — ta kontakt selv om det trengs.')) return;
+  try {
+    const res = await fetch('/api/admin-bookings', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'decline-time-request', requestId: id })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    if (!res.ok) return;
+    _frTimeRequests = _frTimeRequests.filter(r => r.id !== id);
+    renderTimeRequests();
   } catch (e) { /* silent */ }
 }
 

@@ -236,29 +236,34 @@
     assert(!!btn, 'expected a "Foreslå tid" option even on a day with no real slots at all');
   });
 
-  test('confirmTimeRequest: with no real slot that day, selected has no eventId/baseDurationMinutes to send', () => {
+  // A time request never attaches to any particular calendar event anymore
+  // — it used to grab events[0] (the day's first real slot) as a "base" to
+  // patch, but that had nothing to do with the requested time and could
+  // silently move the wrong slot, leaving a stale duplicate "Ledig" time
+  // behind. Nothing gets booked at request time at all now — William
+  // confirms it from admin (see api/book-slot.js).
+  test('confirmTimeRequest: with no real slot that day, selected carries only the requested date/time', () => {
     events = [];
     currentSlotsDate = '2026-07-27';
     renderNoSlots();
     document.querySelector('#noSlotsRequestWrap .fr-slot-request').click();
     document.getElementById('timeRequestInput').value = '08:30';
     document.getElementById('timeRequestConfirmBtn').click();
-    assertEqual(selected.id, null, 'no base event exists — nothing to attach to');
     assertEqual(selected.isTimeRequest, true);
     assertEqual(selected.requestedDate, '2026-07-27');
     assertEqual(selected.requestedTime, '08:30');
-    assertEqual(selected.baseDurationMinutes, undefined, 'no base slot means no inherited duration — the server sizes it from the chosen service(s) instead');
+    assertEqual(selected.id, undefined, 'no calendar event is ever attached to a time request');
   });
 
-  test('confirmTimeRequest: with a real slot that day, selected inherits its duration and id', () => {
+  test('confirmTimeRequest: even with a real slot that day, selected still only carries the requested date/time — not the unrelated slot\'s id', () => {
     events = [{ id: 'evtReal', start: '2026-07-28T09:00:00+02:00', end: '2026-07-28T11:30:00+02:00' }];
     currentSlotsDate = '2026-07-28';
     render();
     document.querySelector('#list .fr-slot-request').click();
     document.getElementById('timeRequestInput').value = '13:00';
     document.getElementById('timeRequestConfirmBtn').click();
-    assertEqual(selected.id, 'evtReal', 'expected to attach to the real slot that day');
-    assertEqual(selected.baseDurationMinutes, 150, 'expected the base slot\'s own 2.5-hour duration to carry over');
+    assertEqual(selected.requestedTime, '13:00');
+    assertEqual(selected.id, undefined, 'the day\'s real slot has nothing to do with a different requested time — must not be borrowed');
   });
 
   test('phone field: strips non-digits and caps at 8', () => {
@@ -391,6 +396,16 @@
     discountCodeState = { code: '', valid: null, percent: null };
   }
 
+  test('book(): a normal (non-time-request) booking shows the confirmed-booking toast with its code, not the pending wording', async () => {
+    setUpValidBookingForm();
+    document.getElementById('discountCodeInput').value = '';
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ ok: true, code: 'X1' }), { status: 200 }));
+    await book();
+    assert(document.getElementById('toastTitle').textContent.includes('booking'), 'expected the normal booking-confirmed title');
+    assertEqual(document.getElementById('toastCode').textContent, 'Din bookingkode: X1');
+    assert(document.getElementById('toastConfirmedBody').style.display === '', 'the full confirmed-booking details must show for a real booking');
+  });
+
   test('book(): a blank discount code never triggers a validate call', async () => {
     setUpValidBookingForm();
     document.getElementById('discountCodeInput').value = '';
@@ -452,6 +467,28 @@
     assert(!bookSlotCalled, 'an invalid code must stop the booking before it ever reaches book-slot.js');
     const hint = document.getElementById('discountCodeHint');
     assert(hint.classList.contains('fr-hint-error'), 'expected an error hint for an invalid/used code');
+  });
+
+  test('book(): a time request sends requestedDate/requestedTime with no eventId/start/end, and shows the pending-toast wording', async () => {
+    document.getElementById('serviceGrid').innerHTML = '<label><input type="checkbox" class="fr-service-checkbox" value="FreshRide Interior" checked></label>';
+    document.getElementById('name').value = 'Ola Testesen';
+    document.getElementById('phone').value = '90000001';
+    document.getElementById('discountCodeInput').value = '';
+    selected = { isTimeRequest: true, requestedDate: '2026-07-27', requestedTime: '13:00' };
+    discountCodeState = { code: '', valid: null, percent: null };
+    let bookSlotBody = null;
+    window.fetch = (url, opts) => {
+      bookSlotBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, pending: true }), { status: 200 }));
+    };
+    await book();
+    assertEqual(bookSlotBody.isTimeRequest, true);
+    assertEqual(bookSlotBody.requestedDate, '2026-07-27');
+    assertEqual(bookSlotBody.requestedTime, '13:00');
+    assert(bookSlotBody.eventId === undefined, 'a time request has no calendar event to attach to');
+    assert(bookSlotBody.start === undefined && bookSlotBody.end === undefined, 'the server computes the actual time — the client must not also send a guessed start/end');
+    assert(document.getElementById('toastTitle').textContent.includes('sendt'), 'expected pending-request wording, not the normal booking-confirmed toast');
+    assert(document.getElementById('toastConfirmedBody').style.display === 'none', 'the confirmed-booking-only details (address, Vipps, etc.) must not show for a still-pending request');
   });
 
   // =========================================================================
