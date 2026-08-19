@@ -11,18 +11,22 @@
 // 3. Sends a reminder email to the business owner with the same info.
 //
 // POST { isTimeRequest: true, requestedDate, requestedTime, name, phone,
-//        services, car?, discountCode? } -> { ok: true, pending: true }
+//        services, car?, discountCode? } -> { ok: true, pending: true, smsSent }
 //
 // "Foreslå tid" — the customer proposes their own start time instead of
 // picking a real listed slot. Nothing is booked yet: this only logs a
-// pending request (freshride_time_requests) and notifies William, who
-// reviews it in admin and either confirms it as-is or adjusts the time
-// first (admin-bookings.js "confirm-time-request" action does the actual
-// calendar insert + customer SMS once he does). This deliberately never
-// touches the calendar here — an earlier version tried to "borrow" an
-// existing Ledig slot to attach the request to, but there was no way to
-// know which slot (if any) actually matched the requested time, so it
-// sometimes moved the wrong slot and left a stale duplicate behind.
+// pending request (freshride_time_requests), notifies William, and sends
+// the customer a "forespurt booking mottatt" SMS with a caveat that the
+// time still needs confirming (buildTimeRequestTextCustomer — no code or
+// calendar link yet, since nothing's actually booked). William reviews the
+// request in admin and either confirms it as-is or adjusts the time first
+// (admin-bookings.js "confirm-time-request" action does the actual calendar
+// insert + the real confirmation SMS, with code and calendar link, once he
+// does). This deliberately never touches the calendar here — an earlier
+// version tried to "borrow" an existing Ledig slot to attach the request
+// to, but there was no way to know which slot (if any) actually matched
+// the requested time, so it sometimes moved the wrong slot and left a
+// stale duplicate behind.
 
 import { getCalendarClient, CALENDAR_ID, getUsedCodes, generateUniqueCode } from "./_lib/google-calendar.js";
 import { sendOwnerEmail } from "./_lib/email.js";
@@ -30,13 +34,12 @@ import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 import { sendSms } from "./_lib/elks-sms.js";
 import { getOsloParts, formatOsloTime } from "./_lib/timezone.js";
-import { estimatedDurationMinutes, formatNorwegian, redeemCodeForBooking, sendCustomerBookingSms } from "./_lib/booking-shared.js";
+import { estimatedDurationMinutes, formatNorwegian, formatNorwegianDateOnly, redeemCodeForBooking, sendCustomerBookingSms, sendTimeRequestReceivedSms } from "./_lib/booking-shared.js";
 import { createDraftJobLog } from "./_lib/customers.js";
 import { buildBookingTextOwner, buildTimeRequestTextOwner } from "./_lib/sms-templates.js";
 import { logNotification } from "./_lib/notifications.js";
 
 const BUSINESS_ADDRESS = "Oftebroveien 29, Lyngdal";
-const NO_MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
 
 // Extra SMS to the business owner's own number(s), if enabled in admin
 // (Om oss-fanen). Separate from the owner email — some prefer SMS.
@@ -82,8 +85,7 @@ async function sendOwnerReminderEmail({ name, phone, services, start, end, code 
 // or calendar link. Email always sent (the assured channel); SMS only if
 // enabled in admin.
 async function notifyOwnerOfTimeRequest({ name, phone, services, requestedDate, requestedTime }) {
-  const [y, m, d] = requestedDate.split("-").map(Number);
-  const date = `${d}. ${NO_MONTHS[m - 1]} ${y}`;
+  const date = formatNorwegianDateOnly(requestedDate);
   const message = buildTimeRequestTextOwner({ name, phone, services, date, time: requestedTime });
 
   try {
@@ -160,7 +162,18 @@ export default async function handler(req, res) {
     }
 
     await notifyOwnerOfTimeRequest({ name, phone, services, requestedDate, requestedTime });
-    return res.status(200).json({ ok: true, pending: true });
+
+    let smsSent = false;
+    try {
+      const result = await sendTimeRequestReceivedSms({ phone, services, requestedDate, requestedTime });
+      smsSent = result.ok;
+      await logNotification({ channel: "sms_kunde", recipient: phone, code: null, name, status: smsSent ? "ok" : "failed", message: result.message });
+    } catch (err) {
+      console.error("book-slot time-request customer sms error:", err);
+      await logNotification({ channel: "sms_kunde", recipient: phone, code: null, name, status: "failed" });
+    }
+
+    return res.status(200).json({ ok: true, pending: true, smsSent });
   }
 
   if (!eventId) {

@@ -10,7 +10,7 @@ import { findCustomerByPhone } from "./customers.js";
 import { redeemDiscountCode } from "./discount-codes.js";
 import { redeemReferralCode } from "./referral-codes.js";
 import { getOsloParts, formatOsloTime } from "./timezone.js";
-import { buildBookingTextCustomer } from "./sms-templates.js";
+import { buildBookingTextCustomer, buildTimeRequestTextCustomer } from "./sms-templates.js";
 
 // Estimated duration per service, in minutes. Used both to shrink a real
 // "Ledig" slot's booked duration and to size a brand-new calendar event
@@ -40,6 +40,14 @@ export function formatNorwegian(dateTimeStr) {
   const date = `${p.day} ${NO_MONTHS[p.month - 1]} ${p.year}`;
   const time = `${p.hour}:${p.minute}`;
   return { date, time };
+}
+
+// Same wording as formatNorwegian's date half, but for a plain "YYYY-MM-DD"
+// string (a time request's requested_date is already Oslo wall-clock — no
+// absolute-instant timezone conversion needed to display it).
+export function formatNorwegianDateOnly(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return `${d}. ${NO_MONTHS[m - 1]} ${y}`;
 }
 
 // One-time discount code first; if that's not a real discount code, falls
@@ -80,6 +88,17 @@ export async function sendCustomerBookingSms({ phone, name, services, start, end
   const { date, time } = formatNorwegian(start);
   const endTime = formatOsloTime(end);
   const message = buildBookingTextCustomer({ services, phone, date, time, endTime, code });
+  const ok = await sendSms({ toPhone: phone, message });
+  return { ok, message };
+}
+
+// Sent to the customer the moment they submit a "Foreslå tid" request —
+// same shape as the real booking SMS above, minus the code/calendar link
+// (nothing's actually booked yet), plus a note that a second SMS follows
+// once William confirms the time in admin.
+export async function sendTimeRequestReceivedSms({ phone, services, requestedDate, requestedTime }) {
+  const date = formatNorwegianDateOnly(requestedDate);
+  const message = buildTimeRequestTextCustomer({ services, date, time: requestedTime });
   const ok = await sendSms({ toPhone: phone, message });
   return { ok, message };
 }

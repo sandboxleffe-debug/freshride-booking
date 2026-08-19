@@ -27,6 +27,22 @@ export function buildBookingTextCustomer({ services, date, time, endTime, code, 
   );
 }
 
+// Sent to the customer the moment they submit a "Foreslå tid" request —
+// same shape as buildBookingTextCustomer above (tid, tjeneste(r), adresse),
+// but no kode/kalenderlenke yet since nothing's actually booked. The real
+// confirmation SMS (buildBookingTextCustomer) follows once William confirms
+// the time in admin.
+export function buildTimeRequestTextCustomer({ services, date, time }) {
+  return (
+    `Forespurt booking mottatt ⏳\n\n` +
+    `Tid: ${date}, kl. ${time} (ønsket tidspunkt)\n` +
+    `Tjeneste(r): ${services.join(", ")}\n` +
+    `Adresse: ${BUSINESS_ADDRESS}\n\n` +
+    `⚠️ Du får en ny SMS når timen er bekreftet.\n\n` +
+    `Denne SMS-en kan ikke besvares.`
+  );
+}
+
 // Sent to William (owner SMS/email) — keeps the fuller detail since he
 // needs to know who's coming, not just that someone booked. A "Foreslå tid"
 // request never reaches this template (see buildTimeRequestTextOwner below)

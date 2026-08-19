@@ -769,6 +769,9 @@
         <button class="fr-btn-outline fr-testsms-btn mb-2" id="testBookingSmsBtn" onclick="sendTestBookingSms()">
           <span class="fr-icon" data-fr-icon="calendar"></span> Test: bekreftelse ved booking
         </button>
+        <button class="fr-btn-outline fr-testsms-btn mb-2" id="testTimeRequestSmsBtn" onclick="sendTestTimeRequestSms()">
+          <span class="fr-icon" data-fr-icon="clock"></span> Test: forespurt tid mottatt
+        </button>
         <button class="fr-btn-outline fr-testsms-btn mb-2" id="testSmsBtn" onclick="sendTestCompletionSms()">
           <span class="fr-icon" data-fr-icon="bell"></span> Test: "jobben er ferdig"
         </button>
@@ -4506,6 +4509,7 @@ async function sendTestSms(action, btnId) {
 }
 function sendTestCompletionSms() { return sendTestSms('send-test-completion-sms', 'testSmsBtn'); }
 function sendTestBookingSms() { return sendTestSms('send-test-booking-sms', 'testBookingSmsBtn'); }
+function sendTestTimeRequestSms() { return sendTestSms('send-test-time-request-sms', 'testTimeRequestSmsBtn'); }
 function sendTestThanksSms() { return sendTestSms('send-test-thanks-sms', 'testThanksSmsBtn'); }
 
 async function saveAbout() {

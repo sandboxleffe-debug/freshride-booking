@@ -12,7 +12,7 @@ import { sendSms, listSms } from "./_lib/elks-sms.js";
 import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode, getDiscountCodeInfo, markDiscountCodeGivenAway } from "./_lib/discount-codes.js";
 import { getOrCreateReferralCode, referralTierPercent } from "./_lib/referral-codes.js";
 import { getCalendarClient, CALENDAR_ID, findPastBookingByCode } from "./_lib/google-calendar.js";
-import { buildBookingTextCustomer, buildCompletionSmsText, buildThanksSmsText, buildThanksSmsTextWithDiscount } from "./_lib/sms-templates.js";
+import { buildBookingTextCustomer, buildTimeRequestTextCustomer, buildCompletionSmsText, buildThanksSmsText, buildThanksSmsTextWithDiscount } from "./_lib/sms-templates.js";
 import { logNotification } from "./_lib/notifications.js";
 
 // Resolves (creating if needed) a customer's permanent referral code plus
@@ -478,6 +478,27 @@ async function handleJobs(req, res, supabase) {
         return res.status(200).json({ ok: true, message });
       } catch (err) {
         console.error("send-test-booking-sms error:", err);
+        return res.status(500).json({ error: "Klarte ikke å sende test-SMS" });
+      }
+    }
+
+    // buildTimeRequestTextCustomer() — what a customer gets immediately
+    // after submitting "Foreslå tid", before William has confirmed anything.
+    if (action === "send-test-time-request-sms") {
+      const { phone } = req.body || {};
+      if (!phone) return res.status(400).json({ error: "Missing phone" });
+      try {
+        const now = new Date();
+        const message = buildTimeRequestTextCustomer({
+          services: ["FreshRide Complete"],
+          date: now.toLocaleDateString("no-NO", { day: "numeric", month: "long", year: "numeric" }),
+          time: "13:00",
+        });
+        const ok = await sendSms({ toPhone: phone, message });
+        if (!ok) return res.status(502).json({ error: "Klarte ikke å sende test-SMS" });
+        return res.status(200).json({ ok: true, message });
+      } catch (err) {
+        console.error("send-test-time-request-sms error:", err);
         return res.status(500).json({ error: "Klarte ikke å sende test-SMS" });
       }
     }
