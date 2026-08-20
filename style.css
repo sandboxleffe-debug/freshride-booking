@@ -353,7 +353,23 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-slot-weather { margin-left: 0.4rem; text-transform: none; letter-spacing: normal; }
 .fr-slot-request { border-style: dashed; background: var(--fr-panel-bg); }
-.fr-slot-request-standalone { max-width: 220px; margin: 1rem auto 0; }
+
+/* Prominent "Foreslå tid" card for a day with zero real slots — the only
+   option on an otherwise-empty day, so it must read as a clear invitation,
+   not the same low-key dashed pill it is when sitting among real slots. */
+.fr-request-time-cta {
+  margin: 1.25rem auto 0;
+  max-width: 320px;
+  background: linear-gradient(135deg, rgba(232,185,35,0.2), rgba(232,185,35,0.06));
+  border: 2px solid var(--fr-gold);
+  border-radius: 14px;
+  padding: 1.15rem 1.3rem;
+  text-align: center;
+  box-shadow: 0 14px 34px -18px rgba(232,185,35,0.55);
+}
+.fr-request-time-cta-title { font-family: var(--font-display); font-weight: 700; font-size: 1.08rem; color: var(--fr-panel-text); margin: 0 0 0.35rem; }
+.fr-request-time-cta-sub { font-size: 0.85rem; color: var(--fr-panel-text-soft); margin: 0 0 0.9rem; }
+.fr-request-time-cta-btn { width: 100%; font-size: 1rem; padding: 0.75rem 1rem; }
 .fr-time-request-inline {
   grid-column: 1 / -1;
   background: var(--fr-panel-bg-2);

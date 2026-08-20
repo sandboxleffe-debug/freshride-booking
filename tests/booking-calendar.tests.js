@@ -227,13 +227,30 @@
     assert(noSlots.textContent.includes('Fullbooket dag'), `expected "Fullbooket dag" wording for a genuinely fully-booked day, got "${noSlots.textContent}"`);
   });
 
-  test('loadSlotsForDate: a zero-slot day still offers a "Foreslå tid" button either way', async () => {
+  test('loadSlotsForDate: a zero-slot day still offers a prominent "Foreslå tid" CTA either way', async () => {
     weatherByDate = {};
     dayStatuses = {};
     window.fetch = (url) => Promise.resolve(new Response(JSON.stringify({ events: [] }), { status: 200 }));
     await loadSlotsForDate('2026-07-27');
-    const btn = document.querySelector('#noSlotsRequestWrap .fr-slot-request');
-    assert(!!btn, 'expected a "Foreslå tid" option even on a day with no real slots at all');
+    const card = document.querySelector('#noSlotsRequestWrap .fr-request-time-cta');
+    assert(!!card, 'expected a "Foreslå tid" CTA even on a day with no real slots at all');
+    assert(!!card.querySelector('.fr-request-time-cta-btn'), 'expected a clickable button inside the CTA card');
+  });
+
+  // On an empty day the "Foreslå tid" option is the ONLY thing to do — it
+  // used to reuse the same low-key dashed pill shown alongside real slots,
+  // which read as nearly invisible sitting under the faint "ingen tid"
+  // message. It must now stand out as its own clear, high-contrast card,
+  // not blend into the muted empty-state text around it.
+  test('the empty-day "Foreslå tid" CTA is visually distinct from the low-key inline variant', () => {
+    events = [];
+    currentSlotsDate = '2026-07-27';
+    renderNoSlots();
+    const card = document.querySelector('#noSlotsRequestWrap .fr-request-time-cta');
+    assert(!card.classList.contains('fr-slot-request'), 'must not reuse the subtle dashed-pill class used alongside real slots');
+    assert(card.textContent.includes('Foreslå ditt eget tidspunkt'), 'expected a clear headline, not just a small tag');
+    const btn = card.querySelector('.fr-request-time-cta-btn');
+    assert(btn.classList.contains('fr-btn-primary'), 'expected the same strong solid-gold styling as the main booking button, not an outline/dashed look');
   });
 
   // A time request never attaches to any particular calendar event anymore
@@ -246,7 +263,7 @@
     events = [];
     currentSlotsDate = '2026-07-27';
     renderNoSlots();
-    document.querySelector('#noSlotsRequestWrap .fr-slot-request').click();
+    document.querySelector('#noSlotsRequestWrap .fr-request-time-cta-btn').click();
     document.getElementById('timeRequestInput').value = '08:30';
     document.getElementById('timeRequestConfirmBtn').click();
     assertEqual(selected.isTimeRequest, true);

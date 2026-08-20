@@ -862,16 +862,36 @@ function render() {
   el.appendChild(buildRequestTimeButton());
 }
 
-function buildRequestTimeButton(standalone) {
+function buildRequestTimeButton() {
   const reqBtn = document.createElement("button");
   reqBtn.type = "button";
-  reqBtn.className = standalone ? "fr-slot fr-slot-request fr-slot-request-standalone" : "fr-slot fr-slot-request";
+  reqBtn.className = "fr-slot fr-slot-request";
   reqBtn.innerHTML = `
     <span class="fr-slot-time">🕐 Foreslå tid</span>
     <span class="fr-slot-tag">Velg selv</span>
   `;
   reqBtn.onclick = () => showTimeRequestInput(reqBtn);
   return reqBtn;
+}
+
+// Used only on a day with zero real slots — there the low-key dashed pill
+// (buildRequestTimeButton, fine as one of several options alongside real
+// slots) reads as almost invisible sitting under a faint "ingen tid" line,
+// since it's the ONLY option. This is a much bolder, unmissable card instead.
+function buildRequestTimeCta() {
+  const card = document.createElement("div");
+  card.className = "fr-request-time-cta";
+  card.innerHTML = `
+    <p class="fr-request-time-cta-title">🕐 Foreslå ditt eget tidspunkt</p>
+    <p class="fr-request-time-cta-sub">Skriv inn ønsket klokkeslett, så bekrefter William det så snart som mulig.</p>
+  `;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn fr-btn-primary fr-request-time-cta-btn";
+  btn.textContent = "Foreslå tid";
+  btn.onclick = () => showTimeRequestInput(card);
+  card.appendChild(btn);
+  return card;
 }
 
 // A day with zero "Ledig" events could mean two different things — either
@@ -888,7 +908,7 @@ function renderNoSlots() {
     : 'Ingen faste ledige tider satt opp denne dagen ennå — du kan likevel foreslå et tidspunkt under.';
   const wrap = document.getElementById('noSlotsRequestWrap');
   wrap.innerHTML = '';
-  wrap.appendChild(buildRequestTimeButton(true));
+  wrap.appendChild(buildRequestTimeCta());
 }
 
 function showTimeRequestInput(afterEl) {
