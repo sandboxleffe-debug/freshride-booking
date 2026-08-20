@@ -711,11 +711,20 @@ async function loadMonthCalendar() {
     if (isFullyPast) {
       // Already-passed weeks can't be booked — collapse to a slim label
       // instead of a full row of squares, so late in the month the useful
-      // (current/future) weeks aren't buried under empty space.
+      // (current/future) weeks aren't buried under empty space. Collapsing
+      // must not erase that the week actually had bookings, though — a row
+      // of status dots (same colors as the full day cells) keeps that
+      // visible even at a glance across many past weeks.
       const first = realDates[0], last = realDates[realDates.length - 1];
       const bar = document.createElement("div");
-      bar.className = "fr-calendar-week-collapsed";
-      bar.textContent = `${first.getDate()}.–${last.getDate()}. ${MONTH_LABELS[first.getMonth()].slice(0, 3)}`;
+      const statuses = realDates.map(d => dayStatuses[toDateKey(d)]);
+      const hadRed = statuses.includes('red');
+      const dotsHtml = statuses.map(s => `<i class="fr-calendar-week-dot${s ? ` fr-calendar-week-dot-${s}` : ''}"></i>`).join('');
+      bar.className = `fr-calendar-week-collapsed${hadRed ? ' fr-calendar-week-had-red' : ''}`;
+      bar.innerHTML = `
+        <span class="fr-calendar-week-range">${first.getDate()}.–${last.getDate()}. ${MONTH_LABELS[first.getMonth()].slice(0, 3)}</span>
+        <span class="fr-calendar-week-dots">${dotsHtml}</span>
+      `;
       grid.appendChild(bar);
       continue;
     }

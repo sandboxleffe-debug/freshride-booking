@@ -39,6 +39,49 @@
     assert(!todayCell.classList.contains('fr-day-past'), 'today must not be struck through');
   });
 
+  // A collapsed past week used to be a plain gray bar with zero color info
+  // — a week full of red (fully-booked) days looked identical to an empty
+  // one. Now each collapsed bar carries a status dot per day, and a past
+  // day still in a non-collapsed (current) week keeps its full status
+  // color too — it used to be washed out to 25% opacity + grayscale.
+  test('calendar: a collapsed past week still shows a status dot per day, including red ones', async () => {
+    calendarViewYear = undefined; calendarViewMonth = undefined; // current month — earlier weeks in it are already past
+    const now = new Date();
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    if (toDateKey(firstOfMonth) < toDateKey(now)) {
+      const key = toDateKey(firstOfMonth);
+      window.fetch = () => Promise.resolve(new Response(JSON.stringify({ days: { [key]: 'red' } }), { status: 200 }));
+      await loadMonthCalendar();
+      const bar = document.querySelector('.fr-calendar-week-collapsed');
+      assert(!!bar, 'expected at least one collapsed week bar this far into the month');
+      assert(!!bar.querySelector('.fr-calendar-week-dots'), 'expected a row of status dots inside the collapsed bar');
+      assert(bar.querySelectorAll('.fr-calendar-week-dot').length > 0, 'expected one dot per day in the week');
+      assert(bar.classList.contains('fr-calendar-week-had-red'), 'a week that had a red day must get the had-red highlight, not read as empty');
+      assert(!!bar.querySelector('.fr-calendar-week-dot-red'), 'expected an actual red-colored dot for that day');
+    }
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ days: {} }), { status: 200 }));
+    calendarViewYear = undefined; calendarViewMonth = undefined;
+    await loadMonthCalendar();
+  });
+
+  test('calendar: a past day still in a non-collapsed (current) week keeps its full status color, not grayed out', async () => {
+    calendarViewYear = undefined; calendarViewMonth = undefined;
+    const now = new Date();
+    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+    if (toDateKey(yesterday).slice(0, 7) !== toDateKey(now).slice(0, 7)) return; // skip right at a month boundary
+    const key = toDateKey(yesterday);
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ days: { [key]: 'red' } }), { status: 200 }));
+    await loadMonthCalendar();
+    const cell = [...document.querySelectorAll('.fr-calendar-day')].find(c => c.textContent.trim() === String(yesterday.getDate()) && c.classList.contains('fr-day-past'));
+    if (cell) {
+      assert(cell.classList.contains('fr-status-red'), 'expected the red status class to still be applied to a past day');
+      assertEqual(getComputedStyle(cell).opacity, '1', 'the cell itself must not be faded — only the day number gets struck through');
+    }
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ days: {} }), { status: 200 }));
+    calendarViewYear = undefined; calendarViewMonth = undefined;
+    await loadMonthCalendar();
+  });
+
   test('calendar: next month button is enabled and advances the label', async () => {
     const before = document.getElementById('calendarMonthLabel').textContent;
     await changeCalendarMonth(1);
