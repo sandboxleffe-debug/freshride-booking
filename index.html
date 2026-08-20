@@ -647,7 +647,12 @@ function changeCalendarMonth(delta) {
   let y = calendarViewYear, m = calendarViewMonth + delta;
   if (m > 12) { m = 1; y++; }
   if (m < 1) { m = 12; y--; }
-  if (y < minYear || (y === minYear && m < minMonth)) return Promise.resolve(); // can't book the past — don't navigate before the current month
+  // Customers can't book the past, so they're kept from navigating before
+  // the current month entirely — but William browsing his own site (same
+  // "logged into admin" flag as the mobile-preview toggle) can still page
+  // back out of curiosity to see how a past month went.
+  const loggedIn = localStorage.getItem('fr_admin_seen') === '1';
+  if (!loggedIn && (y < minYear || (y === minYear && m < minMonth))) return Promise.resolve();
   calendarViewYear = y; calendarViewMonth = m;
   return loadMonthCalendar();
 }
@@ -659,7 +664,8 @@ async function loadMonthCalendar() {
   const month = calendarViewMonth;
   document.getElementById("calendarMonthLabel").textContent = `${MONTH_LABELS[month - 1]} ${year}`;
   const isAtCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
-  document.getElementById("calendarPrevBtn").disabled = isAtCurrentMonth;
+  const loggedIn = localStorage.getItem('fr_admin_seen') === '1';
+  document.getElementById("calendarPrevBtn").disabled = isAtCurrentMonth && !loggedIn;
 
   const grid = document.getElementById("calendarGrid");
   grid.innerHTML = "";

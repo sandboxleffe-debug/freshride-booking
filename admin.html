@@ -1290,6 +1290,10 @@ async function login() {
     if (res.status === 401) { errEl.textContent = 'Feil passord.'; return; }
     if (!res.ok) throw new Error('network');
     sessionStorage.setItem('fr_admin_pw', pw);
+    // A harmless, non-secret flag (never the password itself) — lets the
+    // public-facing pages know to offer the "Mobil visning" dev toggle in
+    // the nav rail, without needing an actual session on that page too.
+    localStorage.setItem('fr_admin_seen', '1');
     enterAdmin();
   } catch (e) {
     errEl.textContent = 'Noe gikk galt. Prøv igjen.';
@@ -1395,6 +1399,7 @@ function showTab(name) {
 
 function handleAuthExpired() {
   sessionStorage.removeItem('fr_admin_pw');
+  localStorage.removeItem('fr_admin_seen');
   document.getElementById('adminView').classList.add('d-none');
   document.getElementById('loginView').classList.remove('d-none');
 }

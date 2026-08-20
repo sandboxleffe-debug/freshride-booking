@@ -94,15 +94,36 @@
   });
 
   test('calendar: prev button is disabled again back at the current month', async () => {
+    localStorage.removeItem('fr_admin_seen'); // a regular visitor, not William
     await changeCalendarMonth(-1);
     assertEqual(document.getElementById('calendarPrevBtn').disabled, true);
   });
 
-  test('regression guard: navigating before the current month is a no-op (can\'t book the past)', async () => {
+  test('regression guard: navigating before the current month is a no-op for a regular visitor (can\'t book the past)', async () => {
+    localStorage.removeItem('fr_admin_seen');
     const before = document.getElementById('calendarMonthLabel').textContent;
     await changeCalendarMonth(-1); // already at the floor — must not go further back
     const after = document.getElementById('calendarMonthLabel').textContent;
-    assertEqual(after, before, 'the public calendar must never navigate before the current month');
+    assertEqual(after, before, 'the public calendar must never navigate before the current month for a regular visitor');
+  });
+
+  // William uses the same public booking page himself — the same
+  // localStorage flag admin.html sets on login (fr_admin_seen) also unlocks
+  // paging back past the current month here, purely so he can look at how a
+  // past month went. Nothing else about the page (booking a past day is
+  // still impossible — those cells have no click handler either way).
+  test('logged in (fr_admin_seen): can page back before the current month, just to look', async () => {
+    localStorage.setItem('fr_admin_seen', '1');
+    try {
+      const before = document.getElementById('calendarMonthLabel').textContent;
+      await changeCalendarMonth(-1);
+      const after = document.getElementById('calendarMonthLabel').textContent;
+      assert(after !== before, 'expected navigation to actually move back one month when logged in');
+      assertEqual(document.getElementById('calendarPrevBtn').disabled, false, 'prev must stay enabled even at/before the current month when logged in');
+      await changeCalendarMonth(1); // back to where the other tests expect to be
+    } finally {
+      localStorage.removeItem('fr_admin_seen');
+    }
   });
 
   test('legend: orange dot is labeled "Delvis ledig", not "Delvis booket"', () => {
@@ -116,6 +137,43 @@
     assert(!!link, 'expected an about.html nav link');
     assertEqual(link.getAttribute('title'), 'Om FreshRide');
     assert(link.textContent.includes('Om FreshRide'));
+  });
+
+  // =========================================================================
+  // "Mobil visning" dev toggle — only ever shown to William (fr_admin_seen,
+  // set by admin.html on login), never a real visitor. Uses a real <iframe>
+  // (not just a narrower div) so the site's actual @media rules activate —
+  // a container's width alone doesn't affect what media queries evaluate.
+  // =========================================================================
+  test('syncMobilePreviewToggle: hidden by default, appears once logged in, disappears again on logout', () => {
+    localStorage.removeItem('fr_admin_seen');
+    syncMobilePreviewToggle();
+    assert(!document.querySelector('.fr-mobile-preview-toggle'), 'a regular visitor must never see this');
+
+    localStorage.setItem('fr_admin_seen', '1');
+    syncMobilePreviewToggle();
+    const btn = document.querySelector('.fr-mobile-preview-toggle');
+    assert(!!btn, 'expected the toggle once logged in');
+
+    syncMobilePreviewToggle(); // calling again must not duplicate it
+    assertEqual(document.querySelectorAll('.fr-mobile-preview-toggle').length, 1);
+
+    localStorage.removeItem('fr_admin_seen');
+    syncMobilePreviewToggle();
+    assert(!document.querySelector('.fr-mobile-preview-toggle'), 'must disappear again once logged out');
+  });
+
+  test('openMobilePreview: shows a phone-sized iframe of the current page, closable', () => {
+    document.getElementById('frMobilePreviewOverlay')?.remove();
+    openMobilePreview();
+    const overlay = document.getElementById('frMobilePreviewOverlay');
+    assert(!!overlay, 'expected the preview overlay to appear');
+    const iframe = overlay.querySelector('iframe');
+    assert(!!iframe, 'expected an iframe — a narrower div would not actually trigger the site\'s mobile CSS');
+    assertEqual(iframe.src, location.href);
+
+    overlay.querySelector('.fr-mobile-preview-close').click();
+    assert(!document.getElementById('frMobilePreviewOverlay'), 'expected the close button to remove the overlay');
   });
 
   test('success toast: mentions the completion SMS the customer will get later', () => {

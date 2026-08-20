@@ -38,3 +38,52 @@ document.querySelectorAll('.fr-nav-rail-item').forEach(item => {
     }
   });
 });
+
+// "Mobil visning" — a dev-only preview toggle next to the hamburger, so
+// William can check mobile layout/styling while sitting at a PC without
+// needing devtools. A narrow div alone wouldn't work: this site's
+// @media (max-width: ...) rules respond to the real browser viewport, not
+// a container's width, so shrinking a wrapper leaves every mobile style
+// inactive. An <iframe> gets its own genuine narrow viewport, so the
+// mobile CSS actually activates — same trick browser devtools use.
+// Gated on a harmless localStorage flag (never the admin password) set by
+// admin.html on login, so this only ever shows up for William, on any
+// customer-facing page, in any tab — never for a real visitor. A named,
+// idempotent function (rather than inline top-level code) so it can react
+// if the flag changes without a full page reload, and so it's callable
+// directly from tests.
+function syncMobilePreviewToggle() {
+  const railWrap = document.querySelector('.fr-nav-rail-wrap');
+  if (!railWrap) return;
+  const existing = railWrap.querySelector('.fr-mobile-preview-toggle');
+  if (localStorage.getItem('fr_admin_seen') !== '1') {
+    if (existing) existing.remove();
+    return;
+  }
+  if (existing) return;
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'fr-mobile-preview-toggle';
+  toggle.title = 'Mobil visning (kun synlig for deg)';
+  toggle.setAttribute('aria-label', 'Vis siden som på mobil');
+  toggle.textContent = '📱';
+  toggle.onclick = openMobilePreview;
+  railWrap.insertBefore(toggle, railWrap.firstChild);
+}
+syncMobilePreviewToggle();
+
+function openMobilePreview() {
+  if (document.getElementById('frMobilePreviewOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'frMobilePreviewOverlay';
+  overlay.className = 'fr-mobile-preview-overlay';
+  overlay.innerHTML = `
+    <button type="button" class="fr-mobile-preview-close">✕ Lukk mobilvisning</button>
+    <div class="fr-mobile-preview-frame">
+      <iframe src="${location.href}" title="Mobilvisning"></iframe>
+    </div>
+  `;
+  overlay.querySelector('.fr-mobile-preview-close').onclick = () => overlay.remove();
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}

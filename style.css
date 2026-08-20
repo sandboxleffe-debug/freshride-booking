@@ -576,7 +576,37 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 
 /* Expandable icon nav dropdown — anchored to the gold .fr-hamburger button in the
    navbar itself (same row as the logo), so it can never drift over the brand. */
-.fr-nav-rail-wrap { position: relative; }
+.fr-nav-rail-wrap { position: relative; display: flex; align-items: center; gap: 0.5rem; }
+
+/* "Mobil visning" — dev-only toggle, only ever rendered for William (see
+   nav-rail.js syncMobilePreviewToggle). Sits beside the hamburger, not
+   inside the rail dropdown, so it's reachable in one click. */
+.fr-mobile-preview-toggle {
+  background: none; border: 1px solid var(--fr-line-dark-zone); border-radius: 10px;
+  width: 2.75rem; height: 2.75rem; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.25rem; line-height: 1; cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.fr-mobile-preview-toggle:hover { border-color: var(--fr-gold); background: rgba(232, 185, 35, 0.1); }
+.fr-mobile-preview-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(8, 7, 10, 0.88);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;
+  padding: 1.5rem;
+}
+.fr-mobile-preview-close {
+  background: var(--fr-gold); color: var(--fr-black); border: none; border-radius: 999px;
+  font-weight: 700; font-size: 0.85rem; padding: 0.55rem 1.2rem; cursor: pointer;
+}
+.fr-mobile-preview-close:hover { background: var(--fr-gold-bright); }
+.fr-mobile-preview-frame {
+  width: 390px; height: 844px; max-width: 92vw; max-height: 78vh;
+  border-radius: 30px; border: 10px solid #111;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.7);
+  overflow: hidden; background: #000;
+}
+.fr-mobile-preview-frame iframe { width: 100%; height: 100%; border: none; }
 .fr-nav-rail {
   position: absolute;
   top: calc(100% + 0.6rem);
@@ -806,6 +836,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   width: fit-content;
   margin: 1.25rem auto 0;
   padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, rgba(232,185,35,0.2), rgba(232,185,35,0.06));
   border: 1px solid var(--fr-gold-soft);
   border-radius: 999px;
   text-decoration: none;
