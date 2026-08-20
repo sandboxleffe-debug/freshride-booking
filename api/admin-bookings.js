@@ -255,7 +255,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "PATCH") {
-    const { eventId, name, phone, services, date, startTime, durationMinutes } = req.body || {};
+    const { eventId, name, phone, services, date, startTime, durationMinutes, code } = req.body || {};
     if (!eventId) return res.status(400).json({ error: "Missing eventId" });
 
     try {
@@ -282,8 +282,25 @@ export default async function handler(req, res) {
 
       requestBody.location = existing.location || BUSINESS_ADDRESS;
 
+      // A slot that was still open ("Ledig") has no booking code yet — this
+      // is the moment it gets one, now that it's being turned into a real
+      // booking here (see admin.html's #editCodeRow). An event that already
+      // has a code keeps it fixed for life — never overwritten by an edit —
+      // since a calendar-invite link already sent to a customer depends on
+      // it staying the same.
+      const existingCode = existing.extendedProperties?.private?.freshride_code;
+      let finalCode = existingCode || null;
+      if (!existingCode) {
+        finalCode = (code || "").trim().toUpperCase();
+        if (!finalCode) {
+          const usedCodes = await getUsedCodes(calendar, CALENDAR_ID);
+          finalCode = generateUniqueCode(usedCodes);
+        }
+        requestBody.extendedProperties = { private: { freshride_code: finalCode } };
+      }
+
       await calendar.events.patch({ calendarId: CALENDAR_ID, eventId, requestBody });
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true, code: finalCode });
     } catch (err) {
       console.error("admin-bookings PATCH error:", err);
       return res.status(500).json({ error: "Klarte ikke å lagre endringen" });

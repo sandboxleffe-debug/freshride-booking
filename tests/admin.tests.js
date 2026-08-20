@@ -444,6 +444,50 @@
     assertEqual(document.getElementById('editDate').value, '2026-08-25');
     assertEqual(document.getElementById('editTime').value, '15:00');
     assertEqual(document.getElementById('editDuration').value, '150');
+    assert(!document.getElementById('editCodeRow').classList.contains('d-none'), 'a codeless (previously open) slot must offer to set a booking code');
+    assertEqual(document.getElementById('editCodeInput').value, '');
+  });
+
+  test('openEdit: an already-booked event (has a code) hides the code-setting row — its code is fixed, never re-editable here', () => {
+    openEdit({ id: 'evt1', name: 'Ola Testesen', phone: '90000001', services: 'FreshRide Complete', code: 'A12', start: '2026-08-25T10:00:00+02:00', end: '2026-08-25T11:00:00+02:00' });
+    assert(document.getElementById('editCodeRow').classList.contains('d-none'), 'an existing code must stay fixed — no way to accidentally change it via this form');
+    assertEqual(document.getElementById('editCodeLabel').textContent, 'A12');
+  });
+
+  test('saveEdit: converting a codeless slot sends the typed code, then shows it as the fixed code afterward', async () => {
+    openEdit({ id: 'evtOpen1', start: '2026-08-25T15:00:00+02:00', end: '2026-08-25T17:30:00+02:00' });
+    document.getElementById('editName').value = 'Lisbeth Berg Tønnessen';
+    document.getElementById('editPhone').value = '46765323';
+    document.getElementById('editServices').value = 'FreshRide Interior+';
+    document.getElementById('editCodeInput').value = 'k14'; // typed lowercase — server uppercases, but the request itself is sent as typed
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, code: 'K14' }), { status: 200 }));
+    };
+    try {
+      await saveEdit();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody.code, 'k14', 'expected the typed code to be forwarded to the server');
+    assertEqual(document.getElementById('editCodeLabel').textContent, 'K14', 'expected the server-confirmed code to now show as the fixed code');
+    assert(document.getElementById('editCodeRow').classList.contains('d-none'), 'the code-setting row should hide once a code is set');
+  });
+
+  test('saveEdit: editing an already-coded booking never sends a code field at all', async () => {
+    openEdit({ id: 'evt1', name: 'Ola Testesen', phone: '90000001', services: 'FreshRide Complete', code: 'A12', start: '2026-08-25T10:00:00+02:00', end: '2026-08-25T11:00:00+02:00' });
+    document.getElementById('editPhone').value = '90000002'; // just changing the phone number, a routine edit
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => { sentBody = JSON.parse(opts.body); return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })); };
+    try {
+      await saveEdit();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assert(!('code' in sentBody), 'a routine edit on an already-coded booking must never include a code field, so the server never touches it');
   });
 
   test('oversikt: renderCompletedSection() shows recent completed jobs, sorted newest first', () => {

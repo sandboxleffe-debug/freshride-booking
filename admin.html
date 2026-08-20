@@ -918,6 +918,11 @@
             <input type="number" id="editDuration" class="form-control fr-input" step="15" min="15" />
           </div>
         </div>
+        <div class="fr-form-row d-none" id="editCodeRow">
+          <label class="fr-label">Bookingkode</label>
+          <input id="editCodeInput" class="form-control fr-input" maxlength="3" style="text-transform:uppercase;" placeholder="La stå tomt for auto-generert kode" />
+          <p class="fr-hint">Denne tiden har ingen kode ennå. Skriv inn en spesifikk kode hvis kunden allerede har fått en (f.eks. i en SMS du sendte selv), ellers genereres en automatisk.</p>
+        </div>
         <div id="editMsg" class="fr-save-msg"></div>
       </div>
       <div class="modal-footer border-0 flex-column gap-2">
@@ -1859,6 +1864,11 @@ function openEdit(b) {
   document.getElementById('editDate').value = toDateKey(start);
   document.getElementById('editTime').value = String(start.getHours()).padStart(2,'0') + ':' + String(start.getMinutes()).padStart(2,'0');
   document.getElementById('editDuration').value = Math.round((end - start) / 60000);
+  // A still-open ("Ledig") slot has no booking code yet — offer to set one
+  // (or leave it to auto-generate) only in that case. An already-booked
+  // event keeps its existing code fixed, shown read-only as before.
+  document.getElementById('editCodeRow').classList.toggle('d-none', !!b.code);
+  document.getElementById('editCodeInput').value = '';
   document.getElementById('editMsg').textContent = '';
   editModal.show();
 }
@@ -1866,6 +1876,7 @@ function openEdit(b) {
 async function saveEdit() {
   const msg = document.getElementById('editMsg');
   msg.textContent = ''; msg.className = 'fr-save-msg';
+  const settingCode = !document.getElementById('editCodeRow').classList.contains('d-none');
   try {
     const res = await fetch('/api/admin-bookings', {
       method: 'PATCH',
@@ -1878,10 +1889,16 @@ async function saveEdit() {
         date: document.getElementById('editDate').value,
         startTime: document.getElementById('editTime').value,
         durationMinutes: Number(document.getElementById('editDuration').value),
+        ...(settingCode ? { code: document.getElementById('editCodeInput').value.trim() } : {}),
       })
     });
     if (res.status === 401) return handleAuthExpired();
     if (!res.ok) throw new Error('failed');
+    const data = await res.json().catch(() => ({}));
+    if (settingCode && data.code) {
+      document.getElementById('editCodeLabel').textContent = data.code;
+      document.getElementById('editCodeRow').classList.add('d-none');
+    }
     msg.textContent = 'Lagret ✓'; msg.classList.add('ok');
     fetchOverview();
     loadMonthCalendar();
