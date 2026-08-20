@@ -611,6 +611,33 @@
     await loadMonthCalendar();
   });
 
+  // A collapsed week used to be a plain gray bar with zero color info — a
+  // week full of red (fully-booked) days looked identical to an empty one.
+  // Now each collapsed bar carries a row of status dots, one per day, so
+  // busy history stays visible even once compacted.
+  test('calendar: a collapsed past week still shows a status dot per day, including red ones', async () => {
+    const now = new Date();
+    if (now.getMonth() > 0) {
+      calendarViewYear = now.getFullYear();
+      calendarViewMonth = now.getMonth(); // previous month, guaranteed fully past
+      // First day of that month is red (fully booked) — the collapsed bar
+      // for its week must reflect that, not just show a blank date range.
+      const firstOfMonth = new Date(calendarViewYear, calendarViewMonth - 1, 1);
+      const key = toDateKey(firstOfMonth);
+      window.fetch = () => Promise.resolve(new Response(JSON.stringify({ days: { [key]: 'red' } }), { status: 200 }));
+      await loadMonthCalendar();
+      const bar = document.querySelector('.fr-admin-cal-week-collapsed');
+      assert(!!bar, 'expected at least one collapsed week bar');
+      assert(!!bar.querySelector('.fr-admin-cal-week-dots'), 'expected a row of status dots inside the collapsed bar');
+      assert(bar.querySelectorAll('.fr-admin-cal-week-dot').length >= 7 || bar.querySelectorAll('.fr-admin-cal-week-dot').length > 0, 'expected one dot per day in the week');
+      assert(bar.classList.contains('fr-admin-cal-week-had-red'), 'a week that had a red day must get the had-red highlight, not read as empty');
+      assert(!!bar.querySelector('.fr-admin-cal-week-dot-red'), 'expected an actual red-colored dot for that day');
+    }
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ days: {} }), { status: 200 }));
+    calendarViewYear = undefined; calendarViewMonth = undefined;
+    await loadMonthCalendar();
+  });
+
   // =========================================================================
   // Varslingslogg: emoji-chips + "Se"-knapp må ikke klemmes inn på samme
   // linje som navn/kode — de brekker ned på en egen linje under.
@@ -971,6 +998,20 @@
     assert(!rowEn.querySelector('.fr-tier-badge'), 'a 1-job customer must not show any tier badge');
     assert(!!rowBronse.querySelector('.fr-tier-bronze'), 'expected the bronze tier class for 2 jobs');
     assert(!!rowGull.querySelector('.fr-tier-gold'), 'expected the gold tier class for 4 jobs');
+  });
+
+  // The FR-number used to sit inline after the customer's name, which reads
+  // poorly since names are ragged-width — now it lives directly under the
+  // avatar (fixed width, so it lines up into a clean column going down).
+  test('renderCustomersAdmin: FR-number sits under the avatar, not inline after the name', () => {
+    window._frJobs = [{ id: 'tnum1', customer_number: '13', customer_name: 'Lars Ivar Berg', status: 'completed', job_date: '2026-07-01' }];
+    _frCustomerCarsMap = {}; _frCustomerAvatarMap = {}; _frCustomerReferralMap = {};
+    renderCustomersAdmin();
+    const row = document.querySelector('.fr-customer-row');
+    assert(!row.querySelector('.fr-customer-row-name').textContent.includes('FR13'), 'the name line itself must no longer carry the FR-number');
+    const col = row.querySelector('.fr-customer-avatar-col');
+    assert(!!col, 'expected an avatar+number column wrapper');
+    assert(col.textContent.includes('FR13'), 'expected the FR-number underneath the avatar');
   });
 
   // =========================================================================
@@ -1654,7 +1695,8 @@
     assertEqual(document.getElementById('editJobTip').value, '100');
   });
 
-  test('updateJobEditTotal: sums amount + tip, and turns red when the total is 0', () => {
+  test('updateJobEditTotal: sums amount + tilleggsprodukter + tip, and turns red when the total is 0', () => {
+    editingJobAddons = [];
     document.getElementById('editJobAmount').value = '500';
     document.getElementById('editJobTip').value = '50';
     updateJobEditTotal();
@@ -1668,9 +1710,10 @@
     assert(document.getElementById('editJobTotalDisplay').classList.contains('fr-job-total-zero'), 'a zero total must be flagged in red');
   });
 
-  test('saveJobEdit: sends price_paid as amount+tip, and tip_amount separately', async () => {
+  test('saveJobEdit: sends price_paid as amount+tip, and tip_amount separately (no tilleggsprodukter)', async () => {
     window._frJobs = [{ id: 'saveTip1', booking_code: 'S01', customer_phone: null, completion_sms_sent_at: '2026-01-01T00:00:00Z', completion_notice_dismissed: false }];
     editingJobId = 'saveTip1';
+    editingJobAddons = [];
     document.getElementById('editJobCustomerPhone').value = '';
     document.getElementById('editJobAmount').value = '500';
     document.getElementById('editJobTip').value = '100';
@@ -1692,6 +1735,80 @@
     }
     assertEqual(sentBody.price_paid, 600, 'expected price_paid to be amount + tip');
     assertEqual(sentBody.tip_amount, 100);
+    assertEqual(sentBody.addons, []);
+  });
+
+  // =========================================================================
+  // Tilleggsprodukter: extras agreed on during the job itself (e.g. a dekk
+  // fornyer added on the spot) — must land in the total without touching
+  // the booked "services" label (Premium stays Premium).
+  // =========================================================================
+  test('addJobAddon/removeJobAddon: add and remove a line item, updating the list and total', () => {
+    editingJobAddons = [];
+    document.getElementById('editJobAmount').value = '600';
+    document.getElementById('editJobTip').value = '0';
+    document.getElementById('editJobAddonLabel').value = 'Dekk Fornyer';
+    document.getElementById('editJobAddonPrice').value = '250';
+    addJobAddon();
+    assertEqual(editingJobAddons, [{ label: 'Dekk Fornyer', price: 250 }]);
+    assertEqual(document.getElementById('editJobAddonLabel').value, '', 'input should clear after adding');
+    assert(document.getElementById('editJobAddonsList').textContent.includes('Dekk Fornyer'));
+    assert(document.getElementById('editJobAddonsList').textContent.includes('250'));
+    assertEqual(document.getElementById('editJobTotalDisplay').textContent, 'kr 850', 'total must include the new addon immediately');
+
+    removeJobAddon(0);
+    assertEqual(editingJobAddons, []);
+    assertEqual(document.getElementById('editJobAddonsList').innerHTML, '');
+    assertEqual(document.getElementById('editJobTotalDisplay').textContent, 'kr 600', 'total must drop back once the addon is removed');
+  });
+
+  test('addJobAddon: a blank label is ignored, never adds an empty line item', () => {
+    editingJobAddons = [];
+    document.getElementById('editJobAddonLabel').value = '   ';
+    document.getElementById('editJobAddonPrice').value = '100';
+    addJobAddon();
+    assertEqual(editingJobAddons, [], 'must not add a line item with no label');
+  });
+
+  test('openJobEdit: loads existing addons and back-calculates the booking amount excluding them', () => {
+    window._frJobs = [
+      { id: 'addon1', customer_name: 'Med Tillegg', job_date: '2026-08-19', status: 'completed', services: 'FreshRide Premium', price_paid: 850, tip_amount: 0, addons: [{ label: 'Clay', price: 250 }] },
+    ];
+    openJobEdit('addon1');
+    assertEqual(document.getElementById('editJobServices').value, 'FreshRide Premium', 'the booked service label must stay untouched by addons');
+    assertEqual(document.getElementById('editJobAmount').value, '600', 'expected price_paid minus the addon, not the full 850');
+    assertEqual(editingJobAddons, [{ label: 'Clay', price: 250 }]);
+    assert(document.getElementById('editJobAddonsList').textContent.includes('Clay'));
+    assertEqual(document.getElementById('editJobTotalDisplay').textContent, 'kr 850');
+  });
+
+  test('saveJobEdit: folds tilleggsprodukter into price_paid and sends them as their own list, services label unchanged', async () => {
+    window._frJobs = [{ id: 'addon2', booking_code: 'S02', customer_phone: null, completion_sms_sent_at: '2026-01-01T00:00:00Z', completion_notice_dismissed: false, services: 'FreshRide Premium' }];
+    editingJobId = 'addon2';
+    editingJobAddons = [{ label: 'Dekk Fornyer', price: 250 }, { label: 'Clay', price: 150 }];
+    document.getElementById('editJobCustomerPhone').value = '';
+    document.getElementById('editJobAmount').value = '600';
+    document.getElementById('editJobTip').value = '0';
+    document.getElementById('editJobServices').value = 'FreshRide Premium';
+    document.getElementById('editJobCustomer').value = 'Med Tillegg';
+    document.getElementById('editJobCustomerNumber').value = '';
+    document.getElementById('editJobDate').value = '2026-08-19';
+
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      if (opts && opts.method === 'PATCH') sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    };
+    try {
+      await saveJobEdit();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody.services, 'FreshRide Premium', 'the booked service must never be rewritten to mention the addons');
+    assertEqual(sentBody.price_paid, 1000, 'expected amount(600) + addons(250+150) + tip(0)');
+    assertEqual(sentBody.addons, [{ label: 'Dekk Fornyer', price: 250 }, { label: 'Clay', price: 150 }]);
+    editingJobAddons = []; // reset for any later test relying on the empty default
   });
 
   test('computeServicesBasePrice: returns null (not 0) when no service label matches', () => {

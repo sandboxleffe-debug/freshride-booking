@@ -1115,6 +1115,19 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 }
 .fr-job-total-display.fr-job-total-zero { color: #C63B2E; }
 
+/* Tilleggsprodukter — extra products agreed on during the job (job edit) */
+.fr-addon-row {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.3rem 0; border-bottom: 1px solid var(--fr-panel-border);
+}
+.fr-addon-row:last-child { border-bottom: none; }
+.fr-addon-label { flex: 1; min-width: 0; font-size: 0.85rem; color: var(--fr-panel-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fr-addon-price { font-weight: 600; font-size: 0.85rem; color: var(--fr-panel-text); flex-shrink: 0; }
+.fr-addon-add-row { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+.fr-addon-add-row #editJobAddonLabel { flex: 1; min-width: 0; }
+.fr-addon-add-row #editJobAddonPrice { width: 5.5rem; flex-shrink: 0; }
+.fr-addon-add-btn { width: auto; flex-shrink: 0; padding: 0 0.9rem; }
+
 /* "Vis flere" button — needs to read clearly on the light panel background */
 .fr-show-more-btn {
   background: var(--fr-panel-bg-2);
@@ -1156,6 +1169,11 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
   padding: 0.55rem 0.7rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.15s ease;
 }
 .fr-customer-row:hover { border-color: var(--fr-gold); }
+/* Customer number sits directly under the avatar, not inline after the
+   name — every avatar is the same fixed width, so this reads as a clean,
+   right-aligned-looking column of FR-numbers going down the whole list. */
+.fr-customer-avatar-col { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; flex-shrink: 0; }
+.fr-customer-row-number { font-family: var(--font-display); font-weight: 700; font-size: 0.66rem; color: var(--fr-gold-deep); white-space: nowrap; }
 .fr-customer-avatar {
   flex-shrink: 0; width: 2.3rem; height: 2.3rem; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;

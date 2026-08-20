@@ -519,7 +519,7 @@ async function handleJobs(req, res, supabase) {
   }
 
   if (req.method === "PATCH") {
-    const { id, customer_name, customer_number, customer_phone, car_type, services, price_paid, tip_amount, notes, job_size, time_spent_minutes, job_date, campaign_price, status, reference_product_name, show_as_reference } = req.body || {};
+    const { id, customer_name, customer_number, customer_phone, car_type, services, price_paid, tip_amount, addons, notes, job_size, time_spent_minutes, job_date, campaign_price, status, reference_product_name, show_as_reference } = req.body || {};
     if (!id) return res.status(400).json({ error: "Missing id" });
     const updates = {};
     if (customer_name !== undefined) updates.customer_name = customer_name;
@@ -529,6 +529,12 @@ async function handleJobs(req, res, supabase) {
     if (services !== undefined) updates.services = services;
     if (price_paid !== undefined) updates.price_paid = price_paid;
     if (tip_amount !== undefined) updates.tip_amount = tip_amount;
+    // Products/services agreed on during the job itself (e.g. a dekk fornyer
+    // added on the spot) — kept as their own line items instead of being
+    // folded into `services`, so the original booked service (e.g. Premium)
+    // still reads as exactly what was booked, while price_paid (computed
+    // client-side as amount + addons + tip) still reflects the real total.
+    if (addons !== undefined) updates.addons = Array.isArray(addons) ? addons : [];
     if (notes !== undefined) updates.notes = notes;
     if (job_size !== undefined) updates.job_size = job_size;
     if (time_spent_minutes !== undefined) updates.time_spent_minutes = time_spent_minutes;
