@@ -423,6 +423,29 @@
     assert(!!document.querySelector('#listOpenSection .fr-list-more-btn'), 'expected a "vis flere" button');
   });
 
+  // An open ("Ledig") row must be clickable into the same edit modal as a
+  // booked one — that's the only way to manually turn an existing free slot
+  // into a booking from admin (e.g. re-creating one lost by mistake) without
+  // ever going through the customer-facing flow, which would send a
+  // duplicate booking-confirmation SMS.
+  test('oversikt: clicking an open ("Ledig") row opens the edit modal, pre-filled with its own time and blank customer fields', () => {
+    const el = document.getElementById('list');
+    el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;
+    const openItems = [{ id: 'evtOpen1', start: '2026-08-25T15:00:00+02:00', end: '2026-08-25T17:30:00+02:00' }];
+    listOpenShown = LIST_OPEN_PAGE_SIZE;
+    window._frListOpen = openItems;
+    renderListSection('listOpenSection', openItems, 'open');
+    const row = document.querySelector('#listOpenSection .fr-list-row');
+    assertEqual(getComputedStyle(row).cursor, 'pointer', 'expected an open row to look clickable, not cursor:default');
+    row.click();
+    assertEqual(editingEventId, 'evtOpen1');
+    assertEqual(document.getElementById('editName').value, '', 'a still-open slot has no customer yet');
+    assertEqual(document.getElementById('editPhone').value, '');
+    assertEqual(document.getElementById('editDate').value, '2026-08-25');
+    assertEqual(document.getElementById('editTime').value, '15:00');
+    assertEqual(document.getElementById('editDuration').value, '150');
+  });
+
   test('oversikt: renderCompletedSection() shows recent completed jobs, sorted newest first', () => {
     const el = document.getElementById('list');
     el.innerHTML = `<div id="listBookedSection"></div><div id="listCompletedSection"></div><div id="listOpenSection"></div>`;

@@ -1581,7 +1581,7 @@ function bookedRowHtml(b) {
 
 function openRowHtml(s) {
   return `
-    <div class="fr-list-row" style="cursor:default">
+    <div class="fr-list-row">
       <div class="fr-list-row-when">${fmtDateShort(s.start)} · ${fmtTime(s.start)}</div>
       <div class="fr-list-row-body"><span class="fr-list-row-open">Ledig</span></div>
     </div>
@@ -1603,7 +1603,13 @@ function renderListSection(containerId, items, kind) {
     ? `<button type="button" class="fr-list-more-btn" onclick="expandListSection('${kind}')">Vis flere (${remaining} igjen)</button>`
     : '';
   container.innerHTML = `<div class="fr-list-section-label">${label}</div>${rowsHtml}${moreHtml}`;
-  if (kind === 'booked') {
+  // Both "booked" and "open" (Ledig) rows open the same edit modal — for an
+  // open slot, name/phone/services just start blank, so filling them in and
+  // saving turns that exact slot into a real booking without ever touching
+  // the customer-facing booking flow (so no booking-confirmation SMS goes
+  // out — useful when it's already been sent by hand, e.g. after a manually
+  // agreed time change).
+  if (kind === 'booked' || kind === 'open') {
     container.querySelectorAll('.fr-list-row').forEach((row, i) => { row.onclick = () => openEdit(visible[i]); });
   }
 }
