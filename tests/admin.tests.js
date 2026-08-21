@@ -1175,7 +1175,7 @@
     assert(!rowWithout.querySelector('.fr-customer-avatar-img'), 'expected customer 21 (no avatar set) to fall back to the initials circle');
   });
 
-  test('avatar picker: 3 options in edit modal, click selects it and save PATCHes it', async () => {
+  test('avatar picker: initials + one option per FR_AVATARS entry in edit modal, click selects it and save PATCHes it', async () => {
     window._frJobs = [
       { id: 'a3', customer_number: '22', customer_name: 'Picker Testesen', customer_phone: '90000022', status: 'completed', job_date: '2026-07-01' },
     ];
@@ -1185,7 +1185,7 @@
     openCustomerEdit('22');
     const picker = document.getElementById('custEditAvatarPicker');
     const opts = picker.querySelectorAll('.fr-avatar-option');
-    assertEqual(opts.length, 3, 'expected initials + avatar-1 + avatar-2 as the 3 picker options');
+    assertEqual(opts.length, FR_AVATARS.length + 1, `expected initials + one option per avatar (${FR_AVATARS.length} avatars)`);
     assert(opts[0].classList.contains('selected'), 'the initials/"none" option should show as selected when no avatar is chosen yet');
 
     opts[1].click();
@@ -1204,6 +1204,16 @@
     }
     assert(!!sentBody, 'expected the customer-cars PATCH to fire on save');
     assertEqual(sentBody.avatar, 'avatar-1', 'expected the selected avatar key to be sent in the PATCH body');
+  });
+
+  test('avatar picker: all 5 avatar images are offered, each pointing at its own file', () => {
+    window._frJobs = [
+      { id: 'a4', customer_number: '23', customer_name: 'Fem Avatarer', status: 'completed', job_date: '2026-07-01' },
+    ];
+    _frCustomerCarsMap = {}; _frCustomerAvatarMap = {}; _frCustomerReferralMap = {};
+    openCustomerEdit('23');
+    const imgs = Array.from(document.querySelectorAll('#custEditAvatarPicker .fr-avatar-option img'));
+    assertEqual(imgs.map(i => i.getAttribute('src')), ['avatar-1', 'avatar-2', 'avatar-3', 'avatar-4', 'avatar-5'].map(a => `assets/${a}.png`));
   });
 
   // =========================================================================

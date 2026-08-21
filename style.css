@@ -1302,7 +1302,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 .fr-customer-chevron svg { width: 1.1em; height: 1.1em; }
 
 /* Avatar picker — customer edit modal */
-.fr-avatar-picker { display: flex; gap: 0.7rem; }
+.fr-avatar-picker { display: flex; flex-wrap: wrap; gap: 0.7rem; }
 .fr-avatar-option {
   width: 3.4rem; height: 3.4rem; border-radius: 50%; overflow: hidden; cursor: pointer;
   border: 2.5px solid transparent; box-shadow: 0 0 0 1px var(--fr-panel-border);
