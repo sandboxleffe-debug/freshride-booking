@@ -8,6 +8,7 @@
 import { sendSms } from "./elks-sms.js";
 import { findCustomerByPhone } from "./customers.js";
 import { redeemDiscountCode } from "./discount-codes.js";
+import { redeemMultiUseCode } from "./multi-use-codes.js";
 import { redeemReferralCode } from "./referral-codes.js";
 import { getOsloParts, formatOsloTime } from "./timezone.js";
 import { buildBookingTextCustomer, buildTimeRequestTextCustomer } from "./sms-templates.js";
@@ -50,21 +51,28 @@ export function formatNorwegianDateOnly(dateStr) {
   return `${d}. ${NO_MONTHS[m - 1]} ${y}`;
 }
 
-// One-time discount code first; if that's not a real discount code, falls
-// back to a personal "tips en venn" referral code (either crediting whoever
-// owns it, or letting the owner cash in their own earned tier discount).
-// Never throws — a redemption failure (already used, typo, race) just means
-// no discount gets attached, it never blocks the booking itself.
+// Tried in order: a one-time discount code, then a limited-use campaign
+// code (freshride_multi_use_codes — a single code many different customers
+// can type, up to a fixed number of uses), then a personal "tips en venn"
+// referral code (either crediting whoever owns it, or letting the owner
+// cash in their own earned tier discount). Never throws — a redemption
+// failure (already used, typo, race, exhausted) just means no discount
+// gets attached, it never blocks the booking itself.
 export async function redeemCodeForBooking(supabase, discountCode, phone) {
   if (!discountCode) return { discountPercent: null, referredBy: null };
   try {
     const result = await redeemDiscountCode(supabase, discountCode, { phone });
     if (result.ok) return { discountPercent: result.percent, referredBy: null };
     // Not a valid one-time code (unknown/already used) — fall through and
-    // try it as a personal referral code instead, same as book-slot.js
-    // always has.
+    // try it as a campaign code, then a personal referral code instead.
   } catch (err) {
     console.error("redeemCodeForBooking discount error:", err);
+  }
+  try {
+    const multiUse = await redeemMultiUseCode(supabase, discountCode);
+    if (multiUse.ok) return { discountPercent: multiUse.percent, referredBy: null };
+  } catch (err) {
+    console.error("redeemCodeForBooking multi-use error:", err);
   }
   try {
     const match = await findCustomerByPhone(supabase, phone);

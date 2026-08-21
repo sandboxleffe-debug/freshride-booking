@@ -1265,6 +1265,80 @@
   });
 
   // =========================================================================
+  // Kampanjekode: one code many different customers can use, capped at a
+  // fixed number of uses (e.g. AUGUST, 15%, 20 uses) — distinct from a
+  // one-time discount code above (exactly one redemption ever).
+  // =========================================================================
+  test('loadCampaignCodesAdmin: shows active/exhausted/off status distinctly, with a toggle and delete on each', async () => {
+    const origFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      codes: [
+        { code: 'AUGUST', percent: 15, max_uses: 20, use_count: 3, active: true },
+        { code: 'GONE', percent: 10, max_uses: 5, use_count: 5, active: true },
+        { code: 'PAUSED', percent: 20, max_uses: 10, use_count: 2, active: false },
+      ],
+    }), { status: 200 }));
+    try {
+      await loadCampaignCodesAdmin();
+    } finally {
+      window.fetch = origFetch;
+    }
+    const rows = document.querySelectorAll('#campaignCodeList .fr-service-row');
+    assertEqual(rows.length, 3);
+    assert(rows[0].textContent.includes('Aktiv') && rows[0].textContent.includes('3/20'), 'expected active status with usage count');
+    assert(rows[1].textContent.includes('Brukt opp') && rows[1].textContent.includes('5/5'), 'expected an exhausted code to read distinctly from merely "active"');
+    assert(rows[2].textContent.includes('Av') && rows[2].textContent.includes('2/10'), 'expected a manually-paused code to read distinctly too');
+    rows.forEach(row => assertEqual(row.querySelectorAll('button').length, 2, 'expected a toggle-active and a delete button on every campaign code'));
+  });
+
+  test('createCampaignCode: sends the typed code, gauge percent, and max uses; blank code lets the server auto-generate', async () => {
+    document.getElementById('campaignCodeInput').value = 'summer';
+    setGaugeValue('campaign', 'campaignPct', 15);
+    document.getElementById('campaignMaxUses').value = '20';
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      if (String(url).includes('campaign-codes') && opts && opts.method === 'POST') {
+        sentBody = JSON.parse(opts.body);
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, code: 'SUMMER', percent: 15, max_uses: 20, use_count: 0, active: true }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ codes: [] }), { status: 200 }));
+    };
+    try {
+      await createCampaignCode();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody, { code: 'summer', percent: 15, maxUses: 20 });
+    assert(document.getElementById('campaignCodeMsg').textContent.includes('SUMMER'), 'expected the created code in the confirmation message');
+    assertEqual(document.getElementById('campaignCodeInput').value, '', 'the code input should clear after a successful create');
+  });
+
+  test('createCampaignCode: requires both a percent and a max-uses value', async () => {
+    document.getElementById('campaignCodeInput').value = '';
+    setGaugeValue('campaign', 'campaignPct', 0);
+    document.getElementById('campaignMaxUses').value = '';
+    window.fetch = () => { throw new Error('must not call the network without a valid percent and max uses'); };
+    await createCampaignCode();
+    assert(document.getElementById('campaignCodeMsg').classList.contains('err'));
+  });
+
+  test('toggleCampaignCodeActive: PATCHes the code and the new active state', async () => {
+    let sentBody = null;
+    const origFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return Promise.resolve(new Response(JSON.stringify({ codes: [] }), { status: 200 }));
+    };
+    try {
+      await toggleCampaignCodeActive('AUGUST', false);
+    } finally {
+      window.fetch = origFetch;
+    }
+    assertEqual(sentBody, { code: 'AUGUST', active: false });
+  });
+
+  // =========================================================================
   // Tjenester: kategori (complete/premium/exterior/interior/addon) styrer
   // gjensidig-utelukkelse pa bookingsiden — admin ma kunne sette/redigere den.
   // =========================================================================

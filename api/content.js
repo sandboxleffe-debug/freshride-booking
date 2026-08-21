@@ -12,6 +12,7 @@ import { getSupabaseAdmin } from "./_lib/supabase.js";
 import { getCarsByPhone } from "./_lib/customers.js";
 import { checkRateLimit, getClientIp } from "./_lib/rate-limit.js";
 import { validateDiscountCode } from "./_lib/discount-codes.js";
+import { previewMultiUseCode } from "./_lib/multi-use-codes.js";
 import { previewReferralCode } from "./_lib/referral-codes.js";
 
 function isPromoActive(promo, todayStr) {
@@ -198,7 +199,11 @@ export default async function handler(req, res) {
       if (!allowed) return res.status(200).json({ valid: false });
       const result = await validateDiscountCode(supabase, code);
       if (result.valid) return res.status(200).json(result);
-      // Not a one-time discount code — maybe it's someone's personal referral code instead.
+      // Not a one-time discount code — maybe it's an active campaign code
+      // (freshride_multi_use_codes) with uses still left.
+      const campaign = await previewMultiUseCode(supabase, code);
+      if (campaign) return res.status(200).json(campaign);
+      // Or someone's personal referral code instead.
       const referral = await previewReferralCode(supabase, code, phone);
       if (referral) return res.status(200).json({ valid: referral.valid, percent: referral.percent });
       return res.status(200).json({ valid: false });

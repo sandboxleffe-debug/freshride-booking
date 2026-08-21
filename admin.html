@@ -868,6 +868,42 @@
       </div>
 
       <div class="fr-panel">
+        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="gift"></span> Ny kampanjekode</h2></div>
+        <p class="fr-hint">Én kode flere ulike kunder kan bruke — men kun et fast antall ganger, så det skaper litt "være på" i stedet for å gjelde fritt for alle hele perioden. F.eks. koden AUGUST, 15%, 20 bruk — når alle 20 er brukt opp virker den ikke lenger.</p>
+        <div class="fr-form-row">
+          <label class="fr-label">Kode (valgfritt — la stå tomt for auto-generert)</label>
+          <input id="campaignCodeInput" class="form-control fr-input" placeholder="F.eks. AUGUST" maxlength="20" style="text-transform:uppercase;" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Rabatt</label>
+          <div class="fr-gauge-row">
+            <div class="fr-gauge-col">
+              <div class="fr-gauge-track" id="campaignGaugeTrack">
+                <div class="fr-gauge-band fr-gauge-band-low"></div>
+                <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                <div class="fr-gauge-band fr-gauge-band-high"></div>
+                <div class="fr-gauge-dim" id="campaignGaugeDim"></div>
+                <div class="fr-gauge-handle" id="campaignGaugeHandle"></div>
+              </div>
+              <div class="fr-gauge-ticks"><span>0</span><span>50</span><span>100</span></div>
+            </div>
+            <div class="fr-gauge-value" id="campaignGaugeValueText">0%</div>
+          </div>
+          <input type="hidden" id="campaignPct" value="0" />
+        </div>
+        <div class="fr-form-row">
+          <label class="fr-label">Maks antall bruk</label>
+          <input type="number" id="campaignMaxUses" class="form-control fr-input" min="1" step="1" placeholder="F.eks. 20" />
+        </div>
+        <button class="btn fr-btn-primary w-100" onclick="createCampaignCode()"><span class="fr-icon" data-fr-icon="gift"></span> Opprett kampanjekode</button>
+        <div id="campaignCodeMsg" class="fr-save-msg"></div>
+      </div>
+      <div class="fr-panel">
+        <div class="fr-panel-head"><h2>Alle kampanjekoder</h2></div>
+        <div id="campaignCodeList"></div>
+      </div>
+
+      <div class="fr-panel">
         <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="info"></span> Om oss-innhold</h2></div>
         <label class="fr-label">Overskrift</label>
         <input id="aboutHeadingInput" class="form-control fr-input mb-3" />
@@ -1317,9 +1353,11 @@ function enterAdmin() {
   loadCustomerCars();
   loadGalleryAdmin();
   loadDiscountCodesAdmin();
+  loadCampaignCodesAdmin();
   initJobFormGauges();
   initPromoGauge();
   initDiscountGauge();
+  initCampaignGauge();
   loadJobServiceOptions();
   loadJobsAdmin();
   loadExpensesAdmin();
@@ -2792,6 +2830,93 @@ async function deleteDiscountCode(code) {
   loadDiscountCodesAdmin();
 }
 
+/* ---------------- Kampanjekode (multi-use, e.g. "AUGUST" for the first 20) --
+   Different from a one-time discount code above — this is one code many
+   different customers can type, capped at a fixed use count, so a campaign
+   creates real scarcity instead of quietly working for anyone all period. */
+function campaignCodeStatusHtml(c) {
+  const used = c.use_count >= c.max_uses;
+  if (used) return `${frIcon('checkCircle')} Brukt opp (${c.use_count}/${c.max_uses})`;
+  if (!c.active) return `${frIcon('ban')} Av (${c.use_count}/${c.max_uses} brukt)`;
+  return `${frIcon('checkCircle')} Aktiv — ${c.use_count}/${c.max_uses} brukt`;
+}
+
+async function loadCampaignCodesAdmin() {
+  const list = document.getElementById('campaignCodeList');
+  if (!list) return;
+  try {
+    const res = await fetch('/api/admin-data?resource=campaign-codes', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    const codes = data.codes || [];
+    window._frCampaignCodes = codes;
+    if (!codes.length) { list.innerHTML = '<p class="fr-empty-day">Ingen kampanjekoder opprettet ennå.</p>'; return; }
+    list.innerHTML = codes.map(c => `
+      <div class="fr-service-row">
+        <div>
+          <div class="fr-service-row-label">${c.code} — ${c.percent}%</div>
+          <div class="fr-service-row-desc">${campaignCodeStatusHtml(c)}</div>
+        </div>
+        <div class="fr-service-row-actions">
+          <button class="fr-icon-btn" title="${c.active ? 'Slå av' : 'Slå på'}" onclick="toggleCampaignCodeActive('${c.code}', ${!c.active})">${frIcon(c.active ? 'ban' : 'checkCircle')}</button>
+          <button class="fr-icon-btn" title="Slett" onclick="deleteCampaignCode('${c.code}')">${frIcon('trash')}</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = '<p class="fr-hint fr-hint-error">Klarte ikke å hente kampanjekoder.</p>';
+  }
+}
+
+async function createCampaignCode() {
+  const msg = document.getElementById('campaignCodeMsg');
+  msg.textContent = ''; msg.className = 'fr-save-msg';
+  const code = document.getElementById('campaignCodeInput').value.trim();
+  const percent = Number(document.getElementById('campaignPct').value) || 0;
+  const maxUses = Number(document.getElementById('campaignMaxUses').value) || 0;
+  if (!percent) { msg.textContent = 'Velg en rabatt større enn 0%.'; msg.classList.add('err'); return; }
+  if (!maxUses) { msg.textContent = 'Fyll inn maks antall bruk.'; msg.classList.add('err'); return; }
+  try {
+    const res = await fetch('/api/admin-data?resource=campaign-codes', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code || undefined, percent, maxUses })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'failed');
+    msg.textContent = `Kampanjekode ${data.code} opprettet ✓`; msg.classList.add('ok');
+    document.getElementById('campaignCodeInput').value = '';
+    document.getElementById('campaignMaxUses').value = '';
+    setGaugeValue('campaign', 'campaignPct', 0);
+    loadCampaignCodesAdmin();
+  } catch (e) {
+    msg.textContent = e.message || 'Klarte ikke å opprette kampanjekode.'; msg.classList.add('err');
+  }
+}
+
+async function toggleCampaignCodeActive(code, active) {
+  try {
+    const res = await fetch('/api/admin-data?resource=campaign-codes', {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, active })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    loadCampaignCodesAdmin();
+  } catch (e) { /* silent */ }
+}
+
+async function deleteCampaignCode(code) {
+  if (!confirm(`Slette kampanjekoden ${code}?`)) return;
+  await fetch('/api/admin-data?resource=campaign-codes', {
+    method: 'DELETE',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code })
+  });
+  loadCampaignCodesAdmin();
+}
+
 /* ---------------- Regnskap: bilder (komprimering i nettleseren før opplasting) ---------------- */
 // Some phones (notably recent Samsungs) shoot very high-resolution originals
 // and/or save as HEIC/HEIF — the old <img>+dataURL decode path can silently
@@ -3082,6 +3207,14 @@ function initDiscountGauge() {
     min: 0, max: 100, step: 1, initial: 0,
     formatValue: v => v + '%',
     onChange: v => { document.getElementById('discountPct').value = v; },
+  });
+}
+
+function initCampaignGauge() {
+  createGauge('campaign', {
+    min: 0, max: 100, step: 1, initial: 0,
+    formatValue: v => v + '%',
+    onChange: v => { document.getElementById('campaignPct').value = v; },
   });
 }
 

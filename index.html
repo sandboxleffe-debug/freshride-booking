@@ -23,7 +23,7 @@
 <meta property="og:image" content="https://freshride.no/assets/hero-banner.jpg" />
 <meta property="og:locale" content="nb_NO" />
 <meta name="twitter:card" content="summary_large_image" />
-<script type="application/ld+json">
+<script type="application/ld+json" id="frLocalBusinessLd">
 {
   "@context": "https://schema.org",
   "@type": "AutoWash",
@@ -153,6 +153,7 @@
   <!-- Reviews ticker -->
   <section class="fr-reviews-section" id="reviewsSection" style="display:none;">
     <p class="fr-eyebrow">⭐ HVA KUNDENE SIER</p>
+    <p class="fr-reviews-avg" id="reviewsAvg"></p>
     <div class="fr-reviews-track-wrap" id="reviewsTrackWrap">
       <div class="fr-reviews-track" id="reviewsTrack"></div>
     </div>
@@ -465,6 +466,21 @@ async function loadReviews() {
 
     const track = document.getElementById('reviewsTrack');
     const wrap = document.getElementById('reviewsTrackWrap');
+
+    // Average + count above the ticker — also folded into the page's
+    // existing LocalBusiness JSON-LD as aggregateRating, so search results
+    // can show the star rating too, not just the on-page display.
+    const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+    document.getElementById('reviewsAvg').textContent =
+      `⭐ ${avg.toFixed(1).replace('.', ',')} av 5 — basert på ${reviews.length} anmeldelse${reviews.length === 1 ? '' : 'r'}`;
+    const ldEl = document.getElementById('frLocalBusinessLd');
+    if (ldEl) {
+      try {
+        const ld = JSON.parse(ldEl.textContent);
+        ld.aggregateRating = { "@type": "AggregateRating", ratingValue: avg.toFixed(1), reviewCount: reviews.length };
+        ldEl.textContent = JSON.stringify(ld);
+      } catch (e) { /* leave the static JSON-LD as-is */ }
+    }
 
     function starsHtml(rating) {
       const filled = '★'.repeat(rating);

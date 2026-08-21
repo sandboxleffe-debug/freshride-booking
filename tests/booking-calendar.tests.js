@@ -182,6 +182,56 @@
   });
 
   // =========================================================================
+  // Reviews: an average-rating summary above the ticker, also folded into
+  // the page's existing LocalBusiness JSON-LD as aggregateRating so search
+  // results can show the star rating too.
+  // =========================================================================
+  test('loadReviews: shows the average rating and review count above the ticker, and updates the JSON-LD', async () => {
+    const origFetch = window.fetch;
+    window.fetch = (url) => {
+      if (String(url).includes('/api/feedback')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          reviews: [
+            { id: 'r1', name: 'Ola', rating: 5, comment: 'Kjempebra!' },
+            { id: 'r2', name: 'Kari', rating: 5, comment: 'Strålende jobb.' },
+            { id: 'r3', name: 'Per', rating: 4, comment: 'Veldig bra.' },
+          ],
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ days: {} }), { status: 200 }));
+    };
+    try {
+      await loadReviews();
+    } finally {
+      window.fetch = origFetch;
+    }
+    const avgText = document.getElementById('reviewsAvg').textContent;
+    assert(avgText.includes('4,7'), `expected the average (14/3 = 4.7) in the summary, got "${avgText}"`);
+    assert(avgText.includes('3 anmeldelser'), `expected the review count, got "${avgText}"`);
+
+    const ld = JSON.parse(document.getElementById('frLocalBusinessLd').textContent);
+    assertEqual(ld.aggregateRating.reviewCount, 3);
+    assertEqual(ld.aggregateRating.ratingValue, '4.7');
+    assertEqual(ld["@type"], "AutoWash", 'must not have clobbered the rest of the existing structured data');
+  });
+
+  test('loadReviews: singular "1 anmeldelse", not "1 anmeldelser"', async () => {
+    const origFetch = window.fetch;
+    window.fetch = (url) => {
+      if (String(url).includes('/api/feedback')) {
+        return Promise.resolve(new Response(JSON.stringify({ reviews: [{ id: 'r1', name: 'Ola', rating: 5, comment: 'Bra!' }] }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ days: {} }), { status: 200 }));
+    };
+    try {
+      await loadReviews();
+    } finally {
+      window.fetch = origFetch;
+    }
+    assert(document.getElementById('reviewsAvg').textContent.includes('1 anmeldelse') && !document.getElementById('reviewsAvg').textContent.includes('1 anmeldelser'));
+  });
+
+  // =========================================================================
   // Weather (Yr / MET Norway) — a single "emoji + degrees" line at the top
   // of the opened day's slot list (not on the calendar itself — a symbol on
   // every cell turned out to be more visual noise than help).

@@ -1,6 +1,6 @@
 // api/admin-data.js — admin only (x-admin-password header)
 // All content-management CRUD, routed by ?resource=
-//   about | services | reviews | promotions | prices | jobs | completion-alerts | customer-cars | discount-codes | expenses | accounting | gallery | time-requests
+//   about | services | reviews | promotions | prices | jobs | completion-alerts | customer-cars | discount-codes | campaign-codes | expenses | accounting | gallery | time-requests
 //
 // Merged into one file to stay within Vercel's function count limit
 // (Hobby plan: 12 functions per deployment).
@@ -10,6 +10,7 @@ import { getVisitorSummary } from "./_lib/analytics.js";
 import { upsertCustomerCars, upsertCustomerAvatar, renameCarForCustomer, syncCarToCustomer } from "./_lib/customers.js";
 import { sendSms, listSms } from "./_lib/elks-sms.js";
 import { generateDiscountCode, listDiscountCodes, deleteUnusedDiscountCode, getDiscountCodeInfo, markDiscountCodeGivenAway } from "./_lib/discount-codes.js";
+import { listMultiUseCodes, createMultiUseCode, setMultiUseCodeActive, deleteMultiUseCode } from "./_lib/multi-use-codes.js";
 import { getOrCreateReferralCode, referralTierPercent } from "./_lib/referral-codes.js";
 import { getCalendarClient, CALENDAR_ID, findPastBookingByCode } from "./_lib/google-calendar.js";
 import { buildBookingTextCustomer, buildTimeRequestTextCustomer, buildCompletionSmsText, buildThanksSmsText, buildThanksSmsTextWithDiscount } from "./_lib/sms-templates.js";
@@ -895,6 +896,60 @@ async function handleDiscountCodes(req, res, supabase) {
   return res.status(405).json({ error: "Method not allowed" });
 }
 
+/* ---------------- Kampanjekode (multi-use, e.g. "AUGUST" good for 20 uses) --
+   Different from a one-time discount code above (used by exactly one
+   customer) — this is a single code any number of different customers can
+   type, capped at a fixed use count William sets, so a campaign can create
+   real scarcity ("first 20") instead of quietly working for everyone the
+   whole period. */
+async function handleCampaignCodes(req, res, supabase) {
+  if (req.method === "GET") {
+    try {
+      const codes = await listMultiUseCodes(supabase);
+      return res.status(200).json({ codes });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Klarte ikke å hente kampanjekoder" });
+    }
+  }
+  if (req.method === "POST") {
+    const { code, percent, maxUses } = req.body || {};
+    if (!percent || Number(percent) <= 0) return res.status(400).json({ error: "Ugyldig rabatt" });
+    if (!maxUses || Number(maxUses) <= 0) return res.status(400).json({ error: "Ugyldig antall bruk" });
+    try {
+      const row = await createMultiUseCode(supabase, { code, percent: Number(percent), maxUses: Number(maxUses) });
+      return res.status(200).json({ ok: true, ...row });
+    } catch (err) {
+      console.error(err);
+      if (err.code === "23505") return res.status(409).json({ error: "Denne koden finnes allerede" });
+      return res.status(500).json({ error: "Klarte ikke å opprette kampanjekode" });
+    }
+  }
+  if (req.method === "PATCH") {
+    const { code, active } = req.body || {};
+    if (!code || typeof active !== "boolean") return res.status(400).json({ error: "Missing code or active" });
+    try {
+      await setMultiUseCodeActive(supabase, code, active);
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Klarte ikke å oppdatere kampanjekoden" });
+    }
+  }
+  if (req.method === "DELETE") {
+    const { code } = req.body || {};
+    if (!code) return res.status(400).json({ error: "Missing code" });
+    try {
+      await deleteMultiUseCode(supabase, code);
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Klarte ikke å slette koden" });
+    }
+  }
+  return res.status(405).json({ error: "Method not allowed" });
+}
+
 export default async function handler(req, res) {
   if (!checkAdminPassword(req)) {
     return res.status(401).json({ error: "Feil passord" });
@@ -912,6 +967,7 @@ export default async function handler(req, res) {
   if (resource === "customer-cars") return handleCustomerCars(req, res, supabase);
   if (resource === "referral-code") return handleReferralCode(req, res, supabase);
   if (resource === "discount-codes") return handleDiscountCodes(req, res, supabase);
+  if (resource === "campaign-codes") return handleCampaignCodes(req, res, supabase);
   if (resource === "expenses") return handleExpenses(req, res, supabase);
   if (resource === "accounting") return handleAccounting(req, res, supabase);
   if (resource === "notifications") return handleNotifications(req, res, supabase);

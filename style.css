@@ -883,6 +883,7 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 
 /* Reviews rotator — shows a small, uniform batch at a time and fades to the next */
 .fr-reviews-section { margin-bottom: 2.5rem; overflow: hidden; }
+.fr-reviews-avg { text-align: center; font-size: 0.85rem; font-weight: 600; color: var(--fr-text-dark-zone-soft); margin: -0.6rem 0 1rem; }
 .fr-reviews-track-wrap { overflow: hidden; }
 .fr-reviews-track {
   display: flex;
