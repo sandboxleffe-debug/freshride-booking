@@ -684,6 +684,10 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 @media (max-width: 720px) {
   .fr-admin-tabs { display: none; }
   .fr-admin-wrap { padding-bottom: 7.5rem; }
+  /* Customer-facing pages: same fixed-nav clearance as .fr-admin-wrap above,
+     applied to the footer since that's what would otherwise sit underneath
+     the bar at the bottom of every one of these pages. */
+  .fr-footer { padding-bottom: calc(2.5rem + 4.3rem + env(safe-area-inset-bottom)); }
   .fr-bnav {
     display: flex;
     align-items: stretch;
@@ -727,7 +731,8 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
     width: 2.5rem; height: 2.5rem; border-radius: 50%; border: 1.5px solid transparent;
     transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   }
-  #adminView .fr-bnav-icon svg { width: 27px; height: 27px; }
+  .fr-bnav-icon svg { width: 27px; height: 27px; }
+  .fr-bnav-btn { text-decoration: none; }
   .fr-bnav-btn.active { color: var(--fr-gold); }
   .fr-bnav-btn.active:not(.fr-bnav-btn-main) .fr-bnav-icon {
     background: rgba(232,185,35,0.18);
@@ -1160,6 +1165,29 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
 /* Collapsed-by-default booking-info fields in the job edit modal — the
    values are auto-filled from the booking, so they take up space without
    usually needing a look; expand via the native <summary> toggle. */
+/* Collapsible top-level panels (Innstillinger) — each starts closed, so
+   scrolling past everything (galleri, SMS, kampanjer, om oss...) to reach
+   the one thing you actually want doesn't mean scrolling past every image
+   and every open text field along the way. Plain <details>/<summary> — the
+   content underneath needs no lazy-load handling, it's just visually
+   hidden until opened. */
+.fr-collapsible > summary.fr-panel-head {
+  cursor: pointer;
+  list-style: none;
+}
+.fr-collapsible > summary.fr-panel-head::-webkit-details-marker { display: none; }
+.fr-collapsible > summary.fr-panel-head::marker { content: ''; }
+.fr-collapsible > summary.fr-panel-head::after {
+  content: '▸';
+  margin-left: auto;
+  color: var(--fr-panel-text-faint);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+.fr-collapsible[open] > summary.fr-panel-head { margin-bottom: 1.5rem; }
+.fr-collapsible[open] > summary.fr-panel-head::after { transform: rotate(90deg); }
+.fr-collapsible:not([open]) > summary.fr-panel-head { margin-bottom: 0; }
+
 .fr-collapsible-booking-fields { margin-bottom: 0.9rem; }
 .fr-collapsible-booking-fields summary {
   cursor: pointer; font-weight: 600; font-size: 0.85rem; color: var(--fr-panel-text-soft);
@@ -1208,17 +1236,21 @@ h1, h2, h3, .fr-brand-text { font-family: var(--font-display); }
    "Gullkunder" a filtered filing tab behind it. The active tab visually
    merges into the list below (same bg, border pulled down over the seam);
    the inactive one sits a shade darker like a tab peeking out behind it. */
-.fr-cust-subtabs { display: flex; gap: 0.3rem; margin-bottom: 0.9rem; }
-.fr-cust-subtab {
+/* Generic sub-tab bar — .fr-cust-subtab(s) started as Kunderegister-only
+   ("Alle kunder"/"Gullkunder"), .fr-subtab(s) is the same look reused
+   wherever else a panel needs a few switchable sections (SMS: Tester/
+   Logger; Kampanjer: Fast rabatt/Engangskode/Kampanjekode). */
+.fr-cust-subtabs, .fr-subtabs { display: flex; gap: 0.3rem; margin-bottom: 0.9rem; }
+.fr-cust-subtab, .fr-subtab {
   flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.35rem;
   background: var(--fr-panel-bg-2); border: 1.5px solid var(--fr-panel-border); border-bottom: none;
   color: var(--fr-panel-text-soft); font-size: 0.82rem; font-weight: 600;
   padding: 0.55rem 0.7rem; border-radius: 10px 10px 0 0; cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.fr-cust-subtab svg { width: 0.95em; height: 0.95em; }
-.fr-cust-subtab:hover { color: var(--fr-panel-text); }
-.fr-cust-subtab.active {
+.fr-cust-subtab svg, .fr-subtab svg { width: 0.95em; height: 0.95em; }
+.fr-cust-subtab:hover, .fr-subtab:hover { color: var(--fr-panel-text); }
+.fr-cust-subtab.active, .fr-subtab.active {
   background: var(--fr-panel-bg); color: var(--fr-panel-text); border-color: var(--fr-gold);
   border-bottom: 2px solid var(--fr-panel-bg); margin-bottom: -2px; position: relative; z-index: 1;
 }

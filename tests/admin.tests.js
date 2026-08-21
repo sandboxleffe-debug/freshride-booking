@@ -639,15 +639,18 @@
   });
 
   // =========================================================================
-  // Varslingslogg: emoji-chips + "Se"-knapp må ikke klemmes inn på samme
-  // linje som navn/kode — de brekker ned på en egen linje under.
+  // Logger (SMS-fanen): Varslingslogg (app-eget forsøkslogg) og 46elks sin
+  // faktiske sendelogg pleide å ligge i to separate paneler — nå ett samlet,
+  // kronologisk sortert feed, med "vis 5 siste" og resten bak "Vis flere".
   // =========================================================================
-  test('renderNotifications: chips + "Se"-button sit in their own wrapping row, not squeezed against the name', () => {
+  test('renderMergedNotifLog: chips + "Se"-button sit in their own wrapping row, not squeezed against the name', () => {
     window._frNotifGroups = [
       { time: '2026-07-24T12:00:00Z', name: 'Kari Testesen Lang Etternavn', code: 'X10', channels: { sms_kunde: true, sms_ferdig: true }, messages: { sms_kunde: 'hei', sms_ferdig: 'ferdig' } },
     ];
-    renderNotifications();
-    const row = document.querySelector('#notificationsLog .fr-list-row');
+    _frElksSmsMessages = [];
+    notifShowAll = false;
+    renderMergedNotifLog();
+    const row = document.querySelector('#mergedNotifLog .fr-list-row');
     assert(!!row, 'expected a rendered notification row');
     const actions = row.querySelector('.fr-notif-row-actions');
     assert(!!actions, 'expected a dedicated actions wrapper for the chips + button');
@@ -656,44 +659,85 @@
     assertEqual(getComputedStyle(actions).flexBasis, '100%', 'actions wrapper must force itself onto its own line');
   });
 
-  // =========================================================================
-  // SMS-logg (46elks): the provider's own send log, separate from the app's
-  // own Varslingslogg. Message text shows directly in the row (no click-to-
-  // view step — these are short SMS bodies, not multi-channel bundles), and
-  // the recipient number is matched against Kunderegister for a readable name.
-  // =========================================================================
-  test('renderElksSmsLog: renders one row per message with the content shown inline', () => {
+  test('renderMergedNotifLog: renders one row per 46elks message with the content shown inline', () => {
+    window._frNotifGroups = [];
     _frElksSmsMessages = [
       { id: 's1', to: '+4791234567', status: 'delivered', created: '2026-07-24T12:00:00Z', message: 'Booking bekreftet ✅' },
       { id: 's2', to: '+4790000000', status: 'failed', created: '2026-07-24T11:00:00Z', message: 'Ny booking mottatt' },
     ];
-    renderElksSmsLog();
-    const rows = document.querySelectorAll('#elksSmsLog .fr-list-row');
+    notifShowAll = false;
+    renderMergedNotifLog();
+    const rows = document.querySelectorAll('#mergedNotifLog .fr-list-row');
     assertEqual(rows.length, 2, 'expected one row per logged message');
     assert(rows[0].textContent.includes('+4791234567'), 'expected the recipient number to show');
     assert(rows[0].textContent.includes('delivered'), 'expected the delivery status to show');
     assert(rows[0].textContent.includes('Booking bekreftet'), 'expected the message content to show directly, no click needed');
   });
 
-  test('renderElksSmsLog: shows an empty-state hint when there are no messages', () => {
+  test('renderMergedNotifLog: shows an empty-state hint when both sources are empty', () => {
+    window._frNotifGroups = [];
     _frElksSmsMessages = [];
-    renderElksSmsLog();
-    assert(document.getElementById('elksSmsLog').textContent.includes('Ingen SMS-er logget'), 'expected an empty-state message');
+    notifShowAll = false;
+    renderMergedNotifLog();
+    assert(document.getElementById('mergedNotifLog').textContent.includes('Ingen varsler'), 'expected an empty-state message');
   });
 
-  test('renderElksSmsLog: matches the phone number against Kunderegister and shows the customer name', () => {
+  test('renderMergedNotifLog: matches a 46elks recipient number against Kunderegister and shows the customer name', () => {
     window._frJobs = [
       { id: 'jSmsMatch', customer_number: '77', customer_name: 'Ola Nordmann', customer_phone: '92133900', status: 'completed', job_date: '2026-07-01' },
     ];
+    window._frNotifGroups = [];
     _frElksSmsMessages = [
       { id: 's1', to: '+4792133900', status: 'delivered', created: '2026-07-24T12:00:00Z', message: 'Hei Ola' },
       { id: 's2', to: '+4799999999', status: 'delivered', created: '2026-07-24T12:00:00Z', message: 'Ukjent nummer' },
     ];
-    renderElksSmsLog();
-    const rows = document.querySelectorAll('#elksSmsLog .fr-list-row');
+    notifShowAll = false;
+    renderMergedNotifLog();
+    const rows = document.querySelectorAll('#mergedNotifLog .fr-list-row');
     assert(rows[0].textContent.includes('Ola Nordmann'), 'expected the matched customer name to show for a known number');
     assert(!rows[1].textContent.includes('Nordmann'), 'an unmatched number must not show an unrelated name');
     assert(rows[1].textContent.includes('+4799999999'), 'an unmatched number should still show the bare number');
+  });
+
+  test('renderMergedNotifLog: interleaves app-log and 46elks entries chronologically, newest first', () => {
+    window._frNotifGroups = [
+      { time: '2026-07-24T10:00:00Z', name: 'App-varsel (kl 10)', code: 'A10', channels: { epost_eier: true }, messages: {} },
+    ];
+    _frElksSmsMessages = [
+      { id: 's1', to: '92133900', status: 'delivered', created: '2026-07-24T12:00:00Z', message: '46elks (kl 12)' },
+      { id: 's2', to: '92133900', status: 'delivered', created: '2026-07-24T08:00:00Z', message: '46elks (kl 08)' },
+    ];
+    notifShowAll = false;
+    renderMergedNotifLog();
+    const rows = Array.from(document.querySelectorAll('#mergedNotifLog .fr-list-row'));
+    assertEqual(rows.length, 3);
+    assert(rows[0].textContent.includes('kl 12'), 'newest (46elks 12:00) must come first');
+    assert(rows[1].textContent.includes('App-varsel'), 'app-log entry (10:00) must come second');
+    assert(rows[2].textContent.includes('kl 08'), 'oldest (46elks 08:00) must come last');
+  });
+
+  test('renderMergedNotifLog: collapses to the 5 most recent across BOTH sources combined, "Vis flere" reveals the rest', () => {
+    window._frNotifGroups = [
+      { time: '2026-07-24T10:00:00Z', name: 'App A', channels: {}, messages: {} },
+      { time: '2026-07-22T10:00:00Z', name: 'App B', channels: {}, messages: {} },
+      { time: '2026-07-20T10:00:00Z', name: 'App C', channels: {}, messages: {} },
+    ];
+    _frElksSmsMessages = [
+      { id: 'e1', to: '1', created: '2026-07-25T10:00:00Z', message: 'Elks A' },
+      { id: 'e2', to: '2', created: '2026-07-23T10:00:00Z', message: 'Elks B' },
+      { id: 'e3', to: '3', created: '2026-07-21T10:00:00Z', message: 'Elks C' },
+    ];
+    notifShowAll = false;
+    renderMergedNotifLog();
+    let rows = document.querySelectorAll('#mergedNotifLog .fr-list-row');
+    assertEqual(rows.length, 5, 'expected exactly 5 rows shown by default, across the combined 6 entries');
+    const moreBtn = document.querySelector('#mergedNotifLog .fr-show-more-btn');
+    assert(!!moreBtn, 'expected a "Vis flere" button when there are more than 5 combined entries');
+    assert(moreBtn.textContent.includes('1 til'), `expected the button to say 1 remaining, got "${moreBtn.textContent}"`);
+    moreBtn.click();
+    rows = document.querySelectorAll('#mergedNotifLog .fr-list-row');
+    assertEqual(rows.length, 6, 'expected all 6 entries after clicking "Vis flere"');
+    notifShowAll = false; // reset for later tests
   });
 
   // =========================================================================
@@ -1336,6 +1380,53 @@
       window.fetch = origFetch;
     }
     assertEqual(sentBody, { code: 'AUGUST', active: false });
+  });
+
+  // =========================================================================
+  // Innstillinger: too much scroll to reach any one thing — panels now
+  // start collapsed (<details>), and SMS / Kampanjer each gathered several
+  // separate panels into one, switched via sub-tabs instead.
+  // =========================================================================
+  test('Innstillinger: every top-level section is a closed-by-default <details>, not a permanently-open panel', () => {
+    const sections = document.querySelectorAll('#tab-about > details.fr-collapsible');
+    assert(sections.length >= 5, `expected at least 5 collapsible sections (Hero, Galleri, SMS, Kampanjer, Om oss), got ${sections.length}`);
+    sections.forEach(el => assertEqual(el.hasAttribute('open'), false, `expected "${el.querySelector('h2')?.textContent}" to start closed`));
+  });
+
+  test('Innstillinger: SMS and Kampanjer sections exist with their sub-tab groups', () => {
+    const smsPanel = Array.from(document.querySelectorAll('#tab-about > details.fr-collapsible')).find(d => d.querySelector('h2')?.textContent.includes('SMS'));
+    assert(!!smsPanel, 'expected a single "SMS" section');
+    assert(!!smsPanel.querySelector('.fr-subtabs[data-group="sms"]'), 'expected the SMS sub-tab bar (Tester/Logger) inside it');
+    assert(!!smsPanel.querySelector('#testBookingSmsBtn'), 'expected the SMS test buttons to still exist, now nested inside SMS');
+    assert(!!smsPanel.querySelector('#mergedNotifLog'), 'expected the merged log to live inside SMS too');
+
+    const campaignPanel = Array.from(document.querySelectorAll('#tab-about > details.fr-collapsible')).find(d => d.querySelector('h2')?.textContent.includes('Kampanjer'));
+    assert(!!campaignPanel, 'expected a single "Kampanjer" section');
+    const group = campaignPanel.querySelector('.fr-subtabs[data-group="campaigns"]');
+    assert(!!group, 'expected the Kampanjer sub-tab bar');
+    assertEqual(group.querySelectorAll('.fr-subtab').length, 3, 'expected 3 variants: fast rabatt (banner), engangskode, kampanjekode');
+    assert(!!campaignPanel.querySelector('#promoList'), 'expected the banner-promo list nested inside Kampanjer');
+    assert(!!campaignPanel.querySelector('#discountCodeList'), 'expected the one-time-code list nested inside Kampanjer');
+    assert(!!campaignPanel.querySelector('#campaignCodeList'), 'expected the multi-use-code list nested inside Kampanjer');
+  });
+
+  test('showSubTab: switches which panel is visible within a group, and its button becomes active — leaves other groups untouched', () => {
+    showSubTab('sms', 'tester');
+    showSubTab('campaigns', 'single');
+
+    assertEqual(document.querySelector('.fr-subtab-panel[data-group="sms"][data-panel="tester"]').classList.contains('d-none'), false);
+    assertEqual(document.querySelector('.fr-subtab-panel[data-group="sms"][data-panel="logger"]').classList.contains('d-none'), true);
+    assertEqual(document.querySelector('.fr-subtab[data-panel="tester"]').classList.contains('active'), true);
+
+    showSubTab('sms', 'logger');
+    assertEqual(document.querySelector('.fr-subtab-panel[data-group="sms"][data-panel="logger"]').classList.contains('d-none'), false);
+    assertEqual(document.querySelector('.fr-subtab-panel[data-group="sms"][data-panel="tester"]').classList.contains('d-none'), true);
+    // Switching the SMS group must not have touched Kampanjer's own selection.
+    assertEqual(document.querySelector('.fr-subtab-panel[data-group="campaigns"][data-panel="single"]').classList.contains('d-none'), false);
+    assertEqual(document.querySelector('.fr-subtab-panel[data-group="campaigns"][data-panel="banner"]').classList.contains('d-none'), true);
+
+    showSubTab('sms', 'tester');
+    showSubTab('campaigns', 'banner'); // reset for any later test relying on the default
   });
 
   // =========================================================================

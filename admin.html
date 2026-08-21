@@ -732,18 +732,18 @@
 
     <!-- Tab: Om oss -->
     <div id="tab-about" class="fr-tab-panel d-none">
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="camera"></span> Hero-seksjon på forsiden</h2></div>
+      <details class="fr-panel fr-collapsible">
+        <summary class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="camera"></span> Hero-seksjon på forsiden</h2></summary>
         <p class="fr-hint">Velg om forsiden skal vise et stillbilde eller en loopende video øverst.</p>
         <div class="form-check form-switch fr-hero-switch">
           <input class="form-check-input" type="checkbox" role="switch" id="heroVideoToggle" onchange="toggleHeroVideo(this.checked)">
           <label class="form-check-label" for="heroVideoToggle" id="heroVideoToggleLabel">Bilde</label>
         </div>
         <div id="heroToggleMsg" class="fr-save-msg"></div>
-      </div>
+      </details>
 
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="image"></span> Galleri ("Se oss i aksjon")</h2></div>
+      <details class="fr-panel fr-collapsible">
+        <summary class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="image"></span> Galleri ("Se oss i aksjon")</h2></summary>
         <p class="fr-hint">Bildene som roterer på forsiden. Bruk pilene for å endre rekkefølge.</p>
         <div id="galleryList" class="fr-gallery-admin-list"></div>
         <hr class="my-3" style="border-color: var(--fr-panel-border);">
@@ -757,173 +757,181 @@
           oninput="document.getElementById('gallerySpeedValue').textContent = this.value" onchange="saveGallerySpeed(this.value)">
         <p class="fr-hint">Hvor fort bildene glir sidelengs på forsiden. Lav verdi = rolig drift, høy verdi = rask scroll.</p>
         <div id="gallerySpeedMsg" class="fr-save-msg"></div>
-      </div>
+      </details>
 
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="phone"></span> SMS-varsel til deg selv</h2></div>
+      <!-- SMS: alt SMS-relatert samlet ett sted - varsel-innstillinger øverst,
+           så to arkfaner (Tester / Logger) i stedet for fire separate paneler. -->
+      <details class="fr-panel fr-collapsible">
+        <summary class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="phone"></span> SMS</h2></summary>
+
         <p class="fr-hint">Send en ekstra SMS til deg selv (i tillegg til kunden) hver gang noen booker.</p>
         <div class="form-check form-switch fr-hero-switch">
           <input class="form-check-input" type="checkbox" role="switch" id="ownerSmsToggle" onchange="toggleOwnerSms(this.checked)">
           <label class="form-check-label" for="ownerSmsToggle" id="ownerSmsToggleLabel">Av</label>
         </div>
         <label class="fr-label mt-2">Mobilnummer (flere kan skilles med komma)</label>
-        <input id="ownerSmsPhoneInput" class="form-control fr-input mb-2" placeholder="92133900, 91234567" onchange="saveOwnerSmsPhone(this.value)" />
+        <input id="ownerSmsPhoneInput" class="form-control fr-input mb-3" placeholder="92133900, 91234567" onchange="saveOwnerSmsPhone(this.value)" />
         <div id="ownerSmsMsg" class="fr-save-msg"></div>
-      </div>
 
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="bell"></span> Test SMS til kunder</h2></div>
-        <p class="fr-hint">Send de faktiske meldingene kunder får, til ditt eget nummer — for å se nøyaktig hvordan de ser ut akkurat nå.</p>
-        <label class="fr-label mt-2">Mobilnummer</label>
-        <input id="testSmsPhoneInput" class="form-control fr-input mb-2" type="tel" inputmode="numeric" maxlength="8" value="47464544" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
-        <button class="fr-btn-outline fr-testsms-btn mb-2" id="testBookingSmsBtn" onclick="sendTestBookingSms()">
-          <span class="fr-icon" data-fr-icon="calendar"></span> Test: bekreftelse ved booking
-        </button>
-        <button class="fr-btn-outline fr-testsms-btn mb-2" id="testTimeRequestSmsBtn" onclick="sendTestTimeRequestSms()">
-          <span class="fr-icon" data-fr-icon="clock"></span> Test: forespurt tid mottatt
-        </button>
-        <button class="fr-btn-outline fr-testsms-btn mb-2" id="testSmsBtn" onclick="sendTestCompletionSms()">
-          <span class="fr-icon" data-fr-icon="bell"></span> Test: "jobben er ferdig"
-        </button>
-        <button class="fr-btn-outline fr-testsms-btn mb-2" id="testThanksSmsBtn" onclick="sendTestThanksSms()">
-          <span class="fr-icon" data-fr-icon="checkCircle"></span> Test: takk (avtalt utenom SMS)
-        </button>
-        <button class="fr-btn-outline fr-testsms-btn" id="testThanksDiscountBtn" onclick="sendTestThanksSmsWithDiscount()">
-          <span class="fr-icon" data-fr-icon="gift"></span> Test: takk + rabattkode
-        </button>
-        <div id="testSmsMsg" class="fr-save-msg"></div>
-      </div>
-
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="gift"></span> Ny kampanje</h2></div>
-        <div class="fr-form-row">
-          <label class="fr-label">Tittel</label>
-          <input id="promoTitle" class="form-control fr-input" placeholder="Sommersalg" />
+        <div class="fr-subtabs" data-group="sms">
+          <button class="fr-subtab active" data-panel="tester" onclick="showSubTab('sms','tester')">Tester</button>
+          <button class="fr-subtab" data-panel="logger" onclick="showSubTab('sms','logger')">Logger</button>
         </div>
-        <div class="fr-form-row">
-          <label class="fr-label">Rabatt</label>
-          <div class="fr-gauge-row">
-            <div class="fr-gauge-col">
-              <div class="fr-gauge-track" id="promoGaugeTrack">
-                <div class="fr-gauge-band fr-gauge-band-low"></div>
-                <div class="fr-gauge-band fr-gauge-band-mid"></div>
-                <div class="fr-gauge-band fr-gauge-band-high"></div>
-                <div class="fr-gauge-dim" id="promoGaugeDim"></div>
-                <div class="fr-gauge-handle" id="promoGaugeHandle"></div>
+
+        <div class="fr-subtab-panel" data-group="sms" data-panel="tester">
+          <p class="fr-hint">Send de faktiske meldingene kunder får, til ditt eget nummer — for å se nøyaktig hvordan de ser ut akkurat nå.</p>
+          <label class="fr-label mt-2">Mobilnummer</label>
+          <input id="testSmsPhoneInput" class="form-control fr-input mb-2" type="tel" inputmode="numeric" maxlength="8" value="47464544" placeholder="92133900" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" />
+          <button class="fr-btn-outline fr-testsms-btn mb-2" id="testBookingSmsBtn" onclick="sendTestBookingSms()">
+            <span class="fr-icon" data-fr-icon="calendar"></span> Test: bekreftelse ved booking
+          </button>
+          <button class="fr-btn-outline fr-testsms-btn mb-2" id="testTimeRequestSmsBtn" onclick="sendTestTimeRequestSms()">
+            <span class="fr-icon" data-fr-icon="clock"></span> Test: forespurt tid mottatt
+          </button>
+          <button class="fr-btn-outline fr-testsms-btn mb-2" id="testSmsBtn" onclick="sendTestCompletionSms()">
+            <span class="fr-icon" data-fr-icon="bell"></span> Test: "jobben er ferdig"
+          </button>
+          <button class="fr-btn-outline fr-testsms-btn mb-2" id="testThanksSmsBtn" onclick="sendTestThanksSms()">
+            <span class="fr-icon" data-fr-icon="checkCircle"></span> Test: takk (avtalt utenom SMS)
+          </button>
+          <button class="fr-btn-outline fr-testsms-btn" id="testThanksDiscountBtn" onclick="sendTestThanksSmsWithDiscount()">
+            <span class="fr-icon" data-fr-icon="gift"></span> Test: takk + rabattkode
+          </button>
+          <div id="testSmsMsg" class="fr-save-msg"></div>
+        </div>
+
+        <div class="fr-subtab-panel d-none" data-group="sms" data-panel="logger">
+          <p class="fr-hint">Appens eget forsøkslogg (SMS og e-post) og 46elks sin faktiske sendelogg samlet i én liste, nyeste først.</p>
+          <div id="mergedNotifLog"></div>
+        </div>
+      </details>
+
+      <!-- Kampanjer: tre ulike varianter samlet ett sted i stedet for seks
+           separate paneler - fast rabatt for en periode (banner), engangskode
+           til én kunde, eller kampanjekode med et begrenset antall bruk. -->
+      <details class="fr-panel fr-collapsible">
+        <summary class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="gift"></span> Kampanjer</h2></summary>
+
+        <div class="fr-subtabs" data-group="campaigns">
+          <button class="fr-subtab active" data-panel="banner" onclick="showSubTab('campaigns','banner')">Fast rabatt</button>
+          <button class="fr-subtab" data-panel="single" onclick="showSubTab('campaigns','single')">Engangskode</button>
+          <button class="fr-subtab" data-panel="multi" onclick="showSubTab('campaigns','multi')">Kampanjekode</button>
+        </div>
+
+        <div class="fr-subtab-panel" data-group="campaigns" data-panel="banner">
+          <p class="fr-hint">Fast rabatt for en periode, vist som banner øverst på forsiden — ingen kode kunden trenger å skrive inn.</p>
+          <div class="fr-form-row">
+            <label class="fr-label">Tittel</label>
+            <input id="promoTitle" class="form-control fr-input" placeholder="Sommersalg" />
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label">Rabatt</label>
+            <div class="fr-gauge-row">
+              <div class="fr-gauge-col">
+                <div class="fr-gauge-track" id="promoGaugeTrack">
+                  <div class="fr-gauge-band fr-gauge-band-low"></div>
+                  <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                  <div class="fr-gauge-band fr-gauge-band-high"></div>
+                  <div class="fr-gauge-dim" id="promoGaugeDim"></div>
+                  <div class="fr-gauge-handle" id="promoGaugeHandle"></div>
+                </div>
+                <div class="fr-gauge-ticks"><span>0</span><span>50</span><span>100</span></div>
               </div>
-              <div class="fr-gauge-ticks"><span>0</span><span>50</span><span>100</span></div>
+              <div class="fr-gauge-value" id="promoGaugeValueText">0%</div>
             </div>
-            <div class="fr-gauge-value" id="promoGaugeValueText">0%</div>
+            <input type="hidden" id="promoDiscountPct" value="0" />
           </div>
-          <input type="hidden" id="promoDiscountPct" value="0" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label">Beskrivelse</label>
-          <input id="promoDescription" class="form-control fr-input" placeholder="10% på alle bookinger i juli" />
-        </div>
-        <div class="fr-inline-fields fr-form-row">
-          <div>
-            <label class="fr-label">Fra dato</label>
-            <input type="date" id="promoStart" class="form-control fr-input" />
+          <div class="fr-form-row">
+            <label class="fr-label">Beskrivelse</label>
+            <input id="promoDescription" class="form-control fr-input" placeholder="10% på alle bookinger i juli" />
           </div>
-          <div>
-            <label class="fr-label">Til dato</label>
-            <input type="date" id="promoEnd" class="form-control fr-input" />
+          <div class="fr-inline-fields fr-form-row">
+            <div>
+              <label class="fr-label">Fra dato</label>
+              <input type="date" id="promoStart" class="form-control fr-input" />
+            </div>
+            <div>
+              <label class="fr-label">Til dato</label>
+              <input type="date" id="promoEnd" class="form-control fr-input" />
+            </div>
           </div>
+          <button class="btn fr-btn-primary w-100" onclick="createPromo()"><span class="fr-icon" data-fr-icon="checkCircle"></span> Opprett kampanje</button>
+          <div id="promoMsg" class="fr-save-msg"></div>
+          <hr class="my-3" style="border-color: var(--fr-panel-border);">
+          <p class="fr-label">Alle kampanjer</p>
+          <div id="promoList"></div>
         </div>
-        <button class="btn fr-btn-primary w-100" onclick="createPromo()"><span class="fr-icon" data-fr-icon="checkCircle"></span> Opprett kampanje</button>
-        <div id="promoMsg" class="fr-save-msg"></div>
-      </div>
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2>Alle kampanjer</h2></div>
-        <div id="promoList"></div>
-      </div>
 
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="tag"></span> Ny rabattkode</h2></div>
-        <p class="fr-hint">Genererer en unik 5-tegns kode du kan gi til en enkeltkunde. Koden gjelder kun én gang, og kan skrives inn på booking-siden.</p>
-        <div class="fr-form-row">
-          <label class="fr-label">Rabatt</label>
-          <div class="fr-gauge-row">
-            <div class="fr-gauge-col">
-              <div class="fr-gauge-track" id="discountGaugeTrack">
-                <div class="fr-gauge-band fr-gauge-band-low"></div>
-                <div class="fr-gauge-band fr-gauge-band-mid"></div>
-                <div class="fr-gauge-band fr-gauge-band-high"></div>
-                <div class="fr-gauge-dim" id="discountGaugeDim"></div>
-                <div class="fr-gauge-handle" id="discountGaugeHandle"></div>
+        <div class="fr-subtab-panel d-none" data-group="campaigns" data-panel="single">
+          <p class="fr-hint">Genererer en unik 5-tegns kode du kan gi til en enkeltkunde. Koden gjelder kun én gang, og kan skrives inn på booking-siden.</p>
+          <div class="fr-form-row">
+            <label class="fr-label">Rabatt</label>
+            <div class="fr-gauge-row">
+              <div class="fr-gauge-col">
+                <div class="fr-gauge-track" id="discountGaugeTrack">
+                  <div class="fr-gauge-band fr-gauge-band-low"></div>
+                  <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                  <div class="fr-gauge-band fr-gauge-band-high"></div>
+                  <div class="fr-gauge-dim" id="discountGaugeDim"></div>
+                  <div class="fr-gauge-handle" id="discountGaugeHandle"></div>
+                </div>
+                <div class="fr-gauge-ticks"><span>0</span><span>50</span><span>100</span></div>
               </div>
-              <div class="fr-gauge-ticks"><span>0</span><span>50</span><span>100</span></div>
+              <div class="fr-gauge-value" id="discountGaugeValueText">0%</div>
             </div>
-            <div class="fr-gauge-value" id="discountGaugeValueText">0%</div>
+            <input type="hidden" id="discountPct" value="0" />
           </div>
-          <input type="hidden" id="discountPct" value="0" />
+          <button class="btn fr-btn-primary w-100" onclick="generateDiscountCode()"><span class="fr-icon" data-fr-icon="tag"></span> Generer kode</button>
+          <div id="discountCodeMsg" class="fr-save-msg"></div>
+          <hr class="my-3" style="border-color: var(--fr-panel-border);">
+          <p class="fr-label">Alle rabattkoder</p>
+          <div id="discountCodeList"></div>
         </div>
-        <button class="btn fr-btn-primary w-100" onclick="generateDiscountCode()"><span class="fr-icon" data-fr-icon="tag"></span> Generer kode</button>
-        <div id="discountCodeMsg" class="fr-save-msg"></div>
-      </div>
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2>Alle rabattkoder</h2></div>
-        <div id="discountCodeList"></div>
-      </div>
 
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="gift"></span> Ny kampanjekode</h2></div>
-        <p class="fr-hint">Én kode flere ulike kunder kan bruke — men kun et fast antall ganger, så det skaper litt "være på" i stedet for å gjelde fritt for alle hele perioden. F.eks. koden AUGUST, 15%, 20 bruk — når alle 20 er brukt opp virker den ikke lenger.</p>
-        <div class="fr-form-row">
-          <label class="fr-label">Kode (valgfritt — la stå tomt for auto-generert)</label>
-          <input id="campaignCodeInput" class="form-control fr-input" placeholder="F.eks. AUGUST" maxlength="20" style="text-transform:uppercase;" />
-        </div>
-        <div class="fr-form-row">
-          <label class="fr-label">Rabatt</label>
-          <div class="fr-gauge-row">
-            <div class="fr-gauge-col">
-              <div class="fr-gauge-track" id="campaignGaugeTrack">
-                <div class="fr-gauge-band fr-gauge-band-low"></div>
-                <div class="fr-gauge-band fr-gauge-band-mid"></div>
-                <div class="fr-gauge-band fr-gauge-band-high"></div>
-                <div class="fr-gauge-dim" id="campaignGaugeDim"></div>
-                <div class="fr-gauge-handle" id="campaignGaugeHandle"></div>
+        <div class="fr-subtab-panel d-none" data-group="campaigns" data-panel="multi">
+          <p class="fr-hint">Én kode flere ulike kunder kan bruke — men kun et fast antall ganger, så det skaper litt "være på" i stedet for å gjelde fritt for alle hele perioden. F.eks. koden AUGUST, 15%, 20 bruk — når alle 20 er brukt opp virker den ikke lenger.</p>
+          <div class="fr-form-row">
+            <label class="fr-label">Kode (valgfritt — la stå tomt for auto-generert)</label>
+            <input id="campaignCodeInput" class="form-control fr-input" placeholder="F.eks. AUGUST" maxlength="20" style="text-transform:uppercase;" />
+          </div>
+          <div class="fr-form-row">
+            <label class="fr-label">Rabatt</label>
+            <div class="fr-gauge-row">
+              <div class="fr-gauge-col">
+                <div class="fr-gauge-track" id="campaignGaugeTrack">
+                  <div class="fr-gauge-band fr-gauge-band-low"></div>
+                  <div class="fr-gauge-band fr-gauge-band-mid"></div>
+                  <div class="fr-gauge-band fr-gauge-band-high"></div>
+                  <div class="fr-gauge-dim" id="campaignGaugeDim"></div>
+                  <div class="fr-gauge-handle" id="campaignGaugeHandle"></div>
+                </div>
+                <div class="fr-gauge-ticks"><span>0</span><span>50</span><span>100</span></div>
               </div>
-              <div class="fr-gauge-ticks"><span>0</span><span>50</span><span>100</span></div>
+              <div class="fr-gauge-value" id="campaignGaugeValueText">0%</div>
             </div>
-            <div class="fr-gauge-value" id="campaignGaugeValueText">0%</div>
+            <input type="hidden" id="campaignPct" value="0" />
           </div>
-          <input type="hidden" id="campaignPct" value="0" />
+          <div class="fr-form-row">
+            <label class="fr-label">Maks antall bruk</label>
+            <input type="number" id="campaignMaxUses" class="form-control fr-input" min="1" step="1" placeholder="F.eks. 20" />
+          </div>
+          <button class="btn fr-btn-primary w-100" onclick="createCampaignCode()"><span class="fr-icon" data-fr-icon="gift"></span> Opprett kampanjekode</button>
+          <div id="campaignCodeMsg" class="fr-save-msg"></div>
+          <hr class="my-3" style="border-color: var(--fr-panel-border);">
+          <p class="fr-label">Alle kampanjekoder</p>
+          <div id="campaignCodeList"></div>
         </div>
-        <div class="fr-form-row">
-          <label class="fr-label">Maks antall bruk</label>
-          <input type="number" id="campaignMaxUses" class="form-control fr-input" min="1" step="1" placeholder="F.eks. 20" />
-        </div>
-        <button class="btn fr-btn-primary w-100" onclick="createCampaignCode()"><span class="fr-icon" data-fr-icon="gift"></span> Opprett kampanjekode</button>
-        <div id="campaignCodeMsg" class="fr-save-msg"></div>
-      </div>
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2>Alle kampanjekoder</h2></div>
-        <div id="campaignCodeList"></div>
-      </div>
+      </details>
 
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="info"></span> Om oss-innhold</h2></div>
+      <details class="fr-panel fr-collapsible">
+        <summary class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="info"></span> Om oss-innhold</h2></summary>
         <label class="fr-label">Overskrift</label>
         <input id="aboutHeadingInput" class="form-control fr-input mb-3" />
         <label class="fr-label">Tekst</label>
         <textarea id="aboutBodyInput" class="form-control fr-input mb-3" rows="8"></textarea>
         <button class="btn fr-btn-primary w-100" onclick="saveAbout()"><span class="fr-icon" data-fr-icon="save"></span> Lagre</button>
         <div id="aboutMsg" class="fr-save-msg"></div>
-      </div>
-
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="bell"></span> Varslingslogg</h2></div>
-        <p class="fr-hint">Siste SMS- og e-postvarsler som er forsøkt sendt, nyeste først.</p>
-        <div id="notificationsLog"></div>
-      </div>
-
-      <div class="fr-panel">
-        <div class="fr-panel-head"><h2><span class="fr-icon" data-fr-icon="phone"></span> SMS-logg (46elks)</h2></div>
-        <p class="fr-hint">Faktisk sendelogg direkte fra SMS-leverandøren, nyeste først.</p>
-        <div id="elksSmsLog"></div>
-      </div>
+      </details>
     </div>
 
   </div>
@@ -3397,6 +3405,19 @@ function showCustomersSubTab(tab) {
   renderCustomersAdmin();
 }
 
+// Generic sub-tab switcher for any panel with a few switchable sections
+// (SMS: Tester/Logger; Kampanjer: Fast rabatt/Engangskode/Kampanjekode) —
+// same look as the Kunderegister filing tabs above, just showing/hiding
+// different content blocks instead of filtering one shared list.
+function showSubTab(group, panel) {
+  document.querySelectorAll(`.fr-subtabs[data-group="${group}"] .fr-subtab`).forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.panel === panel);
+  });
+  document.querySelectorAll(`.fr-subtab-panel[data-group="${group}"]`).forEach(el => {
+    el.classList.toggle('d-none', el.dataset.panel !== panel);
+  });
+}
+
 function renderCustomersAdmin() {
   const list = document.getElementById('customersList');
   if (!list) return;
@@ -4450,77 +4471,6 @@ function groupNotifications(rows) {
   return groups;
 }
 
-function renderNotifications() {
-  const box = document.getElementById('notificationsLog');
-  const groups = window._frNotifGroups || [];
-  if (!groups.length) {
-    box.innerHTML = '<p class="fr-hint">Ingen varsler enda.</p>';
-    return;
-  }
-
-  const visible = notifShowAll ? groups : groups.slice(0, NOTIF_PAGE_SIZE);
-  const chip = (g, channel) => {
-    const ok = g.channels[channel];
-    if (ok === undefined) return '';
-    return `<span class="fr-notif-chip${ok ? '' : ' fr-notif-chip-bad'}" title="${ok ? 'OK' : 'Feilet'}">${NOTIF_CHANNEL_ICONS[channel]}</span>`;
-  };
-
-  box.innerHTML = visible.map((g, i) => `
-    <div class="fr-list-row">
-      <div class="fr-list-row-when">${fmtDateShort(g.time)} ${fmtTime(g.time)}</div>
-      <div class="fr-list-row-body">
-        <div class="fr-list-row-name">${g.name || ''}${g.code ? ` <span class="fr-list-row-code">${g.code}</span>` : ''}</div>
-      </div>
-      <div class="fr-notif-row-actions">
-        <div class="fr-notif-icons">${chip(g, 'sms_kunde')}${chip(g, 'sms_eier')}${chip(g, 'epost_eier')}${chip(g, 'sms_ferdig')}</div>
-        ${Object.keys(g.messages).length ? `<button type="button" class="fr-notif-view-btn" onclick="showNotifMessages(${i})" title="Se hva som ble sendt">${frIcon('eye')} Se</button>` : ''}
-      </div>
-    </div>`).join('');
-
-  if (groups.length > NOTIF_PAGE_SIZE) {
-    const btn = document.createElement('button');
-    btn.className = 'fr-show-more-btn w-100 mt-2';
-    btn.textContent = notifShowAll ? '▲ Vis færre' : `▼ Vis flere (${groups.length - NOTIF_PAGE_SIZE} til)`;
-    btn.onclick = () => { notifShowAll = !notifShowAll; renderNotifications(); };
-    box.appendChild(btn);
-  }
-}
-
-function showNotifMessages(index) {
-  const groups = notifShowAll ? window._frNotifGroups : (window._frNotifGroups || []).slice(0, NOTIF_PAGE_SIZE);
-  const g = groups[index];
-  if (!g) return;
-  document.getElementById('notifMessageModalBody').innerHTML = Object.entries(g.messages).map(([channel, msg]) => `
-    <div class="fr-notif-message-block">
-      <div class="fr-notif-message-label">${NOTIF_CHANNEL_ICONS[channel]} ${NOTIF_CHANNEL_LABELS[channel] || channel}</div>
-      <pre class="fr-notif-message-text">${msg.replace(/</g, '&lt;')}</pre>
-    </div>
-  `).join('') || '<p class="fr-hint">Ingen meldingstekst lagret for dette varselet.</p>';
-  notifMessageModal.show();
-}
-
-async function loadNotifications() {
-  const box = document.getElementById('notificationsLog');
-  try {
-    const res = await fetch('/api/admin-data?resource=notifications', { headers: authHeaders() });
-    if (res.status === 401) return handleAuthExpired();
-    const data = await res.json();
-    window._frNotifGroups = groupNotifications(data.notifications || []);
-    renderNotifications();
-  } catch (e) {
-    box.innerHTML = '<p class="fr-hint">Klarte ikke å hente varslingslogg.</p>';
-  }
-}
-
-// The SMS provider's (46elks) own send log — separate from the app's own
-// Varslingslogg above, since this reflects what actually happened on their
-// end (exact content, real delivery status), not just what was attempted.
-// Message text shows directly in the row (no click-to-view step) since
-// these are short SMS bodies, not the multi-channel bundles Varslingslogg
-// deals with — a "Se"-button here would just be an extra step to see
-// something that fits fine inline.
-let _frElksSmsMessages = [];
-
 function normalizePhoneDigits(raw) {
   return (raw || '').toString().replace(/\D/g, '').slice(-8);
 }
@@ -4535,20 +4485,37 @@ function findCustomerNameByPhone(rawPhone) {
   return match ? match.name : null;
 }
 
-function renderElksSmsLog() {
-  const box = document.getElementById('elksSmsLog');
-  const messages = _frElksSmsMessages;
-  if (!messages.length) {
-    box.innerHTML = '<p class="fr-hint">Ingen SMS-er logget ennå.</p>';
-    return;
-  }
-  box.innerHTML = messages.map(m => {
-    const when = m.created || m.created_at || m.date || '';
-    const status = m.status || '';
-    const to = m.to || m.from || '';
-    const customerName = findCustomerNameByPhone(to);
-    const whoLabel = customerName ? `${customerName} <span class="fr-list-row-code">${to}</span>` : to;
-    return `
+function appNotifRowHtml(g, mergedIndex) {
+  const chip = (channel) => {
+    const ok = g.channels[channel];
+    if (ok === undefined) return '';
+    return `<span class="fr-notif-chip${ok ? '' : ' fr-notif-chip-bad'}" title="${ok ? 'OK' : 'Feilet'}">${NOTIF_CHANNEL_ICONS[channel]}</span>`;
+  };
+  return `
+    <div class="fr-list-row">
+      <div class="fr-list-row-when">${fmtDateShort(g.time)} ${fmtTime(g.time)}</div>
+      <div class="fr-list-row-body">
+        <div class="fr-list-row-name">${g.name || ''}${g.code ? ` <span class="fr-list-row-code">${g.code}</span>` : ''}</div>
+      </div>
+      <div class="fr-notif-row-actions">
+        <div class="fr-notif-icons">${chip('sms_kunde')}${chip('sms_eier')}${chip('epost_eier')}${chip('sms_ferdig')}</div>
+        ${Object.keys(g.messages).length ? `<button type="button" class="fr-notif-view-btn" onclick="showNotifMessages(${mergedIndex})" title="Se hva som ble sendt">${frIcon('eye')} Se</button>` : ''}
+      </div>
+    </div>`;
+}
+
+// The SMS provider's (46elks) own send log reflects what actually happened
+// on their end (exact content, real delivery status), not just what was
+// attempted — message text shows directly in the row (no click-to-view
+// step) since these are short SMS bodies, not the multi-channel bundles an
+// app-log entry can be.
+function elksNotifRowHtml(m) {
+  const when = m.created || m.created_at || m.date || '';
+  const status = m.status || '';
+  const to = m.to || m.from || '';
+  const customerName = findCustomerNameByPhone(to);
+  const whoLabel = customerName ? `${customerName} <span class="fr-list-row-code">${to}</span>` : to;
+  return `
     <div class="fr-list-row">
       <div class="fr-list-row-when">${when ? `${fmtDateShort(when)} ${fmtTime(when)}` : ''}</div>
       <div class="fr-list-row-body">
@@ -4556,19 +4523,80 @@ function renderElksSmsLog() {
         <div class="fr-elks-sms-text">${(m.message || '').replace(/</g, '&lt;')}</div>
       </div>
     </div>`;
-  }).join('');
+}
+
+// Varslingslogg (this app's own attempt-log, all channels including e-post)
+// and the 46elks send-log used to sit in two separate panels — genuinely
+// different data (one has e-post, the other has real provider delivery
+// status), so rather than risk misattributing entries by guessing which
+// app-log row matches which elks row, they're interleaved chronologically
+// into one feed instead, each still rendered with its own native detail.
+let _frElksSmsMessages = [];
+
+function buildMergedNotifTimeline() {
+  const appEntries = (window._frNotifGroups || []).map(g => ({ kind: 'app', time: g.time, group: g }));
+  const elksEntries = (_frElksSmsMessages || []).map(m => ({ kind: 'elks', time: m.created || m.created_at || m.date || '', msg: m }));
+  return [...appEntries, ...elksEntries].sort((a, b) => new Date(b.time) - new Date(a.time));
+}
+
+function renderMergedNotifLog() {
+  const box = document.getElementById('mergedNotifLog');
+  if (!box) return;
+  const entries = buildMergedNotifTimeline();
+  if (!entries.length) {
+    box.innerHTML = '<p class="fr-hint">Ingen varsler enda.</p>';
+    return;
+  }
+
+  const visible = notifShowAll ? entries : entries.slice(0, NOTIF_PAGE_SIZE);
+  window._frMergedNotifVisible = visible;
+  box.innerHTML = visible.map((e, i) => e.kind === 'app' ? appNotifRowHtml(e.group, i) : elksNotifRowHtml(e.msg)).join('');
+
+  if (entries.length > NOTIF_PAGE_SIZE) {
+    const btn = document.createElement('button');
+    btn.className = 'fr-show-more-btn w-100 mt-2';
+    btn.textContent = notifShowAll ? '▲ Vis færre' : `▼ Vis flere (${entries.length - NOTIF_PAGE_SIZE} til)`;
+    btn.onclick = () => { notifShowAll = !notifShowAll; renderMergedNotifLog(); };
+    box.appendChild(btn);
+  }
+}
+
+function showNotifMessages(mergedIndex) {
+  const entry = (window._frMergedNotifVisible || [])[mergedIndex];
+  if (!entry || entry.kind !== 'app') return;
+  const g = entry.group;
+  document.getElementById('notifMessageModalBody').innerHTML = Object.entries(g.messages).map(([channel, msg]) => `
+    <div class="fr-notif-message-block">
+      <div class="fr-notif-message-label">${NOTIF_CHANNEL_ICONS[channel]} ${NOTIF_CHANNEL_LABELS[channel] || channel}</div>
+      <pre class="fr-notif-message-text">${msg.replace(/</g, '&lt;')}</pre>
+    </div>
+  `).join('') || '<p class="fr-hint">Ingen meldingstekst lagret for dette varselet.</p>';
+  notifMessageModal.show();
+}
+
+async function loadNotifications() {
+  try {
+    const res = await fetch('/api/admin-data?resource=notifications', { headers: authHeaders() });
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    window._frNotifGroups = groupNotifications(data.notifications || []);
+    renderMergedNotifLog();
+  } catch (e) {
+    const box = document.getElementById('mergedNotifLog');
+    if (box) box.innerHTML = '<p class="fr-hint">Klarte ikke å hente varslingslogg.</p>';
+  }
 }
 
 async function loadElksSmsLog() {
-  const box = document.getElementById('elksSmsLog');
   try {
     const res = await fetch('/api/admin-data?resource=sms-log', { headers: authHeaders() });
     if (res.status === 401) return handleAuthExpired();
     const data = await res.json();
     _frElksSmsMessages = data.messages || [];
-    renderElksSmsLog();
+    renderMergedNotifLog();
   } catch (e) {
-    box.innerHTML = '<p class="fr-hint">Klarte ikke å hente SMS-logg.</p>';
+    const box = document.getElementById('mergedNotifLog');
+    if (box) box.innerHTML = '<p class="fr-hint">Klarte ikke å hente SMS-logg.</p>';
   }
 }
 
